@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { DashboardController } from './dashboard.controller';
 import { AppModule } from '../app/app.module';
@@ -6,6 +6,6 @@ import { AppModule } from '../app/app.module';
 @Module({
   controllers: [DashboardController],
   providers: [DashboardService],
-  imports: [AppModule],
+  imports: [forwardRef(() => AppModule)],
 })
 export class DashboardModule {}
