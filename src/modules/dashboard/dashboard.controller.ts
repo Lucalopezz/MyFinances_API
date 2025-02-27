@@ -14,4 +14,12 @@ export class DashboardController {
   ) {
     return this.dashboardService.getDashboardData(query);
   }
+
+  @Get('monthly-comparison')
+  async getMonthlyComparison(
+    @Query(new ZodValidationPipe(DashboardQuerySchema))
+    query: DashboardQueryDto,
+  ) {
+    return this.dashboardService.getMonthlyComparison(query);
+  }
 }
