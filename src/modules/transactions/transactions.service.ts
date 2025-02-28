@@ -14,7 +14,7 @@ export class TransactionsService {
   ) {}
 
   async createTransaction(dto: CreateTransactionDto) {
-    const transaction = this.prisma.transaction.create({
+    const transaction = await this.prisma.transaction.create({
       data: {
         value: dto.value,
         date: dto.date,
