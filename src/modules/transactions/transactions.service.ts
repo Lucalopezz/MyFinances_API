@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   CreateTransactionDto,
   UpdateTransactionDto,
 } from './dtos/transaction.dto';
 import { WishlistService } from '../wishlist/wishlist.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class TransactionsService {
@@ -40,11 +45,29 @@ export class TransactionsService {
       orderBy: { date: 'desc' },
     });
   }
-
   async getTransaction(id: string) {
-    return this.prisma.transaction.findUnique({
-      where: { id },
-    });
+    try {
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { id },
+      });
+      if (!transaction) {
+        throw new NotFoundException(`Transação com ID "${id}" não encontrada.`);
+      }
+
+      return transaction;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException(
+            `Transação com ID "${id}" não encontrada.`,
+          );
+        }
+
+        throw new InternalServerErrorException('Erro ao buscar a transação.');
+      }
+
+      throw new InternalServerErrorException('Ocorreu um erro inesperado.');
+    }
   }
 
   async updateTransaction(id: string, dto: UpdateTransactionDto) {

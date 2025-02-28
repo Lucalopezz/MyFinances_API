@@ -1,6 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateWishlistItemDto } from './dtos/wishlist.dto';
+import {
+  CreateWishlistItemDto,
+  UpdateWishlistItemDto,
+} from './dtos/wishlist.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class WishlistService {
@@ -71,5 +79,63 @@ export class WishlistService {
       console.log(error);
       throw new NotFoundException('Erro ao criar item na wishlist.');
     }
+  }
+
+  async getWishlistItems() {
+    return this.prisma.wishlistItem.findMany({
+      where: {
+        userId: '67c0b2bb3242fe3f7df1c069',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async getWishlistItem(id: string) {
+    try {
+      const wish = await this.prisma.wishlistItem.findUnique({
+        where: { id },
+      });
+
+      if (!wish) {
+        throw new NotFoundException(`Item com ID "${id}" não encontrado.`);
+      }
+
+      return wish;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException(`Item com ID "${id}" não encontrado.`);
+        }
+
+        throw new InternalServerErrorException(
+          'Erro ao buscar o item na wishlist.',
+        );
+      }
+
+      throw new InternalServerErrorException('Ocorreu um erro inesperado.');
+    }
+  }
+
+  async updateWishlistItem(id: string, dto: UpdateWishlistItemDto) {
+    const wishId = await this.getWishlistItem(id);
+
+    const wish = await this.prisma.wishlistItem.update({
+      where: { id: wishId.id },
+      data: {
+        ...dto,
+      },
+    });
+    await this.updateWishlistItemsSavings('67c0b2bb3242fe3f7df1c069');
+
+    return wish;
+  }
+
+  async deleteWishlistItem(id: string) {
+    const wishId = await this.getWishlistItem(id);
+    return this.prisma.wishlistItem.delete({
+      where: { id: wishId.id },
+    });
   }
 }
