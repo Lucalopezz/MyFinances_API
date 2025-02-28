@@ -4,13 +4,17 @@ import {
   CreateTransactionDto,
   UpdateTransactionDto,
 } from './dtos/transaction.dto';
+import { WishlistService } from '../wishlist/wishlist.service';
 
 @Injectable()
 export class TransactionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly wishlistService: WishlistService,
+  ) {}
 
   async createTransaction(dto: CreateTransactionDto) {
-    return this.prisma.transaction.create({
+    const transaction = this.prisma.transaction.create({
       data: {
         value: dto.value,
         date: dto.date,
@@ -22,6 +26,11 @@ export class TransactionsService {
         },
       },
     });
+    await this.wishlistService.updateWishlistItemsSavings(
+      '67c0b2bb3242fe3f7df1c069',
+    );
+
+    return transaction;
   }
   async getTransactions() {
     return this.prisma.transaction.findMany({
@@ -39,16 +48,21 @@ export class TransactionsService {
   }
 
   async updateTransaction(id: string, dto: UpdateTransactionDto) {
-    const transaction = this.getTransaction(id);
-    if (!transaction) {
+    const transactionData = this.getTransaction(id);
+    if (!transactionData) {
       throw new NotFoundException(`Transação com ID ${id} não encontrada`);
     }
-    return this.prisma.transaction.update({
+    const transaction = this.prisma.transaction.update({
       where: { id },
       data: {
         ...dto,
       },
     });
+    await this.wishlistService.updateWishlistItemsSavings(
+      (await transaction).userId,
+    );
+
+    return transaction;
   }
 
   async deleteTransaction(id: string) {
@@ -56,8 +70,12 @@ export class TransactionsService {
     if (!transaction) {
       throw new NotFoundException(`Transação com ID ${id} não encontrada`);
     }
-    return this.prisma.transaction.delete({
+    await this.prisma.transaction.delete({
       where: { id },
     });
+    await this.wishlistService.updateWishlistItemsSavings(
+      (await transaction).userId,
+    );
+    return { message: 'Deletado com sucesso!' };
   }
 }
