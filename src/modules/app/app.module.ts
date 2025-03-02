@@ -5,7 +5,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { DashboardModule } from '../dashboard/dashboard.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { WishlistModule } from '../wishlist/wishlist.module';
-import { FixedExpensesModule } from 'src/fixed-expenses/fixed-expenses.module';
+import { FixedExpensesModule } from 'src/modules/fixed-expenses/fixed-expenses.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { FixedExpensesModule } from 'src/fixed-expenses/fixed-expenses.module';
     TransactionsModule,
     WishlistModule,
     FixedExpensesModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
