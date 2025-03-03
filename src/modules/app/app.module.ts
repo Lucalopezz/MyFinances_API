@@ -7,6 +7,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
 import { WishlistModule } from '../wishlist/wishlist.module';
 import { FixedExpensesModule } from 'src/modules/fixed-expenses/fixed-expenses.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     WishlistModule,
     FixedExpensesModule,
     ScheduleModule.forRoot(),
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

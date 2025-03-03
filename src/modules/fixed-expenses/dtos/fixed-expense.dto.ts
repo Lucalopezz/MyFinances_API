@@ -3,12 +3,12 @@ import { z } from 'zod';
 export const RecurrenceTypeEnum = z.enum(['MONTHLY', 'YEARLY']);
 
 export const CreateFixedExpenseDto = z.object({
-  name: z.string(),
-  amount: z.number(),
-  dueDate: z
-    .string()
-    .refine((val) => !isNaN(Date.parse(val)), { message: 'Data inválida' })
-    .transform((val) => new Date(val)),
+  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
+  amount: z.number().positive('Valor deve ser positivo'),
+  dueDate: z.coerce
+    .date()
+    .min(new Date(), 'Data não pode ser no passado')
+    .transform((val) => val),
   recurrence: RecurrenceTypeEnum,
   isPaid: z.boolean().optional().default(false),
 });

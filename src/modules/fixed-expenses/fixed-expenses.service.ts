@@ -11,30 +11,30 @@ import {
 } from './dtos/fixed-expense.dto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { addMonths, addYears, differenceInDays, startOfDay } from 'date-fns';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class FixedExpensesService {
   constructor(
     private prisma: PrismaService,
-    // private notificationService,
+    private notificationService: NotificationService,
   ) {}
 
-  // Cria uma nova despesa fixa
   async createFixedExpense(dto: CreateFixedExpenseDto) {
     try {
+      const dueDate = startOfDay(new Date(dto.dueDate));
+
       const expense = await this.prisma.fixedExpense.create({
         data: {
           name: dto.name,
           amount: dto.amount,
-          dueDate: dto.dueDate,
+          dueDate,
           recurrence: dto.recurrence,
-          isPaid: dto.isPaid || false, // Define como false se não for fornecido
+          isPaid: dto.isPaid || false,
           user: { connect: { id: '67c0b2bb3242fe3f7df1c069' } },
         },
       });
-
-      // Verifica se a despesa está próxima da data de vencimento para notificar
-      await this.checkDueDateAndNotify(expense);
 
       return expense;
     } catch (error) {
@@ -52,7 +52,6 @@ export class FixedExpensesService {
     }
   }
 
-  // Retorna todas as despesas fixas do usuário
   async getFixedExpenses() {
     try {
       return this.prisma.fixedExpense.findMany({
@@ -67,7 +66,6 @@ export class FixedExpensesService {
     }
   }
 
-  // Retorna uma despesa fixa específica pelo ID
   async getFixedExpense(id: string) {
     try {
       const expense = await this.prisma.fixedExpense.findUnique({
@@ -91,7 +89,6 @@ export class FixedExpensesService {
     }
   }
 
-  // Atualiza uma despesa fixa
   async updateFixedExpense(id: string, dto: UpdateFixedExpenseDto) {
     try {
       const expense = await this.prisma.fixedExpense.update({
@@ -120,7 +117,6 @@ export class FixedExpensesService {
     }
   }
 
-  // Exclui uma despesa fixa
   async deleteFixedExpense(id: string) {
     try {
       const expense = await this.prisma.fixedExpense.delete({ where: { id } });
@@ -137,12 +133,29 @@ export class FixedExpensesService {
     }
   }
 
-  // Rotina agendada para resetar as despesas fixas de um novo ciclo
+  @Cron(CronExpression.EVERY_DAY_AT_NOON) // Nova verificação diária ao meio-dia
+  async checkDueDates() {
+    try {
+      const expenses = await this.prisma.fixedExpense.findMany({
+        where: {
+          userId: '67c0b2bb3242fe3f7df1c069',
+          isPaid: false,
+        },
+      });
+
+      for (const expense of expenses) {
+        await this.checkDueDateAndNotify(expense);
+      }
+    } catch (error) {
+      console.error('Erro na verificação diária de despesas:', error);
+    }
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async resetFixedExpenses() {
     try {
-      const today = new Date();
-      // Encontra despesas cujo dueDate já passou e que foram pagas
+      const today = startOfDay(new Date());
+
       const expensesToReset = await this.prisma.fixedExpense.findMany({
         where: {
           dueDate: { lt: today },
@@ -151,12 +164,12 @@ export class FixedExpensesService {
       });
 
       for (const expense of expensesToReset) {
-        // eslint-disable-next-line prefer-const
-        let newDueDate = new Date(expense.dueDate);
+        let newDueDate = startOfDay(expense.dueDate);
+
         if (expense.recurrence === 'MONTHLY') {
-          newDueDate.setMonth(newDueDate.getMonth() + 1);
+          newDueDate = addMonths(newDueDate, 1);
         } else if (expense.recurrence === 'YEARLY') {
-          newDueDate.setFullYear(newDueDate.getFullYear() + 1);
+          newDueDate = addYears(newDueDate, 1);
         }
 
         await this.prisma.fixedExpense.update({
@@ -168,14 +181,10 @@ export class FixedExpensesService {
         });
       }
     } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException(
-        'Erro ao resetar as despesas fixas.',
-      );
+      console.error('Erro ao resetar despesas:', error);
     }
   }
 
-  // Função auxiliar para notificar se a despesa estiver próxima do vencimento
   private async checkDueDateAndNotify(expense: {
     dueDate: Date;
     isPaid: boolean;
@@ -184,26 +193,23 @@ export class FixedExpensesService {
     userId: string;
   }) {
     try {
-      const today = new Date();
-      const diffDays = Math.ceil(
-        (expense.dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-      );
-      if (!expense.isPaid && diffDays <= 3 && diffDays >= 0) {
-        console.log(
-          `A despesa "${expense.name}" de R$ ${expense.amount.toFixed(2)} vence em ${diffDays} dia(s).`,
-        );
-        // await this.notificationService.createNotification({
-        //   title: 'Despesa Fixa Pendente',
-        //   message: `A despesa "${expense.name}" de R$ ${expense.amount.toFixed(2)} vence em ${diffDays} dia(s).`,
-        //   type: 'REMINDER',
-        //   userId: expense.userId,
-        // });
+      const today = startOfDay(new Date());
+      const dueDate = startOfDay(expense.dueDate);
+
+      const daysUntilDue = differenceInDays(dueDate, today);
+
+      if (daysUntilDue <= 3 && daysUntilDue >= 0) {
+        console.log(`Notificando sobre a despesa ${expense.name}`);
+
+        await this.notificationService.createNotification({
+          title: 'Despesa Próxima do Vencimento',
+          message: `A despesa "${expense.name}" de R$ ${expense.amount.toFixed(2)} vence em ${daysUntilDue} dias.`,
+          userId: expense.userId,
+          type: 'REMINDER',
+        });
       }
     } catch (error) {
-      console.log(error);
-      throw new InternalServerErrorException(
-        'Erro ao verificar a data de vencimento e notificar.',
-      );
+      console.error('Erro na verificação de vencimento:', error);
     }
   }
 }
