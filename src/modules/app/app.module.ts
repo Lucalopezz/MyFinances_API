@@ -8,6 +8,7 @@ import { WishlistModule } from '../wishlist/wishlist.module';
 import { FixedExpensesModule } from 'src/modules/fixed-expenses/fixed-expenses.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationModule } from '../notification/notification.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { NotificationModule } from '../notification/notification.module';
     FixedExpensesModule,
     ScheduleModule.forRoot(),
     NotificationModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
