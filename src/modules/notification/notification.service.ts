@@ -17,9 +17,9 @@ export class NotificationService {
     });
   }
 
-  async markAsRead(id: string) {
+  async markAsRead(id: string, userId: string) {
     const notification = await this.prisma.notification.findUnique({
-      where: { id },
+      where: { id, userId },
     });
 
     if (!notification) {
@@ -39,9 +39,9 @@ export class NotificationService {
     });
   }
 
-  async deleteNotification(id: string) {
+  async deleteNotification(id: string, userId: string) {
     const notification = await this.prisma.notification.findUnique({
-      where: { id },
+      where: { id, userId },
     });
 
     if (!notification) {

@@ -18,7 +18,7 @@ export class TransactionsService {
     private readonly wishlistService: WishlistService,
   ) {}
 
-  async createTransaction(dto: CreateTransactionDto) {
+  async createTransaction(dto: CreateTransactionDto, userId: string) {
     const transaction = await this.prisma.transaction.create({
       data: {
         value: dto.value,
@@ -27,28 +27,26 @@ export class TransactionsService {
         description: dto.description,
         type: dto.type,
         user: {
-          connect: { id: '67c0b2bb3242fe3f7df1c069' }, // adicionar corretamente depois
+          connect: { id: userId },
         },
       },
     });
-    await this.wishlistService.updateWishlistItemsSavings(
-      '67c0b2bb3242fe3f7df1c069',
-    );
+    await this.wishlistService.updateWishlistItemsSavings(userId);
 
     return transaction;
   }
-  async getTransactions() {
+  async getTransactions(userId: string) {
     return this.prisma.transaction.findMany({
       where: {
-        userId: '67c0b2bb3242fe3f7df1c069',
+        userId,
       },
       orderBy: { date: 'desc' },
     });
   }
-  async getTransaction(id: string) {
+  async getTransaction(id: string, userId: string) {
     try {
       const transaction = await this.prisma.transaction.findUnique({
-        where: { id },
+        where: { id, userId },
       });
       if (!transaction) {
         throw new NotFoundException(`Transação com ID "${id}" não encontrada.`);
@@ -70,13 +68,17 @@ export class TransactionsService {
     }
   }
 
-  async updateTransaction(id: string, dto: UpdateTransactionDto) {
-    const transactionData = this.getTransaction(id);
+  async updateTransaction(
+    id: string,
+    dto: UpdateTransactionDto,
+    userId: string,
+  ) {
+    const transactionData = this.getTransaction(id, userId);
     if (!transactionData) {
       throw new NotFoundException(`Transação com ID ${id} não encontrada`);
     }
     const transaction = this.prisma.transaction.update({
-      where: { id },
+      where: { id, userId },
       data: {
         ...dto,
       },
@@ -88,8 +90,8 @@ export class TransactionsService {
     return transaction;
   }
 
-  async deleteTransaction(id: string) {
-    const transaction = this.getTransaction(id);
+  async deleteTransaction(id: string, userId: string) {
+    const transaction = this.getTransaction(id, userId);
     if (!transaction) {
       throw new NotFoundException(`Transação com ID ${id} não encontrada`);
     }

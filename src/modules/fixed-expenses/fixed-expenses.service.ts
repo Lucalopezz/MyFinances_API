@@ -21,7 +21,7 @@ export class FixedExpensesService {
     private notificationService: NotificationService,
   ) {}
 
-  async createFixedExpense(dto: CreateFixedExpenseDto) {
+  async createFixedExpense(dto: CreateFixedExpenseDto, userId: string) {
     try {
       const dueDate = startOfDay(new Date(dto.dueDate));
 
@@ -32,7 +32,7 @@ export class FixedExpensesService {
           dueDate,
           recurrence: dto.recurrence,
           isPaid: dto.isPaid || false,
-          user: { connect: { id: '67c0b2bb3242fe3f7df1c069' } },
+          user: { connect: { id: userId } },
         },
       });
 
@@ -52,10 +52,10 @@ export class FixedExpensesService {
     }
   }
 
-  async getFixedExpenses() {
+  async getFixedExpenses(userId: string) {
     try {
       return this.prisma.fixedExpense.findMany({
-        where: { userId: '67c0b2bb3242fe3f7df1c069' },
+        where: { userId: userId },
         orderBy: { dueDate: 'asc' },
       });
     } catch (error) {
@@ -66,10 +66,10 @@ export class FixedExpensesService {
     }
   }
 
-  async getFixedExpense(id: string) {
+  async getFixedExpense(id: string, userId: string) {
     try {
       const expense = await this.prisma.fixedExpense.findUnique({
-        where: { id },
+        where: { id, userId },
       });
       if (!expense) {
         throw new NotFoundException(
@@ -89,10 +89,15 @@ export class FixedExpensesService {
     }
   }
 
-  async updateFixedExpense(id: string, dto: UpdateFixedExpenseDto) {
+  async updateFixedExpense(
+    id: string,
+    dto: UpdateFixedExpenseDto,
+    userId: string,
+  ) {
     try {
+      const expenseData = this.getFixedExpense(id, userId);
       const expense = await this.prisma.fixedExpense.update({
-        where: { id },
+        where: { id: (await expenseData).id },
         data: { ...dto },
       });
 
@@ -117,9 +122,12 @@ export class FixedExpensesService {
     }
   }
 
-  async deleteFixedExpense(id: string) {
+  async deleteFixedExpense(id: string, userId: string) {
     try {
-      const expense = await this.prisma.fixedExpense.delete({ where: { id } });
+      const expenseData = this.getFixedExpense(id, userId);
+      const expense = await this.prisma.fixedExpense.delete({
+        where: { id: (await expenseData).id },
+      });
       return expense;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -138,7 +146,6 @@ export class FixedExpensesService {
     try {
       const expenses = await this.prisma.fixedExpense.findMany({
         where: {
-          userId: '67c0b2bb3242fe3f7df1c069',
           isPaid: false,
         },
       });

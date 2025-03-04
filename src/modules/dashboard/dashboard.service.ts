@@ -6,10 +6,11 @@ import { MonthlyComparisonDto } from './dtos/monthly-comparison.dto';
 @Injectable()
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
-  async getDashboardData(query: DashboardQueryDto) {
+  async getDashboardData(query: DashboardQueryDto, userId: string) {
     const { startDate, endDate } = query;
     const transactions = await this.prisma.transaction.findMany({
       where: {
+        userId,
         date: {
           gte: new Date(startDate),
           lte: new Date(endDate),
@@ -41,12 +42,14 @@ export class DashboardService {
 
   async getMonthlyComparison(
     query: DashboardQueryDto,
+    userId: string,
   ): Promise<MonthlyComparisonDto[]> {
     const { startDate, endDate } = query;
 
     // busca todas as transações no período especificado
     const transactions = await this.prisma.transaction.findMany({
       where: {
+        userId,
         date: {
           gte: startDate,
           lte: endDate,
