@@ -9,6 +9,7 @@ import { FixedExpensesModule } from 'src/modules/fixed-expenses/fixed-expenses.m
 import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationModule } from '../notification/notification.module';
 import { AuthModule } from '../auth/auth.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AuthModule } from '../auth/auth.module';
     ScheduleModule.forRoot(),
     NotificationModule,
     AuthModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
