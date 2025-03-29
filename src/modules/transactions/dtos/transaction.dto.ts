@@ -11,7 +11,6 @@ export const CreateTransactionDto = z.object({
   category: z.string(),
   description: z.string().optional(),
   type: TransactionTypeEnum,
-  //   userId: z.string(), adicionar dps
 });
 
 export type CreateTransactionDto = z.infer<typeof CreateTransactionDto>;
