@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { WishlistService } from './wishlist.service';
 import {
@@ -13,8 +14,11 @@ import {
   UpdateWishlistItemDto,
 } from './dtos/wishlist.dto';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
+import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
+import { User } from 'src/common/decorators/get-userId-from-token.decorator';
 
 @Controller('wishlist')
+@UseGuards(AuthTokenGuard)
 export class WishlistController {
   constructor(private readonly wishlistService: WishlistService) {}
 
@@ -22,18 +26,22 @@ export class WishlistController {
   async createWishlistItem(
     @Body(new ZodValidationPipe(CreateWishlistItemDto))
     createWishlistItemDto: CreateWishlistItemDto,
+    @User('sub') userId: string,
   ) {
-    return this.wishlistService.createWishlistItem(createWishlistItemDto);
+    return this.wishlistService.createWishlistItem(
+      createWishlistItemDto,
+      userId,
+    );
   }
 
   @Get()
-  async getWishlistItems() {
-    return this.wishlistService.getWishlistItems();
+  async getWishlistItems(@User('sub') userId: string) {
+    return this.wishlistService.getWishlistItems(userId);
   }
 
   @Get(':id')
-  async getWishlistItem(@Param('id') id: string) {
-    return this.wishlistService.getWishlistItem(id);
+  async getWishlistItem(@Param('id') id: string, @User('sub') userId: string) {
+    return this.wishlistService.getWishlistItem(id, userId);
   }
 
   @Patch(':id')
@@ -41,12 +49,20 @@ export class WishlistController {
     @Param('id') id: string,
     @Body(new ZodValidationPipe(UpdateWishlistItemDto))
     updateWishlistItemDto: UpdateWishlistItemDto,
+    @User('sub') userId: string,
   ) {
-    return this.wishlistService.updateWishlistItem(id, updateWishlistItemDto);
+    return this.wishlistService.updateWishlistItem(
+      id,
+      updateWishlistItemDto,
+      userId,
+    );
   }
 
   @Delete(':id')
-  async deleteWishlistItem(@Param('id') id: string) {
-    return this.wishlistService.deleteWishlistItem(id);
+  async deleteWishlistItem(
+    @Param('id') id: string,
+    @User('sub') userId: string,
+  ) {
+    return this.wishlistService.deleteWishlistItem(id, userId);
   }
 }

@@ -56,11 +56,9 @@ export class WishlistService {
     return totalIncome - totalExpenses;
   }
 
-  async createWishlistItem(dto: CreateWishlistItemDto) {
+  async createWishlistItem(dto: CreateWishlistItemDto, userId: string) {
     try {
-      const annualSavings = await this.calculateAnnualSavings(
-        '67c0b2bb3242fe3f7df1c069',
-      );
+      const annualSavings = await this.calculateAnnualSavings(userId);
 
       const wishlistItem = await this.prisma.wishlistItem.create({
         data: {
@@ -68,11 +66,11 @@ export class WishlistService {
           desiredValue: dto.desiredValue,
           savedAmount: annualSavings,
           targetDate: dto.targetDate,
-          userId: '67c0b2bb3242fe3f7df1c069',
+          userId: userId,
         },
       });
 
-      await this.updateWishlistItemsSavings('67c0b2bb3242fe3f7df1c069');
+      await this.updateWishlistItemsSavings(userId);
 
       return wishlistItem;
     } catch (error) {
@@ -81,10 +79,10 @@ export class WishlistService {
     }
   }
 
-  async getWishlistItems() {
+  async getWishlistItems(userId: string) {
     return this.prisma.wishlistItem.findMany({
       where: {
-        userId: '67c0b2bb3242fe3f7df1c069',
+        userId,
       },
       orderBy: {
         createdAt: 'desc',
@@ -92,10 +90,10 @@ export class WishlistService {
     });
   }
 
-  async getWishlistItem(id: string) {
+  async getWishlistItem(id: string, userId: string) {
     try {
       const wish = await this.prisma.wishlistItem.findUnique({
-        where: { id },
+        where: { id: id, userId: userId },
       });
 
       if (!wish) {
@@ -118,8 +116,12 @@ export class WishlistService {
     }
   }
 
-  async updateWishlistItem(id: string, dto: UpdateWishlistItemDto) {
-    const wishId = await this.getWishlistItem(id);
+  async updateWishlistItem(
+    id: string,
+    dto: UpdateWishlistItemDto,
+    userId: string,
+  ) {
+    const wishId = await this.getWishlistItem(id, userId);
 
     const wish = await this.prisma.wishlistItem.update({
       where: { id: wishId.id },
@@ -127,13 +129,13 @@ export class WishlistService {
         ...dto,
       },
     });
-    await this.updateWishlistItemsSavings('67c0b2bb3242fe3f7df1c069');
+    await this.updateWishlistItemsSavings(userId);
 
     return wish;
   }
 
-  async deleteWishlistItem(id: string) {
-    const wishId = await this.getWishlistItem(id);
+  async deleteWishlistItem(id: string, userId: string) {
+    const wishId = await this.getWishlistItem(id, userId);
     return this.prisma.wishlistItem.delete({
       where: { id: wishId.id },
     });
