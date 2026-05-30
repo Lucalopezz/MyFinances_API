@@ -1,21 +1,27 @@
 import {
   Injectable,
-  NotFoundException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
-
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Prisma, RecurrenceType } from '@prisma/client';
+import {
+  addDays,
+  addMonths,
+  addYears,
+  differenceInDays,
+  startOfDay,
+} from 'date-fns';
+import { PrismaService } from 'src/prisma/prisma.service';
 import {
   CreateFixedExpenseDto,
   UpdateFixedExpenseDto,
 } from './dtos/fixed-expense.dto';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { addMonths, addYears, differenceInDays, startOfDay } from 'date-fns';
 import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class FixedExpensesService {
+  private readonly upcomingNotificationWindowInDays = 3;
+
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
@@ -31,10 +37,13 @@ export class FixedExpensesService {
           amount: dto.amount,
           dueDate,
           recurrence: dto.recurrence,
-          isPaid: dto.isPaid || false,
+          isPaid: dto.isPaid ?? false,
+          lastNotificationDueDate: null,
           user: { connect: { id: userId } },
         },
       });
+
+      await this.processUpcomingDueNotifications(userId);
 
       return expense;
     } catch (error) {
@@ -45,7 +54,9 @@ export class FixedExpensesService {
           );
         }
         if (error.code === 'P2025') {
-          throw new NotFoundException(`Usuário com ID " id " não encontrado.`);
+          throw new NotFoundException(
+            `Usuário com ID "${userId}" não encontrado.`,
+          );
         }
       }
       throw new InternalServerErrorException('Erro ao criar a despesa fixa.');
@@ -54,12 +65,18 @@ export class FixedExpensesService {
 
   async getFixedExpenses(userId: string) {
     try {
+      await this.refreshRecurringExpenses(userId);
+      await this.processUpcomingDueNotifications(userId);
+
       return this.prisma.fixedExpense.findMany({
-        where: { userId: userId },
+        where: { userId },
         orderBy: { dueDate: 'asc' },
       });
     } catch (error) {
-      console.log(error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
       throw new InternalServerErrorException(
         'Erro ao buscar as despesas fixas.',
       );
@@ -68,23 +85,15 @@ export class FixedExpensesService {
 
   async getFixedExpense(id: string, userId: string) {
     try {
-      const expense = await this.prisma.fixedExpense.findUnique({
-        where: { id, userId },
-      });
-      if (!expense) {
-        throw new NotFoundException(
-          `Despesa fixa com ID "${id}" não encontrada.`,
-        );
-      }
-      return expense;
+      await this.refreshRecurringExpenses(userId);
+      await this.processUpcomingDueNotifications(userId);
+
+      return await this.findFixedExpenseOrThrow(id, userId);
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException(
-            `Despesa fixa com ID "${id}" não encontrada.`,
-          );
-        }
+      if (error instanceof NotFoundException) {
+        throw error;
       }
+
       throw new InternalServerErrorException('Erro ao buscar a despesa fixa.');
     }
   }
@@ -95,20 +104,33 @@ export class FixedExpensesService {
     userId: string,
   ) {
     try {
-      const expenseData = this.getFixedExpense(id, userId);
+      await this.refreshRecurringExpenses(userId);
+
+      const expenseData = await this.findFixedExpenseOrThrow(id, userId);
+
       const expense = await this.prisma.fixedExpense.update({
-        where: { id: (await expenseData).id },
-        data: { ...dto },
+        where: { id: expenseData.id },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name } : {}),
+          ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
+          ...(dto.dueDate !== undefined
+            ? { dueDate: startOfDay(new Date(dto.dueDate)) }
+            : {}),
+          ...(dto.recurrence !== undefined
+            ? { recurrence: dto.recurrence }
+            : {}),
+          ...(dto.isPaid !== undefined ? { isPaid: dto.isPaid } : {}),
+        },
       });
 
-      // Se a despesa foi marcada como paga, ela será resetada automaticamente no próximo ciclo.
-      // Se não estiver paga, verificamos se está próxima do vencimento para notificar
-      if (!dto.isPaid) {
-        await this.checkDueDateAndNotify(expense);
-      }
+      await this.processUpcomingDueNotifications(userId);
 
       return expense;
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {
           throw new NotFoundException(
@@ -116,6 +138,7 @@ export class FixedExpensesService {
           );
         }
       }
+
       throw new InternalServerErrorException(
         'Erro ao atualizar a despesa fixa.',
       );
@@ -124,12 +147,18 @@ export class FixedExpensesService {
 
   async deleteFixedExpense(id: string, userId: string) {
     try {
-      const expenseData = this.getFixedExpense(id, userId);
-      const expense = await this.prisma.fixedExpense.delete({
-        where: { id: (await expenseData).id },
+      await this.refreshRecurringExpenses(userId);
+
+      const expenseData = await this.findFixedExpenseOrThrow(id, userId);
+
+      return await this.prisma.fixedExpense.delete({
+        where: { id: expenseData.id },
       });
-      return expense;
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {
           throw new NotFoundException(
@@ -137,86 +166,146 @@ export class FixedExpensesService {
           );
         }
       }
+
       throw new InternalServerErrorException('Erro ao excluir a despesa fixa.');
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_NOON) // Nova verificação diária ao meio-dia
-  async checkDueDates() {
-    try {
-      const expenses = await this.prisma.fixedExpense.findMany({
-        where: {
-          isPaid: false,
-        },
-      });
-
-      for (const expense of expenses) {
-        await this.checkDueDateAndNotify(expense);
-      }
-    } catch (error) {
-      console.error('Erro na verificação diária de despesas:', error);
-    }
-  }
-
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async resetFixedExpenses() {
+  private async refreshRecurringExpenses(userId?: string) {
     try {
       const today = startOfDay(new Date());
 
-      const expensesToReset = await this.prisma.fixedExpense.findMany({
+      const expensesToRefresh = await this.prisma.fixedExpense.findMany({
         where: {
-          dueDate: { lt: today },
+          ...(userId ? { userId } : {}),
           isPaid: true,
+          dueDate: { lt: today },
+          recurrence: {
+            in: [RecurrenceType.MONTHLY, RecurrenceType.YEARLY],
+          },
+        },
+        select: {
+          id: true,
+          dueDate: true,
+          recurrence: true,
         },
       });
 
-      for (const expense of expensesToReset) {
-        let newDueDate = startOfDay(expense.dueDate);
+      await Promise.all(
+        expensesToRefresh.map(async (expense) => {
+          const nextDueDate = this.calculateNextDueDate(
+            expense.dueDate,
+            expense.recurrence,
+            today,
+          );
 
-        if (expense.recurrence === 'MONTHLY') {
-          newDueDate = addMonths(newDueDate, 1);
-        } else if (expense.recurrence === 'YEARLY') {
-          newDueDate = addYears(newDueDate, 1);
-        }
-
-        await this.prisma.fixedExpense.update({
-          where: { id: expense.id },
-          data: {
-            dueDate: newDueDate,
-            isPaid: false,
-          },
-        });
-      }
+          await this.prisma.fixedExpense.update({
+            where: { id: expense.id },
+            data: {
+              dueDate: nextDueDate,
+              isPaid: false,
+              lastNotificationDueDate: null,
+            },
+          });
+        }),
+      );
     } catch (error) {
-      console.error('Erro ao resetar despesas:', error);
+      console.error('Erro ao atualizar despesas recorrentes:', error);
     }
   }
 
-  private async checkDueDateAndNotify(expense: {
-    dueDate: Date;
-    isPaid: boolean;
-    name: string;
-    amount: number;
-    userId: string;
-  }) {
+  private async processUpcomingDueNotifications(userId?: string) {
     try {
       const today = startOfDay(new Date());
-      const dueDate = startOfDay(expense.dueDate);
+      const notificationDeadline = addDays(
+        today,
+        this.upcomingNotificationWindowInDays,
+      );
 
-      const daysUntilDue = differenceInDays(dueDate, today);
+      const upcomingExpenses = await this.prisma.fixedExpense.findMany({
+        where: {
+          ...(userId ? { userId } : {}),
+          isPaid: false,
+          dueDate: {
+            gte: today,
+            lte: notificationDeadline,
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          amount: true,
+          dueDate: true,
+          userId: true,
+          lastNotificationDueDate: true,
+        },
+      });
 
-      if (daysUntilDue <= 3 && daysUntilDue >= 0) {
-        console.log(`Notificando sobre a despesa ${expense.name}`);
+      const expensesToNotify = upcomingExpenses.filter((expense) => {
+        const dueDate = startOfDay(expense.dueDate).getTime();
+        const lastNotifiedDueDate = expense.lastNotificationDueDate
+          ? startOfDay(expense.lastNotificationDueDate).getTime()
+          : null;
 
-        await this.notificationService.createNotification({
-          title: 'Despesa Próxima do Vencimento',
-          message: `A despesa "${expense.name}" de R$ ${expense.amount.toFixed(2)} vence em ${daysUntilDue} dias.`,
-          userId: expense.userId,
-          type: 'REMINDER',
-        });
-      }
+        return lastNotifiedDueDate !== dueDate;
+      });
+
+      await Promise.all(
+        expensesToNotify.map(async (expense) => {
+          const dueDate = startOfDay(expense.dueDate);
+          const daysUntilDue = differenceInDays(dueDate, today);
+
+          await this.notificationService.createNotification({
+            title: 'Despesa Próxima do Vencimento',
+            message: `A despesa "${expense.name}" de R$ ${expense.amount.toFixed(2)} vence em ${daysUntilDue} dias.`,
+            userId: expense.userId,
+            type: 'REMINDER',
+          });
+
+          await this.prisma.fixedExpense.update({
+            where: { id: expense.id },
+            data: {
+              lastNotificationDueDate: dueDate,
+            },
+          });
+        }),
+      );
     } catch (error) {
-      console.error('Erro na verificação de vencimento:', error);
+      console.error('Erro ao processar notificações de vencimento:', error);
     }
+  }
+
+  // Calcula a próxima data de vencimento com base na data original, tipo de recorrência e data de referência
+  // Garante que a próxima data de vencimento seja sempre no futuro em relação à data de referência
+  private calculateNextDueDate(
+    dueDate: Date,
+    recurrence: RecurrenceType,
+    referenceDate: Date,
+  ) {
+    let nextDueDate = startOfDay(dueDate);
+    const normalizedReferenceDate = startOfDay(referenceDate);
+
+    while (nextDueDate < normalizedReferenceDate) {
+      nextDueDate =
+        recurrence === RecurrenceType.MONTHLY
+          ? addMonths(nextDueDate, 1)
+          : addYears(nextDueDate, 1);
+    }
+
+    return nextDueDate;
+  }
+
+  private async findFixedExpenseOrThrow(id: string, userId: string) {
+    const expense = await this.prisma.fixedExpense.findFirst({
+      where: { id, userId },
+    });
+
+    if (!expense) {
+      throw new NotFoundException(
+        `Despesa fixa com ID "${id}" não encontrada.`,
+      );
+    }
+
+    return expense;
   }
 }

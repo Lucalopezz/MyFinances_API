@@ -6,7 +6,6 @@ import { DashboardModule } from '../dashboard/dashboard.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { WishlistModule } from '../wishlist/wishlist.module';
 import { FixedExpensesModule } from 'src/modules/fixed-expenses/fixed-expenses.module';
-import { ScheduleModule } from '@nestjs/schedule';
 import { NotificationModule } from '../notification/notification.module';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
@@ -17,7 +16,6 @@ import { UserModule } from '../user/user.module';
     TransactionsModule,
     WishlistModule,
     FixedExpensesModule,
-    ScheduleModule.forRoot(),
     NotificationModule,
     AuthModule,
     UserModule,
