@@ -30,6 +30,18 @@ export class UserService {
         password: passwordHash,
       };
 
+      if (process.env.PRISMA_DIAGNOSTICS === 'true') {
+        console.info('[Prisma diagnostics] user.count() start');
+        await this.prisma.user.count();
+        console.info('[Prisma diagnostics] user.count() ok');
+
+        console.info('[Prisma diagnostics] user.findMany() start');
+        await this.prisma.user.findMany({ take: 1 });
+        console.info('[Prisma diagnostics] user.findMany() ok');
+
+        console.info('[Prisma diagnostics] user.create() start');
+      }
+
       const newUser = await this.prisma.user.create({
         data: userData,
         select: {
@@ -39,6 +51,10 @@ export class UserService {
           createdAt: true,
         },
       });
+
+      if (process.env.PRISMA_DIAGNOSTICS === 'true') {
+        console.info('[Prisma diagnostics] user.create() ok');
+      }
 
       return {
         message: 'Usuário criado com sucesso',

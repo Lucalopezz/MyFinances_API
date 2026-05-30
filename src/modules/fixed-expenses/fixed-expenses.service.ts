@@ -39,7 +39,7 @@ export class FixedExpensesService {
           recurrence: dto.recurrence,
           isPaid: dto.isPaid ?? false,
           lastNotificationDueDate: null,
-          user: { connect: { id: userId } },
+          userId,
         },
       });
 

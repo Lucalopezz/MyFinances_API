@@ -26,9 +26,7 @@ export class TransactionsService {
         category: dto.category,
         description: dto.description,
         type: dto.type,
-        user: {
-          connect: { id: userId },
-        },
+        userId,
       },
     });
     await this.wishlistService.updateWishlistItemsSavings(userId);
