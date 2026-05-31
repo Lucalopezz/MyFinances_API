@@ -12,7 +12,9 @@ import { TransactionsService } from './transactions.service';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
 import {
   CreateTransactionDto,
+  CreateTransactionSchema,
   UpdateTransactionDto,
+  UpdateTransactionSchema,
 } from './dtos/transaction.dto';
 import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';
@@ -24,7 +26,7 @@ export class TransactionsController {
 
   @Post()
   async createTransaction(
-    @Body(new ZodValidationPipe(CreateTransactionDto))
+    @Body(new ZodValidationPipe(CreateTransactionSchema))
     dto: CreateTransactionDto,
     @User('sub') userId: string,
   ) {
@@ -44,7 +46,7 @@ export class TransactionsController {
   @Patch(':id')
   async updateTransaction(
     @Param('id') id: string,
-    @Body(new ZodValidationPipe(UpdateTransactionDto))
+    @Body(new ZodValidationPipe(UpdateTransactionSchema))
     updateTransactionDto: UpdateTransactionDto,
     @User('sub') userId: string,
   ) {
