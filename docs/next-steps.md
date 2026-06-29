@@ -1,0 +1,96 @@
+# Próximos Passos - v2
+
+Lista de melhorias planejadas para a próxima versão da aplicação.
+
+---
+
+## Dashboard
+
+- Ajustar a dashboard para deixar claro que os dados exibidos são mensais.
+- Exibir o resumo financeiro do mês de forma semelhante ao resumo da tela de transações.
+- Revisar labels, cards e gráficos para reforçar o período analisado.
+- Garantir que filtros de data e cards de resumo estejam alinhados com o mês selecionado.
+
+---
+
+## Despesas Fixas
+
+- Ao marcar uma despesa fixa como paga, criar automaticamente uma transação de despesa.
+- A transação criada deve descontar o valor da despesa fixa do saldo do usuário.
+- Definir uma categoria padrão para a transação gerada, como `UTILITIES`, `HOUSING`, `SUBSCRIPTIONS` ou outra categoria escolhida pelo usuário.
+- Evitar transações duplicadas caso a mesma despesa fixa seja marcada como paga mais de uma vez no mesmo ciclo.
+- Avaliar a inclusão de um vínculo entre `FixedExpense` e `Transaction` para rastrear qual transação foi gerada pelo pagamento.
+
+---
+
+## Comparativo Financeiro
+
+- Adicionar a taxa de economia ao comparativo:
+
+```ts
+taxaEconomia = (saldo / receitas) * 100
+```
+
+- Exibir melhor mês e pior mês do período analisado.
+
+Exemplo:
+
+```plaintext
+Melhor mês: Maio/2026 - R$ 1.000 positivo
+Pior mês: Abril/2026 - R$ 300 negativo
+```
+
+- Adicionar comparativo com o semestre anterior.
+- Exibir gastos por categoria no semestre.
+- Considerar indicadores adicionais:
+  - total de receitas no semestre;
+  - total de despesas no semestre;
+  - saldo acumulado;
+  - categoria com maior gasto;
+  - variação percentual entre semestres.
+
+---
+
+## Configurações
+
+- Melhorar a tela de configurações.
+- Adicionar mais opções de personalização.
+- Permitir preferências de exibição, como:
+  - moeda;
+  - tema;
+  - formato de data;
+  - período padrão da dashboard;
+  - categorias favoritas ou categorias ocultas.
+- Avaliar configurações de notificações:
+  - ativar ou desativar lembretes;
+  - escolher quantos dias antes do vencimento receber alertas;
+  - definir tipos de notificações desejadas.
+
+---
+
+## Segurança e Privacidade
+
+- Implementar criptografia dos dados sensíveis de transações dos usuários.
+- Avaliar quais campos devem ser criptografados, como `value`, `description`, `category`, `date` e outros dados financeiros.
+- Definir estratégia de criptografia em repouso para impedir leitura direta dos dados no banco.
+- Planejar gerenciamento seguro de chaves, incluindo rotação, armazenamento em variável de ambiente ou serviço de secrets.
+- Garantir que dashboard, comparativos, wishlist e relatórios continuem funcionando com dados criptografados.
+- Avaliar impacto da criptografia em filtros, ordenação, agrupamentos por data e cálculos financeiros.
+- Adicionar testes para criação, leitura, atualização e remoção de transações criptografadas.
+- Documentar o fluxo de criptografia e descriptografia para manutenção futura.
+
+---
+
+## Banco de Dados e API
+
+- Avaliar criação de relacionamento explícito entre despesa fixa paga e transação gerada.
+- Criar proteção contra duplicidade de transações automáticas de despesas fixas.
+- Adicionar novos endpoints para comparativos semestrais e gastos por categoria.
+- Preparar a API para trabalhar com campos de transação criptografados sem expor dados sensíveis em logs ou respostas indevidas.
+- Revisar cálculos da wishlist para alinhar o uso de `date` e `createdAt` nas transações.
+- Adicionar testes para:
+  - pagamento de despesa fixa com criação de transação;
+  - taxa de economia;
+  - melhor e pior mês;
+  - comparativo com semestre anterior;
+  - gastos por categoria no semestre.

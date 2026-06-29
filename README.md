@@ -17,6 +17,12 @@ Uma aplicação full-stack para gerenciamento financeiro pessoal, permitindo que
 
 ---
 
+## Documentação
+- [Documentação dos Models](docs/models.md)
+- [Proximos Passos](docs/next-steps.md)
+
+---
+
 ## Tecnologias Utilizadas
 
 ### Back-end
