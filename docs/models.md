@@ -204,6 +204,8 @@ Representa uma despesa fixa recorrente, como aluguel, assinatura, financiamento 
 | `amount` | `Float` | Sim | Valor da despesa. |
 | `dueDate` | `DateTime` | Sim | Data de vencimento. |
 | `isPaid` | `Boolean` | Sim | Indica se a despesa foi paga no ciclo atual. |
+| `paidAt` | `DateTime?` | Não | Data em que a despesa fixa foi marcada como paga. |
+| `paidTransactionId` | `String` | Não | Transação criada ao marcar a despesa fixa como paga. |
 | `recurrence` | `RecurrenceType` | Sim | Recorrência mensal ou anual. |
 | `lastNotificationDueDate` | `DateTime?` | Não | Último vencimento para o qual foi enviada notificação. |
 | `createdAt` | `DateTime` | Sim | Data de criação. |
@@ -221,13 +223,16 @@ RecurrenceType = MONTHLY | YEARLY
 - `POST /fixed-expenses`: cria uma despesa fixa.
 - `GET /fixed-expenses`: lista as despesas fixas do usuário.
 - `GET /fixed-expenses/:id`: busca uma despesa fixa específica.
-- `PATCH /fixed-expenses/:id`: atualiza dados ou status de pagamento.
+- `PATCH /fixed-expenses/:id`: atualiza dados cadastrais da despesa fixa.
+- `PATCH /fixed-expenses/:id/payment`: marca ou desmarca a despesa fixa como paga.
 - `DELETE /fixed-expenses/:id`: remove a despesa fixa.
 
 ### Regras de negócio
 
 - A data de vencimento é normalizada para o início do dia.
 - O valor precisa ser positivo.
+- Marcar como paga cria uma transação de despesa vinculada pela própria despesa fixa.
+- Desmarcar como paga remove somente a transação vinculada por `paidTransactionId`.
 - A data de vencimento não pode estar no passado na criação.
 - Ao consultar ou atualizar despesas fixas, a aplicação executa a atualização automática de recorrência.
 - Quando uma despesa recorrente está paga e o vencimento já passou, a aplicação:

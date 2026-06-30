@@ -67,6 +67,8 @@ model FixedExpense {
   amount                  Float
   dueDate                 DateTime
   isPaid                  Boolean        @default(false)
+  paidAt                  DateTime?
+  paidTransactionId       String?
   recurrence              RecurrenceType
   lastNotificationDueDate DateTime?
   createdAt               DateTime       @default(now())

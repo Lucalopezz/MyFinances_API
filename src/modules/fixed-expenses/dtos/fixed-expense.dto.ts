@@ -10,10 +10,16 @@ export const CreateFixedExpenseDto = z.object({
     .min(new Date(), 'Data não pode ser no passado')
     .transform((val) => val),
   recurrence: RecurrenceTypeEnum,
-  isPaid: z.boolean().optional().default(false),
 });
 
 export type CreateFixedExpenseDto = z.infer<typeof CreateFixedExpenseDto>;
 
 export const UpdateFixedExpenseDto = CreateFixedExpenseDto.partial();
 export type UpdateFixedExpenseDto = z.infer<typeof UpdateFixedExpenseDto>;
+
+export const UpdateFixedExpensePaymentDto = z.object({
+  isPaid: z.boolean(),
+});
+export type UpdateFixedExpensePaymentDto = z.infer<
+  typeof UpdateFixedExpensePaymentDto
+>;
