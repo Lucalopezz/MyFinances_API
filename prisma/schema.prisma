@@ -65,6 +65,7 @@ model FixedExpense {
   id                      String         @id @default(auto()) @map("_id") @db.ObjectId
   name                    String
   amount                  Float
+  category                String         @default("UTILITIES")
   dueDate                 DateTime
   isPaid                  Boolean        @default(false)
   paidAt                  DateTime?

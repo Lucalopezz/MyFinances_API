@@ -4,10 +4,33 @@ import { FixedExpensesController } from './fixed-expenses.controller';
 import { AppModule } from 'src/modules/app/app.module';
 import { NotificationModule } from '../notification/notification.module';
 import { AuthModule } from '../auth/auth.module';
+import { FixedExpenseErrorHandler } from './errors/fixed-expense-error.handler';
+import { FixedExpensesRepository } from './repositories/fixed-expenses.repository';
+import { FixedExpenseNotificationService } from './services/fixed-expense-notification.service';
+import { FixedExpensePaymentService } from './services/fixed-expense-payment.service';
+import { FixedExpenseRawFieldsService } from './services/fixed-expense-raw-fields.service';
+import { FixedExpenseRecurrenceService } from './services/fixed-expense-recurrence.service';
 
 @Module({
   controllers: [FixedExpensesController],
-  providers: [FixedExpensesService],
+  providers: [
+    FixedExpensesService,
+    FixedExpensesRepository,
+    FixedExpensePaymentService,
+    FixedExpenseRecurrenceService,
+    FixedExpenseNotificationService,
+    FixedExpenseRawFieldsService,
+    FixedExpenseErrorHandler,
+  ],
+  exports: [
+    FixedExpensesService,
+    FixedExpensesRepository,
+    FixedExpensePaymentService,
+    FixedExpenseRecurrenceService,
+    FixedExpenseNotificationService,
+    FixedExpenseRawFieldsService,
+    FixedExpenseErrorHandler,
+  ],
   imports: [forwardRef(() => AppModule), NotificationModule, AuthModule],
 })
 export class FixedExpensesModule {}

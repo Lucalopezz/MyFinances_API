@@ -8,13 +8,13 @@ A aplicação usa **MongoDB** como banco de dados e **Prisma** como ORM. Todos o
 
 ## Visão Geral
 
-| Modelo | Coleção | Responsabilidade |
-| --- | --- | --- |
-| `User` | `User` | Armazena dados de cadastro e autenticação do usuário. |
-| `Transaction` | `Transaction` | Registra receitas e despesas do usuário. |
-| `WishlistItem` | `WishlistItem` | Controla objetivos financeiros e progresso de economia. |
+| Modelo         | Coleção        | Responsabilidade                                                  |
+| -------------- | -------------- | ----------------------------------------------------------------- |
+| `User`         | `User`         | Armazena dados de cadastro e autenticação do usuário.             |
+| `Transaction`  | `Transaction`  | Registra receitas e despesas do usuário.                          |
+| `WishlistItem` | `WishlistItem` | Controla objetivos financeiros e progresso de economia.           |
 | `FixedExpense` | `FixedExpense` | Controla despesas recorrentes, vencimentos e status de pagamento. |
-| `Notification` | `Notification` | Armazena alertas, lembretes e informações exibidas ao usuário. |
+| `Notification` | `Notification` | Armazena alertas, lembretes e informações exibidas ao usuário.    |
 
 Os modelos de dados relacionados ao usuário possuem `userId`, garantindo que cada registro seja consultado e alterado apenas dentro do contexto do usuário autenticado.
 
@@ -26,14 +26,14 @@ Representa o usuário cadastrado na plataforma.
 
 ### Campos
 
-| Campo | Tipo | Obrigatório | Descrição |
-| --- | --- | --- | --- |
-| `id` | `String @db.ObjectId` | Sim | Identificador único do usuário. |
-| `email` | `String` | Sim | E-mail único usado no login. |
-| `password` | `String` | Sim | Senha armazenada como hash. |
-| `name` | `String` | Sim | Nome do usuário. |
-| `createdAt` | `DateTime` | Sim | Data de criação do usuário. |
-| `updatedAt` | `DateTime` | Sim | Data da última atualização. |
+| Campo       | Tipo                  | Obrigatório | Descrição                       |
+| ----------- | --------------------- | ----------- | ------------------------------- |
+| `id`        | `String @db.ObjectId` | Sim         | Identificador único do usuário. |
+| `email`     | `String`              | Sim         | E-mail único usado no login.    |
+| `password`  | `String`              | Sim         | Senha armazenada como hash.     |
+| `name`      | `String`              | Sim         | Nome do usuário.                |
+| `createdAt` | `DateTime`            | Sim         | Data de criação do usuário.     |
+| `updatedAt` | `DateTime`            | Sim         | Data da última atualização.     |
 
 ### Principais funções
 
@@ -55,22 +55,22 @@ Representa uma movimentação financeira. Pode ser uma receita (`INCOME`) ou uma
 
 ### Campos
 
-| Campo | Tipo | Obrigatório | Descrição |
-| --- | --- | --- | --- |
-| `id` | `String @db.ObjectId` | Sim | Identificador único da transação. |
-| `value` | `Float` | Sim | Valor da movimentação. |
-| `date` | `DateTime` | Sim | Data financeira da transação. |
-| `category` | `String` | Sim | Categoria da receita ou despesa. |
-| `description` | `String?` | Não | Descrição opcional. |
-| `type` | `TransactionType` | Sim | Define se é `INCOME` ou `EXPENSE`. |
-| `createdAt` | `DateTime` | Sim | Data de criação do registro. |
-| `updatedAt` | `DateTime` | Sim | Data da última atualização. |
-| `userId` | `String @db.ObjectId` | Sim | Dono da transação. |
+| Campo         | Tipo                  | Obrigatório | Descrição                          |
+| ------------- | --------------------- | ----------- | ---------------------------------- |
+| `id`          | `String @db.ObjectId` | Sim         | Identificador único da transação.  |
+| `value`       | `Float`               | Sim         | Valor da movimentação.             |
+| `date`        | `DateTime`            | Sim         | Data financeira da transação.      |
+| `category`    | `String`              | Sim         | Categoria da receita ou despesa.   |
+| `description` | `String?`             | Não         | Descrição opcional.                |
+| `type`        | `TransactionType`     | Sim         | Define se é `INCOME` ou `EXPENSE`. |
+| `createdAt`   | `DateTime`            | Sim         | Data de criação do registro.       |
+| `updatedAt`   | `DateTime`            | Sim         | Data da última atualização.        |
+| `userId`      | `String @db.ObjectId` | Sim         | Dono da transação.                 |
 
 ### Enums
 
 ```ts
-TransactionType = INCOME | EXPENSE
+TransactionType = INCOME | EXPENSE;
 ```
 
 Categorias de receita:
@@ -125,10 +125,10 @@ O dashboard não possui uma coleção própria. Ele é calculado a partir das tr
 
 Os endpoints recebem:
 
-| Campo | Tipo | Descrição |
-| --- | --- | --- |
+| Campo       | Tipo       | Descrição                |
+| ----------- | ---------- | ------------------------ |
 | `startDate` | `DateTime` | Data inicial do período. |
-| `endDate` | `DateTime` | Data final do período. |
+| `endDate`   | `DateTime` | Data final do período.   |
 
 ### Principais funções
 
@@ -159,16 +159,16 @@ Representa um objetivo financeiro do usuário, como um produto, viagem ou meta d
 
 ### Campos
 
-| Campo | Tipo | Obrigatório | Descrição |
-| --- | --- | --- | --- |
-| `id` | `String @db.ObjectId` | Sim | Identificador único do item. |
-| `name` | `String` | Sim | Nome do objetivo. |
-| `desiredValue` | `Float` | Sim | Valor desejado para atingir a meta. |
-| `savedAmount` | `Float` | Sim | Valor economizado calculado pela aplicação. |
-| `targetDate` | `DateTime?` | Não | Data alvo para alcançar a meta. |
-| `createdAt` | `DateTime` | Sim | Data de criação do item. |
-| `updatedAt` | `DateTime` | Sim | Data da última atualização. |
-| `userId` | `String @db.ObjectId` | Sim | Dono do item. |
+| Campo          | Tipo                  | Obrigatório | Descrição                                   |
+| -------------- | --------------------- | ----------- | ------------------------------------------- |
+| `id`           | `String @db.ObjectId` | Sim         | Identificador único do item.                |
+| `name`         | `String`              | Sim         | Nome do objetivo.                           |
+| `desiredValue` | `Float`               | Sim         | Valor desejado para atingir a meta.         |
+| `savedAmount`  | `Float`               | Sim         | Valor economizado calculado pela aplicação. |
+| `targetDate`   | `DateTime?`           | Não         | Data alvo para alcançar a meta.             |
+| `createdAt`    | `DateTime`            | Sim         | Data de criação do item.                    |
+| `updatedAt`    | `DateTime`            | Sim         | Data da última atualização.                 |
+| `userId`       | `String @db.ObjectId` | Sim         | Dono do item.                               |
 
 ### Principais funções
 
@@ -184,7 +184,7 @@ Representa um objetivo financeiro do usuário, como um produto, viagem ou meta d
 - A economia anual considera transações do ano atual:
 
 ```ts
-savedAmount = totalIncomeAnoAtual - totalExpensesAnoAtual
+savedAmount = totalIncomeAnoAtual - totalExpensesAnoAtual;
 ```
 
 - Sempre que uma transação é criada, atualizada ou excluída, os itens da wishlist são recalculados.
@@ -197,25 +197,26 @@ Representa uma despesa fixa recorrente, como aluguel, assinatura, financiamento 
 
 ### Campos
 
-| Campo | Tipo | Obrigatório | Descrição |
-| --- | --- | --- | --- |
-| `id` | `String @db.ObjectId` | Sim | Identificador único da despesa fixa. |
-| `name` | `String` | Sim | Nome da despesa. |
-| `amount` | `Float` | Sim | Valor da despesa. |
-| `dueDate` | `DateTime` | Sim | Data de vencimento. |
-| `isPaid` | `Boolean` | Sim | Indica se a despesa foi paga no ciclo atual. |
-| `paidAt` | `DateTime?` | Não | Data em que a despesa fixa foi marcada como paga. |
-| `paidTransactionId` | `String` | Não | Transação criada ao marcar a despesa fixa como paga. |
-| `recurrence` | `RecurrenceType` | Sim | Recorrência mensal ou anual. |
-| `lastNotificationDueDate` | `DateTime?` | Não | Último vencimento para o qual foi enviada notificação. |
-| `createdAt` | `DateTime` | Sim | Data de criação. |
-| `updatedAt` | `DateTime` | Sim | Data da última atualização. |
-| `userId` | `String @db.ObjectId` | Sim | Dono da despesa fixa. |
+| Campo                     | Tipo                  | Obrigatório | Descrição                                                                                                  |
+| ------------------------- | --------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
+| `id`                      | `String @db.ObjectId` | Sim         | Identificador único da despesa fixa.                                                                       |
+| `name`                    | `String`              | Sim         | Nome da despesa.                                                                                           |
+| `amount`                  | `Float`               | Sim         | Valor da despesa.                                                                                          |
+| `category`                | `String`              | Sim         | Categoria usada na transação criada ao marcar como paga. Aceita `UTILITIES`, `SUBSCRIPTIONS` ou `HOUSING`. |
+| `dueDate`                 | `DateTime`            | Sim         | Data de vencimento.                                                                                        |
+| `isPaid`                  | `Boolean`             | Sim         | Indica se a despesa foi paga no ciclo atual.                                                               |
+| `paidAt`                  | `DateTime?`           | Não         | Data em que a despesa fixa foi marcada como paga.                                                          |
+| `paidTransactionId`       | `String`              | Não         | Transação criada ao marcar a despesa fixa como paga.                                                       |
+| `recurrence`              | `RecurrenceType`      | Sim         | Recorrência mensal ou anual.                                                                               |
+| `lastNotificationDueDate` | `DateTime?`           | Não         | Último vencimento para o qual foi enviada notificação.                                                     |
+| `createdAt`               | `DateTime`            | Sim         | Data de criação.                                                                                           |
+| `updatedAt`               | `DateTime`            | Sim         | Data da última atualização.                                                                                |
+| `userId`                  | `String @db.ObjectId` | Sim         | Dono da despesa fixa.                                                                                      |
 
 ### Enums
 
 ```ts
-RecurrenceType = MONTHLY | YEARLY
+RecurrenceType = MONTHLY | YEARLY;
 ```
 
 ### Principais funções
@@ -231,7 +232,8 @@ RecurrenceType = MONTHLY | YEARLY
 
 - A data de vencimento é normalizada para o início do dia.
 - O valor precisa ser positivo.
-- Marcar como paga cria uma transação de despesa vinculada pela própria despesa fixa.
+- A categoria precisa ser uma das categorias permitidas para despesas fixas.
+- Marcar como paga cria uma transação de despesa vinculada pela própria despesa fixa, usando a categoria cadastrada na despesa fixa.
 - Desmarcar como paga remove somente a transação vinculada por `paidTransactionId`.
 - A data de vencimento não pode estar no passado na criação.
 - Ao consultar ou atualizar despesas fixas, a aplicação executa a atualização automática de recorrência.
@@ -250,20 +252,20 @@ Representa uma notificação exibida ao usuário.
 
 ### Campos
 
-| Campo | Tipo | Obrigatório | Descrição |
-| --- | --- | --- | --- |
-| `id` | `String @db.ObjectId` | Sim | Identificador único da notificação. |
-| `title` | `String` | Sim | Título da notificação. |
-| `message` | `String` | Sim | Mensagem detalhada. |
-| `type` | `NotificationType` | Sim | Tipo da notificação. |
-| `read` | `Boolean` | Sim | Indica se a notificação foi lida. |
-| `createdAt` | `DateTime` | Sim | Data de criação. |
-| `userId` | `String @db.ObjectId` | Sim | Dono da notificação. |
+| Campo       | Tipo                  | Obrigatório | Descrição                           |
+| ----------- | --------------------- | ----------- | ----------------------------------- |
+| `id`        | `String @db.ObjectId` | Sim         | Identificador único da notificação. |
+| `title`     | `String`              | Sim         | Título da notificação.              |
+| `message`   | `String`              | Sim         | Mensagem detalhada.                 |
+| `type`      | `NotificationType`    | Sim         | Tipo da notificação.                |
+| `read`      | `Boolean`             | Sim         | Indica se a notificação foi lida.   |
+| `createdAt` | `DateTime`            | Sim         | Data de criação.                    |
+| `userId`    | `String @db.ObjectId` | Sim         | Dono da notificação.                |
 
 ### Enums
 
 ```ts
-NotificationType = ALERT | REMINDER | INFO
+NotificationType = ALERT | REMINDER | INFO;
 ```
 
 ### Principais funções
