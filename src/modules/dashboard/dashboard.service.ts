@@ -11,6 +11,15 @@ type TransactionTotals = {
 
 type MonthlyData = Record<string, TransactionTotals>;
 
+type MonthlyComparisonMonth = {
+  month: string;
+  totalExpenses: number;
+  totalIncomes: number;
+  balance: number;
+  economyRate: number;
+  percentageChange?: number;
+};
+
 @Injectable()
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
@@ -30,7 +39,7 @@ export class DashboardService {
       balance,
       totalIncomes,
       totalExpenses,
-      economyRate,
+      economyRate: parseFloat(economyRate.toFixed(2)),
       period: {
         start: startDate,
         end: endDate,
@@ -41,7 +50,7 @@ export class DashboardService {
   async getMonthlyComparison(
     query: DashboardQueryDto,
     userId: string,
-  ): Promise<MonthlyComparisonDto[]> {
+  ): Promise<MonthlyComparisonDto> {
     const { startDate, endDate } = query;
 
     const transactions = await this.findTransactionsByPeriod(
@@ -51,21 +60,39 @@ export class DashboardService {
     );
     const monthlyData = this.groupTransactionsByMonth(transactions);
 
-    return Object.keys(monthlyData).map((month, index, months) => {
-      const currentMonth = monthlyData[month];
-      const previousMonth = monthlyData[months[index - 1]];
-      const percentageChange = previousMonth
-        ? this.calculatePercentageChange(currentMonth, previousMonth)
-        : 0;
+    const months = Object.keys(monthlyData)
+      .sort()
+      .map((month, index, monthKeys): MonthlyComparisonMonth => {
+        const currentMonth = monthlyData[month];
+        const previousMonth = monthlyData[monthKeys[index - 1]];
+        const balance = currentMonth.totalIncomes - currentMonth.totalExpenses;
+        const percentageChange = previousMonth
+          ? this.calculatePercentageChange(currentMonth, previousMonth)
+          : 0;
+        const economyRate =
+          currentMonth.totalIncomes > 0
+            ? (balance / currentMonth.totalIncomes) * 100
+            : 0;
 
-      return {
-        month,
-        totalExpenses: currentMonth.totalExpenses,
-        totalIncomes: currentMonth.totalIncomes,
-        percentageChange:
-          index > 0 ? parseFloat(percentageChange.toFixed(2)) : undefined,
-      };
-    });
+        return {
+          month,
+          totalExpenses: currentMonth.totalExpenses,
+          totalIncomes: currentMonth.totalIncomes,
+          balance,
+          economyRate: parseFloat(economyRate.toFixed(2)),
+          percentageChange:
+            index > 0 ? parseFloat(percentageChange.toFixed(2)) : undefined,
+        };
+      });
+
+    const bestMonth = this.findMonthByEconomyRate(months, 'best');
+    const worstMonth = this.findMonthByEconomyRate(months, 'worst');
+
+    return {
+      months,
+      bestMonth,
+      worstMonth,
+    };
   }
 
   private findTransactionsByPeriod(
@@ -131,6 +158,34 @@ export class DashboardService {
       previousMonth.totalIncomes - previousMonth.totalExpenses;
     const totalCurrent = currentMonth.totalIncomes - currentMonth.totalExpenses;
 
+    if (totalPrevious === 0) {
+      return 0;
+    }
+
     return ((totalCurrent - totalPrevious) / totalPrevious) * 100;
+  }
+
+  private findMonthByEconomyRate(
+    months: MonthlyComparisonMonth[],
+    type: 'best' | 'worst',
+  ): Pick<MonthlyComparisonMonth, 'month' | 'balance' | 'economyRate'> | null {
+    if (!months.length) {
+      return null;
+    }
+
+    const selectedMonth = months.reduce((selected, month) => {
+      if (type === 'best') {
+        // Se o mês atual tiver uma taxa de economia maior que a selecionada, ele se torna o novo selecionado
+        return month.economyRate > selected.economyRate ? month : selected;
+      }
+
+      return month.economyRate < selected.economyRate ? month : selected;
+    });
+
+    return {
+      month: selectedMonth.month,
+      balance: selectedMonth.balance,
+      economyRate: selectedMonth.economyRate,
+    };
   }
 }
