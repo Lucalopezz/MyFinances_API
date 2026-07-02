@@ -24,11 +24,13 @@ export class DashboardService {
     );
     const { totalIncomes, totalExpenses } = this.calculateTotals(transactions);
     const balance = totalIncomes - totalExpenses;
+    const economyRate = totalIncomes > 0 ? (balance / totalIncomes) * 100 : 0;
 
     return {
       balance,
       totalIncomes,
       totalExpenses,
+      economyRate,
       period: {
         start: startDate,
         end: endDate,
@@ -44,8 +46,8 @@ export class DashboardService {
 
     const transactions = await this.findTransactionsByPeriod(
       userId,
-      startDate,
-      endDate,
+      new Date(startDate),
+      new Date(endDate),
     );
     const monthlyData = this.groupTransactionsByMonth(transactions);
 
