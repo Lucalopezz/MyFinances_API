@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { DashboardQueryDto } from './dtos/dashboard.dto';
 import { MonthlyComparisonDto } from './dtos/monthly-comparison.dto';
 import { Transaction, TransactionType } from '@prisma/client';
+import { ExpenseCategory } from 'src/common/constants/categories.constants';
 
 type TransactionTotals = {
   totalIncomes: number;
@@ -35,11 +36,39 @@ export class DashboardService {
     const balance = totalIncomes - totalExpenses;
     const economyRate = totalIncomes > 0 ? (balance / totalIncomes) * 100 : 0;
 
+    const expensesByCategory = transactions
+      .filter((transaction) => transaction.type === TransactionType.EXPENSE)
+      .reduce(
+        (acc, transaction) => {
+          acc[transaction.category] =
+            (acc[transaction.category] || 0) + transaction.value;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+    const highestSpendingCategory = Object.entries(expensesByCategory).reduce(
+      (highest, [category, total]) => {
+        if (total === undefined) return highest;
+
+        if (!highest || total > highest.total) {
+          return {
+            category: category as ExpenseCategory,
+            total,
+          };
+        }
+
+        return highest;
+      },
+      null as { category: ExpenseCategory; total: number } | null,
+    );
+
     return {
       balance,
       totalIncomes,
       totalExpenses,
       economyRate: parseFloat(economyRate.toFixed(2)),
+      highestSpendingCategory,
       period: {
         start: startDate,
         end: endDate,
