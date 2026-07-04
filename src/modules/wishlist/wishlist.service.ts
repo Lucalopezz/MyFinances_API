@@ -9,10 +9,19 @@ import {
   UpdateWishlistItemDto,
 } from './dtos/wishlist.dto';
 import { Prisma } from '@prisma/client';
+import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import {
+  buildDateIndex,
+  decryptTransactions,
+  EncryptedTransactionRecord,
+} from '../transactions/transaction-encryption.mapper';
 
 @Injectable()
 export class WishlistService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly encryptionService: FinancialDataEncryptionService,
+  ) {}
   async updateWishlistItemsSavings(userId: string): Promise<void> {
     const monthlySavings = await this.calculateAnnualSavings(userId);
 
@@ -32,11 +41,11 @@ export class WishlistService {
     const transactions = await this.prisma.transaction.findMany({
       where: {
         userId,
-        createdAt: {
-          gte: startOfYear,
-          lte: endOfYear,
+        dateIndex: {
+          gte: buildDateIndex(startOfYear),
+          lte: buildDateIndex(endOfYear),
         },
-      },
+      } as never,
     });
 
     if (!transactions || transactions.length === 0) {
@@ -45,11 +54,16 @@ export class WishlistService {
       );
     }
 
-    const totalIncome = transactions
+    const decryptedTransactions = decryptTransactions(
+      transactions as unknown as EncryptedTransactionRecord[],
+      this.encryptionService,
+    );
+
+    const totalIncome = decryptedTransactions
       .filter((t) => t.type === 'INCOME')
       .reduce((sum, t) => sum + t.value, 0);
 
-    const totalExpenses = transactions
+    const totalExpenses = decryptedTransactions
       .filter((t) => t.type === 'EXPENSE')
       .reduce((sum, t) => sum + t.value, 0);
 

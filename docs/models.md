@@ -55,17 +55,15 @@ Representa uma movimentação financeira. Pode ser uma receita (`INCOME`) ou uma
 
 ### Campos
 
-| Campo         | Tipo                  | Obrigatório | Descrição                          |
-| ------------- | --------------------- | ----------- | ---------------------------------- |
-| `id`          | `String @db.ObjectId` | Sim         | Identificador único da transação.  |
-| `value`       | `Float`               | Sim         | Valor da movimentação.             |
-| `date`        | `DateTime`            | Sim         | Data financeira da transação.      |
-| `category`    | `String`              | Sim         | Categoria da receita ou despesa.   |
-| `description` | `String?`             | Não         | Descrição opcional.                |
-| `type`        | `TransactionType`     | Sim         | Define se é `INCOME` ou `EXPENSE`. |
-| `createdAt`   | `DateTime`            | Sim         | Data de criação do registro.       |
-| `updatedAt`   | `DateTime`            | Sim         | Data da última atualização.        |
-| `userId`      | `String @db.ObjectId` | Sim         | Dono da transação.                 |
+| Campo           | Tipo                  | Obrigatório | Descrição                                                                |
+| --------------- | --------------------- | ----------- | ------------------------------------------------------------------------ |
+| `id`            | `String @db.ObjectId` | Sim         | Identificador único da transação.                                        |
+| `encryptedData` | `Json`                | Sim         | Payload criptografado com `value`, `date`, `category` e `description`.   |
+| `dateIndex`     | `Int`                 | Sim         | Índice operacional `YYYYMMDD` usado para filtro e ordenação por período. |
+| `type`          | `TransactionType`     | Sim         | Define se é `INCOME` ou `EXPENSE`.                                       |
+| `createdAt`     | `DateTime`            | Sim         | Data de criação do registro.                                             |
+| `updatedAt`     | `DateTime`            | Sim         | Data da última atualização.                                              |
+| `userId`        | `String @db.ObjectId` | Sim         | Dono da transação.                                                       |
 
 ### Enums
 
@@ -104,7 +102,7 @@ Categorias de despesa:
 ### Principais funções
 
 - `POST /transactions`: cria uma transação do usuário autenticado.
-- `GET /transactions`: lista as transações do usuário, ordenadas por `date` decrescente.
+- `GET /transactions`: lista as transações do usuário, ordenadas por `dateIndex` decrescente.
 - `GET /transactions/:id`: busca uma transação específica do usuário.
 - `PATCH /transactions/:id`: atualiza uma transação existente.
 - `DELETE /transactions/:id`: remove uma transação.
@@ -114,6 +112,7 @@ Categorias de despesa:
 - A validação diferencia receitas e despesas usando `type`.
 - As categorias permitidas mudam conforme o tipo da transação.
 - Ao criar, atualizar ou remover uma transação, a aplicação recalcula a economia dos itens da wishlist.
+- A API descriptografa os dados sensíveis antes de responder, mantendo o contrato externo com `value`, `date`, `category` e `description`.
 
 ---
 

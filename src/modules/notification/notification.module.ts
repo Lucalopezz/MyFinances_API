@@ -10,6 +10,7 @@ import { FixedExpenseRecurrenceService } from '../fixed-expenses/services/fixed-
 import { FixedExpenseNotificationService } from '../fixed-expenses/services/fixed-expense-notification.service';
 import { FixedExpenseRawFieldsService } from '../fixed-expenses/services/fixed-expense-raw-fields.service';
 import { FixedExpenseErrorHandler } from '../fixed-expenses/errors/fixed-expense-error.handler';
+import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 
 @Module({
   controllers: [NotificationController],
@@ -22,6 +23,7 @@ import { FixedExpenseErrorHandler } from '../fixed-expenses/errors/fixed-expense
     FixedExpenseNotificationService,
     FixedExpenseRawFieldsService,
     FixedExpenseErrorHandler,
+    FinancialDataEncryptionService,
   ],
   exports: [NotificationService],
   imports: [forwardRef(() => AppModule), AuthModule],

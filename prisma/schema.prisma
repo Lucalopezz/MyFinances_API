@@ -18,15 +18,13 @@ model User {
 }
 
 model Transaction {
-  id          String          @id @default(auto()) @map("_id") @db.ObjectId
-  value       Float
-  date        DateTime
-  category    String
-  description String?
-  type        TransactionType
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  userId      String          @db.ObjectId
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  encryptedData Json
+  dateIndex     Int
+  type          TransactionType
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  userId        String          @db.ObjectId
 }
 
 enum TransactionType {

@@ -10,15 +10,17 @@ Uma aplicação full-stack para gerenciamento financeiro pessoal, permitindo que
 - **Dashboard:** Resumo financeiro com indicadores, gráficos interativos e comparativo mensal.
 - **Wishlist:** Gestão de itens desejados, com acompanhamento do progresso de economia.
 - **Despesas Fixas:** Cadastro e controle de despesas recorrentes (ex.: aluguel), com:
-    - Marcação de pagamento.
-    - Notificações automáticas dias antes do vencimento.
-    - Reset automático para o próximo ciclo após a data de vencimento.
+  - Marcação de pagamento.
+  - Notificações automáticas dias antes do vencimento.
+  - Reset automático para o próximo ciclo após a data de vencimento.
 - **Notificações:** Alertas automáticos para despesas pendentes e vencimentos próximos.
 
 ---
 
 ## Documentação
+
 - [Documentação dos Models](docs/models.md)
+- [Criptografia de Transações](docs/transaction-encryption.md)
 - [Proximos Passos](docs/next-steps.md)
 
 ---
@@ -26,12 +28,14 @@ Uma aplicação full-stack para gerenciamento financeiro pessoal, permitindo que
 ## Tecnologias Utilizadas
 
 ### Back-end
+
 - **NestJS** – Framework para Node.js.
 - **Prisma** – ORM para o MongoDB.
 - **Zod** – Validação de dados.
 - **@nestjs/schedule** – Tarefas agendadas (para resetar despesas fixas e disparar notificações).
 
 ### Front-end
+
 - **Next.js** (App Router)
 - **TanStack Query** – Gerenciamento de dados e cache.
 - **React Hook Form** – Manipulação de formulários.
@@ -68,8 +72,10 @@ Uma aplicação full-stack para gerenciamento financeiro pessoal, permitindo que
 │   ├── styles/             # Configurações do Tailwind CSS
 │   └── package.json        # Configurações e dependências do frontend
 └── README.md
-````
+```
+
 ## Instalação
+
 1. Clone o repositório:
    ```bash
    git clone https://github.com/Lucalopezz/MyFinances_API.git
@@ -93,10 +99,3 @@ Uma aplicação full-stack para gerenciamento financeiro pessoal, permitindo que
    ```bash
    npm run start:dev
    ```
-
-
-
-
-
-
-

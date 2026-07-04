@@ -2,8 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DashboardQueryDto } from './dtos/dashboard.dto';
 import { MonthlyComparisonDto } from './dtos/monthly-comparison.dto';
-import { Transaction, TransactionType } from '@prisma/client';
+import { TransactionType } from '@prisma/client';
 import { ExpenseCategory } from 'src/common/constants/categories.constants';
+import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import {
+  buildDateIndex,
+  DecryptedTransaction,
+  decryptTransactions,
+  EncryptedTransactionRecord,
+} from '../transactions/transaction-encryption.mapper';
 
 type TransactionTotals = {
   totalIncomes: number;
@@ -23,7 +30,10 @@ type MonthlyComparisonMonth = {
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly encryptionService: FinancialDataEncryptionService,
+  ) {}
 
   async getDashboardData(query: DashboardQueryDto, userId: string) {
     const { startDate, endDate } = query;
@@ -128,19 +138,28 @@ export class DashboardService {
     userId: string,
     startDate: Date,
     endDate: Date,
-  ): Promise<Transaction[]> {
-    return this.prisma.transaction.findMany({
-      where: {
-        userId,
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-    });
+  ): Promise<DecryptedTransaction[]> {
+    return this.prisma.transaction
+      .findMany({
+        where: {
+          userId,
+          dateIndex: {
+            gte: buildDateIndex(startDate),
+            lte: buildDateIndex(endDate),
+          },
+        } as never,
+      })
+      .then((transactions) =>
+        decryptTransactions(
+          transactions as unknown as EncryptedTransactionRecord[],
+          this.encryptionService,
+        ),
+      );
   }
 
-  private calculateTotals(transactions: Transaction[]): TransactionTotals {
+  private calculateTotals(
+    transactions: DecryptedTransaction[],
+  ): TransactionTotals {
     return transactions.reduce(
       (totals, transaction) => {
         this.addTransactionToTotals(totals, transaction);
@@ -153,7 +172,9 @@ export class DashboardService {
   // Agrupa as transações por mês e calcula os totais de despesas e receitas para cada mês
   // Jan 2024: { totalExpenses: 1000, totalIncomes: 2000 }
   // Feb 2024: { totalExpenses: 1500, totalIncomes: 2500 }
-  private groupTransactionsByMonth(transactions: Transaction[]): MonthlyData {
+  private groupTransactionsByMonth(
+    transactions: DecryptedTransaction[],
+  ): MonthlyData {
     return transactions.reduce((monthlyData, transaction) => {
       const month = transaction.date.toISOString().slice(0, 7);
 
@@ -168,7 +189,7 @@ export class DashboardService {
 
   private addTransactionToTotals(
     totals: TransactionTotals,
-    transaction: Transaction,
+    transaction: DecryptedTransaction,
   ): void {
     if (transaction.type === TransactionType.INCOME) {
       totals.totalIncomes += transaction.value;
