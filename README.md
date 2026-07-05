@@ -21,7 +21,7 @@ Uma aplicação full-stack para gerenciamento financeiro pessoal, permitindo que
 
 - [Documentação dos Models](docs/models.md)
 - [Criptografia de Transações](docs/transaction-encryption.md)
-- [Proximos Passos](docs/next-steps.md)
+- [V2](docs/v2.md)
 
 ---
 
