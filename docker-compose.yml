@@ -7,4 +7,4 @@ services:
       - "27017:27017"
     volumes:
       - /mnt/dados/docker-volumes/myfinances-mongo:/data/db
-    restart: unless-stoppedn
+    restart: no
