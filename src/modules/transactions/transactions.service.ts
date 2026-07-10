@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   CreateTransactionDto,
+  TransactionsQueryDto,
   UpdateTransactionDto,
 } from './dtos/transaction.dto';
 import { WishlistService } from '../wishlist/wishlist.service';
@@ -43,18 +44,32 @@ export class TransactionsService {
       this.encryptionService,
     );
   }
-  async getTransactions(userId: string) {
-    const transactions = await this.prisma.transaction.findMany({
-      where: {
-        userId,
-      },
-      orderBy: { dateIndex: 'desc' } as never,
-    });
+  async getTransactions(query: TransactionsQueryDto, userId: string) {
+    const { page, limit } = query;
+    const where = { userId };
 
-    return decryptTransactions(
-      transactions as unknown as EncryptedTransactionRecord[],
-      this.encryptionService,
-    );
+    const [transactions, total] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where,
+        orderBy: { dateIndex: 'desc' } as never,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.transaction.count({ where }),
+    ]);
+
+    return {
+      data: decryptTransactions(
+        transactions as unknown as EncryptedTransactionRecord[],
+        this.encryptionService,
+      ),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
   async getTransaction(id: string, userId: string) {
     const transaction = await this.prisma.transaction.findFirst({

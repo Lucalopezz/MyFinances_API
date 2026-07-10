@@ -102,7 +102,7 @@ Categorias de despesa:
 ### Principais funções
 
 - `POST /transactions`: cria uma transação do usuário autenticado.
-- `GET /transactions`: lista as transações do usuário, ordenadas por `dateIndex` decrescente.
+- `GET /transactions`: lista as transações paginadas do usuário, ordenadas por `dateIndex` decrescente.
 - `GET /transactions/:id`: busca uma transação específica do usuário.
 - `PATCH /transactions/:id`: atualiza uma transação existente.
 - `DELETE /transactions/:id`: remove uma transação.

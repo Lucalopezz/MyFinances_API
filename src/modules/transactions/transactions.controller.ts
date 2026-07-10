@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
@@ -13,6 +14,8 @@ import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
 import {
   CreateTransactionDto,
   CreateTransactionSchema,
+  TransactionsQueryDto,
+  TransactionsQuerySchema,
   UpdateTransactionDto,
   UpdateTransactionSchema,
 } from './dtos/transaction.dto';
@@ -34,8 +37,12 @@ export class TransactionsController {
   }
 
   @Get()
-  async getTransactions(@User('sub') userId: string) {
-    return this.transactionsService.getTransactions(userId);
+  async getTransactions(
+    @Query(new ZodValidationPipe(TransactionsQuerySchema))
+    query: TransactionsQueryDto,
+    @User('sub') userId: string,
+  ) {
+    return this.transactionsService.getTransactions(query, userId);
   }
 
   @Get(':id')
