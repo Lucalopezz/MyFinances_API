@@ -8,3 +8,13 @@ services:
     volumes:
       - /mnt/dados/docker-volumes/myfinances-mongo:/data/db
     restart: no
+
+  redis:
+    image: redis:7-alpine
+    container_name: finances-redis
+    restart: no
+    ports:
+      - "6379:6379"
+    volumes:
+      - /mnt/dados/docker-volumes/finances-redis:/data
+    command: redis-server --appendonly yes
