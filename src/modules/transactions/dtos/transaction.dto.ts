@@ -4,6 +4,13 @@ import {
 } from 'src/common/constants/categories.constants';
 import { z } from 'zod';
 
+export const TransactionsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().default(20),
+});
+
+export type TransactionsQueryDto = z.infer<typeof TransactionsQuerySchema>;
+
 export const TransactionTypeEnum = z.enum(['INCOME', 'EXPENSE']);
 
 const IncomeTransactionSchema = z.object({

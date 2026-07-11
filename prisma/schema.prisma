@@ -18,20 +18,50 @@ model User {
 }
 
 model Transaction {
-  id          String          @id @default(auto()) @map("_id") @db.ObjectId
-  value       Float
-  date        DateTime
-  category    String
-  description String?
-  type        TransactionType
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  userId      String          @db.ObjectId
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  encryptedData Json
+  dateIndex     Int
+  type          TransactionType
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  userId        String          @db.ObjectId
+
+  @@index([userId, id])
+  @@index([userId, dateIndex, id])
 }
 
 enum TransactionType {
   INCOME
   EXPENSE
+}
+
+type TransactionExportFilters {
+  startDate  DateTime?
+  endDate    DateTime?
+  categoryId String?
+  type       TransactionType?
+}
+
+model TransactionExport {
+  id           String                    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String                    @db.ObjectId
+  status       TransactionExportStatus
+  progress     Int                       @default(0)
+  filters      TransactionExportFilters?
+  fileName     String?
+  errorMessage String?
+  createdAt    DateTime                  @default(now())
+  completedAt  DateTime?
+
+  @@index([userId, id])
+  @@index([userId, createdAt, id])
+}
+
+enum TransactionExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 model WishlistItem {
@@ -65,8 +95,11 @@ model FixedExpense {
   id                      String         @id @default(auto()) @map("_id") @db.ObjectId
   name                    String
   amount                  Float
+  category                String         @default("UTILITIES")
   dueDate                 DateTime
   isPaid                  Boolean        @default(false)
+  paidAt                  DateTime?
+  paidTransactionId       String?
   recurrence              RecurrenceType
   lastNotificationDueDate DateTime?
   createdAt               DateTime       @default(now())

@@ -11,6 +11,7 @@ import {
 import { FixedExpensesService } from './fixed-expenses.service';
 import {
   CreateFixedExpenseDto,
+  UpdateFixedExpensePaymentDto,
   UpdateFixedExpenseDto,
 } from './dtos/fixed-expense.dto';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
@@ -54,6 +55,20 @@ export class FixedExpensesController {
     return this.fixedExpensesService.updateFixedExpense(
       id,
       updateFixedExpenseDto,
+      userId,
+    );
+  }
+
+  @Patch(':id/payment')
+  async updateFixedExpensePayment(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpdateFixedExpensePaymentDto))
+    updateFixedExpensePaymentDto: UpdateFixedExpensePaymentDto,
+    @User('sub') userId: string,
+  ) {
+    return this.fixedExpensesService.updateFixedExpensePayment(
+      id,
+      updateFixedExpensePaymentDto,
       userId,
     );
   }
