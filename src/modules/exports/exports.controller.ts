@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -41,19 +40,14 @@ export class ExportsController {
   }
 
   @Get(':id/download')
-  @Header('Content-Type', 'application/pdf')
   async downloadExport(
     @Param('id') id: string,
     @User('sub') userId: string,
   ): Promise<StreamableFile> {
-    const { filePath, fileName } = await this.exportsService.getDownload(
-      id,
-      userId,
-    );
-    // Return the file as a streamable response with appropriate headers
-    // The 'Content-Type' header is set to 'application/pdf' to indicate the file type
+    const { filePath, fileName, contentType } =
+      await this.exportsService.getDownload(id, userId);
     return new StreamableFile(createReadStream(filePath), {
-      type: 'application/pdf',
+      type: contentType,
       disposition: `attachment; filename="${fileName}"`,
     });
   }

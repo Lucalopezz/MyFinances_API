@@ -106,4 +106,22 @@ export class FixedExpensesRepository {
       },
     });
   }
+
+  markNotificationSent(id: string, dueDate: Date) {
+    return this.prisma.fixedExpense.update({
+      where: { id },
+      data: { lastNotificationDueDate: dueDate },
+    });
+  }
+
+  refreshCycle(id: string, nextDueDate: Date) {
+    return this.prisma.fixedExpense.update({
+      where: { id },
+      data: {
+        dueDate: nextDueDate,
+        isPaid: false,
+        lastNotificationDueDate: null,
+      },
+    });
+  }
 }

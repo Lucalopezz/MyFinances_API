@@ -1,53 +1,41 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNotificationDtoType } from './dtos/notification.dto';
+import { NotificationsRepository } from './repositories/notifications.repository';
 
 @Injectable()
 export class NotificationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly repository: NotificationsRepository) {}
 
   async createNotification(data: CreateNotificationDtoType) {
-    return this.prisma.notification.create({
-      data: {
-        title: data.title,
-        message: data.message,
-        type: data.type,
-        userId: data.userId,
-      },
-    });
+    return this.repository.create(data);
   }
 
   async markAsRead(id: string, userId: string) {
-    const notification = await this.prisma.notification.findUnique({
-      where: { id, userId },
-    });
+    const notification = await this.repository.findOwned(id, userId);
 
     if (!notification) {
       throw new NotFoundException('Notificação não encontrada');
     }
 
-    return this.prisma.notification.update({
-      where: { id },
-      data: { read: true },
-    });
+    return this.repository.markAsRead(id, userId);
+  }
+
+  async markAllAsRead(userId: string) {
+    const result = await this.repository.markAllAsRead(userId);
+    return { count: result.count };
   }
 
   async getUserNotifications(userId: string) {
-    return this.prisma.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+    return this.repository.findByUser(userId);
   }
 
   async deleteNotification(id: string, userId: string) {
-    const notification = await this.prisma.notification.findUnique({
-      where: { id, userId },
-    });
+    const notification = await this.repository.findOwned(id, userId);
 
     if (!notification) {
       throw new NotFoundException('Notificação não encontrada');
     }
 
-    return this.prisma.notification.delete({ where: { id } });
+    return this.repository.remove(id, userId);
   }
 }

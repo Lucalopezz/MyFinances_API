@@ -70,4 +70,8 @@ export class FixedExpenseRawFieldsService {
       ],
     });
   }
+
+  clearPaymentFieldsForExpense(id: string) {
+    return this.clearPaymentFields(this.prisma, id);
+  }
 }

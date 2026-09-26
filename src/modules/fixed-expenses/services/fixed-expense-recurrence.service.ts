@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { RecurrenceType } from '@prisma/client';
 import { addMonths, addYears, startOfDay } from 'date-fns';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { FixedExpensesRepository } from '../repositories/fixed-expenses.repository';
 import { RecurringExpenseToRefresh } from '../types/fixed-expenses.types';
 import { FixedExpenseRawFieldsService } from './fixed-expense-raw-fields.service';
@@ -9,7 +8,6 @@ import { FixedExpenseRawFieldsService } from './fixed-expense-raw-fields.service
 @Injectable()
 export class FixedExpenseRecurrenceService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly repository: FixedExpensesRepository,
     private readonly rawFieldsService: FixedExpenseRawFieldsService,
   ) {}
@@ -41,16 +39,8 @@ export class FixedExpenseRecurrenceService {
       today,
     );
 
-    await this.prisma.fixedExpense.update({
-      where: { id: expense.id },
-      data: {
-        dueDate: nextDueDate,
-        isPaid: false,
-        lastNotificationDueDate: null,
-      },
-    });
-
-    await this.rawFieldsService.clearPaymentFields(this.prisma, expense.id);
+    await this.repository.refreshCycle(expense.id, nextDueDate);
+    await this.rawFieldsService.clearPaymentFieldsForExpense(expense.id);
   }
 
   private calculateNextDueDate(

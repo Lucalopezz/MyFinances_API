@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { addDays, differenceInDays, startOfDay } from 'date-fns';
 import { NotificationService } from 'src/modules/notification/notification.service';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { FixedExpensesRepository } from '../repositories/fixed-expenses.repository';
 import { UpcomingExpenseToNotify } from '../types/fixed-expenses.types';
 
@@ -10,7 +9,6 @@ export class FixedExpenseNotificationService {
   private readonly UPCOMING_NOTIFICATION_WINDOW_IN_DAYS = 3;
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly repository: FixedExpensesRepository,
     private readonly notificationService: NotificationService,
   ) {}
@@ -68,11 +66,6 @@ export class FixedExpenseNotificationService {
       type: 'REMINDER',
     });
 
-    await this.prisma.fixedExpense.update({
-      where: { id: expense.id },
-      data: {
-        lastNotificationDueDate: dueDate,
-      },
-    });
+    await this.repository.markNotificationSent(expense.id, dueDate);
   }
 }

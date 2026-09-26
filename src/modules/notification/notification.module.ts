@@ -11,13 +11,17 @@ import { FixedExpenseNotificationService } from '../fixed-expenses/services/fixe
 import { FixedExpenseRawFieldsService } from '../fixed-expenses/services/fixed-expense-raw-fields.service';
 import { FixedExpenseErrorHandler } from '../fixed-expenses/errors/fixed-expense-error.handler';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { NotificationsRepository } from './repositories/notifications.repository';
+import { FixedExpensePaymentsRepository } from '../fixed-expenses/repositories/fixed-expense-payments.repository';
 
 @Module({
   controllers: [NotificationController],
   providers: [
     NotificationService,
+    NotificationsRepository,
     FixedExpensesService,
     FixedExpensesRepository,
+    FixedExpensePaymentsRepository,
     FixedExpensePaymentService,
     FixedExpenseRecurrenceService,
     FixedExpenseNotificationService,

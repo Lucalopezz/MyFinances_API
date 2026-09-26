@@ -11,12 +11,14 @@ import { FixedExpensePaymentService } from './services/fixed-expense-payment.ser
 import { FixedExpenseRawFieldsService } from './services/fixed-expense-raw-fields.service';
 import { FixedExpenseRecurrenceService } from './services/fixed-expense-recurrence.service';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { FixedExpensePaymentsRepository } from './repositories/fixed-expense-payments.repository';
 
 @Module({
   controllers: [FixedExpensesController],
   providers: [
     FixedExpensesService,
     FixedExpensesRepository,
+    FixedExpensePaymentsRepository,
     FixedExpensePaymentService,
     FixedExpenseRecurrenceService,
     FixedExpenseNotificationService,

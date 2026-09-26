@@ -5,25 +5,28 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TransactionExportStatus } from '@prisma/client';
+import {
+  TransactionExportFormat,
+  TransactionExportStatus,
+} from '@prisma/client';
 import { Queue } from 'bullmq';
 import { constants } from 'fs';
 import { access } from 'fs/promises';
 import { join } from 'path';
-import { PrismaService } from 'src/prisma/prisma.service';
 import {
   TRANSACTION_EXPORT_JOB,
   TRANSACTION_EXPORT_QUEUE,
 } from './exports.constants';
 import { CreateTransactionExportDto } from './dtos/create-transaction-export.dto';
 import { TransactionExportJob } from './transaction-export.types';
+import { TransactionExportsRepository } from './repositories/transaction-exports.repository';
 
 @Injectable()
 export class ExportsService {
   private readonly storagePath: string;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly repository: TransactionExportsRepository,
     private readonly configService: ConfigService,
     @InjectQueue(TRANSACTION_EXPORT_QUEUE)
     private readonly exportQueue: Queue<TransactionExportJob>,
@@ -38,15 +41,13 @@ export class ExportsService {
     userId: string,
     filters: CreateTransactionExportDto,
   ) {
+    const { format, ...transactionFilters } = filters;
     // Creates a new transaction export record in the database with status PENDING.
-    const transactionExport = await this.prisma.transactionExport.create({
-      data: {
-        userId,
-        status: TransactionExportStatus.PENDING,
-        progress: 0,
-        filters: this.hasFilters(filters) ? filters : undefined,
-      },
-    });
+    const transactionExport = await this.repository.create(
+      userId,
+      format as TransactionExportFormat,
+      this.hasFilters(transactionFilters) ? transactionFilters : undefined,
+    );
 
     try {
       // Schedules a job in the export queue to process the transaction export asynchronously.
@@ -63,13 +64,7 @@ export class ExportsService {
       );
     } catch (error) {
       // if scheduling the job fails, the export record is updated to FAILED status and an error message is stored in the database.
-      await this.prisma.transactionExport.update({
-        where: { id: transactionExport.id },
-        data: {
-          status: TransactionExportStatus.FAILED,
-          errorMessage: 'Não foi possível agendar a exportação.',
-        },
-      });
+      await this.repository.markSchedulingFailed(transactionExport.id, userId);
       throw error;
     }
 
@@ -77,14 +72,12 @@ export class ExportsService {
       id: transactionExport.id,
       status: transactionExport.status,
       progress: transactionExport.progress,
+      format: transactionExport.format ?? TransactionExportFormat.PDF,
     };
   }
 
   async getLatestExport(userId: string) {
-    const transactionExport = await this.prisma.transactionExport.findFirst({
-      where: { userId },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    });
+    const transactionExport = await this.repository.findLatest(userId);
 
     if (!transactionExport) {
       throw new NotFoundException(
@@ -96,6 +89,7 @@ export class ExportsService {
       id: transactionExport.id,
       status: transactionExport.status,
       progress: transactionExport.progress,
+      format: transactionExport.format ?? TransactionExportFormat.PDF,
       errorMessage: transactionExport.errorMessage,
       createdAt: transactionExport.createdAt,
       completedAt: transactionExport.completedAt,
@@ -118,6 +112,12 @@ export class ExportsService {
       );
     }
 
+    const format = transactionExport.format ?? TransactionExportFormat.PDF;
+    const extension = format === TransactionExportFormat.CSV ? 'csv' : 'pdf';
+    if (transactionExport.fileName !== `${id}.${extension}`) {
+      throw new NotFoundException('Arquivo de exportação inválido.');
+    }
+
     // Constructs the full file path for the export file
     // based on the storage path and the file name stored in the database.
     const filePath = join(this.storagePath, transactionExport.fileName);
@@ -133,6 +133,10 @@ export class ExportsService {
     return {
       filePath,
       fileName: transactionExport.fileName,
+      contentType:
+        format === TransactionExportFormat.CSV
+          ? 'text/csv; charset=utf-8'
+          : 'application/pdf',
     };
   }
 
@@ -141,9 +145,7 @@ export class ExportsService {
       throw new NotFoundException('Exportação não encontrada.');
     }
 
-    const transactionExport = await this.prisma.transactionExport.findFirst({
-      where: { id, userId },
-    });
+    const transactionExport = await this.repository.findOwned(id, userId);
 
     if (!transactionExport) {
       throw new NotFoundException('Exportação não encontrada.');

@@ -8,11 +8,15 @@ import { ExportsController } from './exports.controller';
 import { ExportsService } from './exports.service';
 import { TransactionExportProcessor } from './transaction-export.processor';
 import { TransactionPdfService } from './transaction-pdf.service';
+import { TransactionCsvService } from './transaction-csv.service';
+import { TransactionExportsRepository } from './repositories/transaction-exports.repository';
+import { TransactionsModule } from '../transactions/transactions.module';
 
 @Module({
   imports: [
     forwardRef(() => AppModule),
     AuthModule,
+    TransactionsModule,
     // Configure the Bull queue for transaction exports
     BullModule.registerQueue({
       name: TRANSACTION_EXPORT_QUEUE,
@@ -21,8 +25,10 @@ import { TransactionPdfService } from './transaction-pdf.service';
   controllers: [ExportsController],
   providers: [
     ExportsService,
+    TransactionExportsRepository,
     TransactionExportProcessor,
     TransactionPdfService,
+    TransactionCsvService,
     FinancialDataEncryptionService,
   ],
 })

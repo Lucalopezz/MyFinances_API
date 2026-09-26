@@ -1,23 +1,15 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  Prisma,
-  TransactionExportStatus,
-  TransactionType,
-} from '@prisma/client';
+import { TransactionExportFormat } from '@prisma/client';
 import { Job } from 'bullmq';
 import { createWriteStream, WriteStream } from 'fs';
 import { mkdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { finished } from 'stream/promises';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
-import { PrismaService } from 'src/prisma/prisma.service';
-import {
-  decryptTransaction,
-  EncryptedTransactionRecord,
-  buildDateIndex,
-} from '../transactions/transaction-encryption.mapper';
+import { decryptTransaction } from '../transactions/transaction-encryption.mapper';
+import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
 import {
   TRANSACTION_EXPORT_JOB,
   TRANSACTION_EXPORT_QUEUE,
@@ -25,6 +17,8 @@ import {
 import { CreateTransactionExportDto } from './dtos/create-transaction-export.dto';
 import { TransactionExportJob } from './transaction-export.types';
 import { TransactionPdfService } from './transaction-pdf.service';
+import { TransactionCsvService } from './transaction-csv.service';
+import { TransactionExportsRepository } from './repositories/transaction-exports.repository';
 
 // Register the processor for the transaction export queue with a concurrency of 1
 @Processor(TRANSACTION_EXPORT_QUEUE, { concurrency: 1 })
@@ -37,10 +31,12 @@ export class TransactionExportProcessor extends WorkerHost {
   private readonly batchSize: number;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly repository: TransactionExportsRepository,
+    private readonly transactionsRepository: TransactionsRepository,
     private readonly configService: ConfigService,
     private readonly encryptionService: FinancialDataEncryptionService,
     private readonly pdfService: TransactionPdfService,
+    private readonly csvService: TransactionCsvService,
   ) {
     super();
     this.storagePath = this.configService.get<string>(
@@ -58,39 +54,34 @@ export class TransactionExportProcessor extends WorkerHost {
     }
 
     const { exportId, userId } = job.data;
-    const fileName = `${exportId}.pdf`;
-    const filePath = join(this.storagePath, fileName);
+    let filePath: string | undefined;
     let output: WriteStream | undefined;
     let outputFinished: Promise<void> | undefined;
     let document: PDFKit.PDFDocument | undefined;
 
     try {
       // Fetch the transaction export record from the database
-      const transactionExport = await this.prisma.transactionExport.findFirst({
-        where: { id: exportId, userId },
-      });
+      const transactionExport = await this.repository.findOwned(
+        exportId,
+        userId,
+      );
 
       if (!transactionExport) {
         throw new Error('Exportação não encontrada para o job informado.');
       }
+
+      const format = transactionExport.format ?? TransactionExportFormat.PDF;
+      const fileName = `${exportId}.${format === TransactionExportFormat.CSV ? 'csv' : 'pdf'}`;
+      filePath = join(this.storagePath, fileName);
 
       const filters = transactionExport.filters as
         | CreateTransactionExportDto
         | undefined;
 
       // Update the export record to indicate processing has started
-      await this.prisma.transactionExport.update({
-        where: { id: exportId },
-        data: {
-          status: TransactionExportStatus.PROCESSING,
-          progress: 0,
-          errorMessage: null,
-          completedAt: null,
-          fileName: null,
-        },
-      });
+      await this.repository.markProcessing(exportId, userId);
 
-      // Ensure the storage directory exists before creating the PDF file
+      // Ensure the storage directory exists before creating the output file.
       await mkdir(this.storagePath, { recursive: true });
       // Create a write stream for the PDF file and set up a promise to track when the stream finishes
       output = createWriteStream(filePath);
@@ -98,13 +89,22 @@ export class TransactionExportProcessor extends WorkerHost {
       outputFinished = finished(output);
       // Ensure that if the output stream finishes with an error, we catch it to prevent unhandled promise rejections
       outputFinished.catch(() => undefined);
-      // Create the PDF document using the TransactionPdfService and pipe it to the output stream
-      document = this.pdfService.createDocument(filters);
-      document.pipe(output);
+      if (format === TransactionExportFormat.CSV) {
+        await this.csvService.writeHeader(output);
+      } else {
+        document = this.pdfService.createDocument(filters);
+        document.pipe(output);
+      }
 
       // Filter and process transactions in batches, decrypting them and adding them to the PDF document
-      const where = this.buildTransactionWhere(userId, filters);
-      const total = await this.prisma.transaction.count({ where });
+      const candidates = {
+        userId,
+        startDate: filters?.startDate,
+        endDate: filters?.endDate,
+        type: filters?.type,
+      };
+      const total =
+        await this.transactionsRepository.countExportCandidates(candidates);
 
       // Initialize variables to track the number of processed transactions and the cursor for pagination
       let processed = 0;
@@ -112,22 +112,11 @@ export class TransactionExportProcessor extends WorkerHost {
 
       while (true) {
         // Fetch a batch of transactions from the database based on the filters and cursor for pagination
-        const transactions = await this.prisma.transaction.findMany({
-          where,
-          select: {
-            id: true,
-            encryptedData: true,
-            type: true,
-            createdAt: true,
-            updatedAt: true,
-            userId: true,
-          },
-          orderBy: { id: 'asc' },
-          take: this.batchSize,
-          // If a cursorId is set, use it to fetch the next batch of transactions
-          // after the last processed transaction
-          ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
-        });
+        const transactions = await this.transactionsRepository.findExportBatch(
+          candidates,
+          cursorId,
+          this.batchSize,
+        );
 
         if (transactions.length === 0) {
           break;
@@ -135,7 +124,7 @@ export class TransactionExportProcessor extends WorkerHost {
         // Decrypt each transaction and add it to the PDF document if it matches the specified filters
         for (const transaction of transactions) {
           const decrypted = decryptTransaction(
-            transaction as unknown as EncryptedTransactionRecord,
+            transaction,
             this.encryptionService,
           );
 
@@ -143,7 +132,11 @@ export class TransactionExportProcessor extends WorkerHost {
             !filters?.categoryId ||
             decrypted.category === filters.categoryId
           ) {
-            this.pdfService.addTransaction(document, decrypted);
+            if (format === TransactionExportFormat.CSV) {
+              await this.csvService.addTransaction(output, decrypted);
+            } else {
+              this.pdfService.addTransaction(document, decrypted);
+            }
           }
 
           processed++;
@@ -154,45 +147,26 @@ export class TransactionExportProcessor extends WorkerHost {
           ? Math.min(99, Math.floor((processed / total) * 100))
           : 99;
         // Update the export record with the current progress and update the job's progress
-        await this.prisma.transactionExport.update({
-          where: { id: exportId },
-          data: { progress },
-        });
+        await this.repository.updateProgress(exportId, userId, progress);
         // Update the job's progress to reflect the current state of processing
         await job.updateProgress(progress);
       }
 
-      document.end();
+      if (document) document.end();
+      else output.end();
       // Wait for the output stream to finish writing the PDF file before proceeding
       await outputFinished;
       // Update the export record to indicate that processing has completed successfully
-      await this.prisma.transactionExport.update({
-        where: { id: exportId },
-        data: {
-          status: TransactionExportStatus.COMPLETED,
-          progress: 100,
-          fileName,
-          completedAt: new Date(),
-          errorMessage: null,
-        },
-      });
+      await this.repository.markCompleted(exportId, userId, fileName);
       await job.updateProgress(100);
     } catch (error) {
       document?.destroy();
       output?.destroy();
       await outputFinished?.catch(() => undefined);
-      await unlink(filePath).catch(() => undefined);
+      if (filePath) await unlink(filePath).catch(() => undefined);
 
-      await this.prisma.transactionExport
-        .updateMany({
-          where: { id: exportId, userId },
-          data: {
-            status: TransactionExportStatus.FAILED,
-            errorMessage: 'Não foi possível gerar o PDF da exportação.',
-            fileName: null,
-            completedAt: null,
-          },
-        })
+      await this.repository
+        .markFailed(exportId, userId)
         .catch((updateError) => {
           this.logger.error(
             `Falha ao atualizar a exportação ${exportId} como FAILED.`,
@@ -200,35 +174,9 @@ export class TransactionExportProcessor extends WorkerHost {
           );
         });
 
-      this.logger.error(
-        `Falha ao processar a exportação ${exportId}.`,
-        error instanceof Error ? error.stack : undefined,
-      );
+      this.logger.error(`Falha ao processar a exportação ${exportId}.`);
       throw error;
     }
-  }
-
-  private buildTransactionWhere(
-    userId: string,
-    filters?: CreateTransactionExportDto,
-  ): Prisma.TransactionWhereInput {
-    // Build the date index for filtering transactions based on the provided start and end dates
-    const startDateIndex = filters?.startDate
-      ? buildDateIndex(filters.startDate)
-      : undefined;
-    const endDateIndex = filters?.endDate
-      ? buildDateIndex(filters.endDate)
-      : undefined;
-
-    // Return the constructed where clause for querying transactions based on user ID, type, and date index
-    return {
-      userId,
-      type: filters?.type as TransactionType | undefined,
-      dateIndex:
-        startDateIndex !== undefined || endDateIndex !== undefined
-          ? { gte: startDateIndex, lte: endDateIndex }
-          : undefined,
-    };
   }
 
   private resolveBatchSize(value: string): number {
