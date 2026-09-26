@@ -7,11 +7,13 @@ import { BcryptService } from './hashing/bycript.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import jwtConfig from 'src/common/config/jwt.config';
+import { AuthUsersRepository } from './repositories/auth-users.repository';
 
 @Module({
   controllers: [AuthController],
   providers: [
     AuthService,
+    AuthUsersRepository,
     {
       provide: HashingService,
       useClass: BcryptService,

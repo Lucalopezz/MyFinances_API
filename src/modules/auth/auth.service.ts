@@ -3,7 +3,7 @@ import jwtConfig from 'src/common/config/jwt.config';
 import { HashingService } from './hashing/hashing.service';
 import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { AuthUsersRepository } from './repositories/auth-users.repository';
 import { LoginType } from './dtos/login.dto';
 import { User } from '@prisma/client';
 
@@ -14,7 +14,7 @@ export class AuthService {
     @Inject(jwtConfig.KEY)
     private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
     private readonly jwtService: JwtService,
-    private prisma: PrismaService,
+    private readonly repository: AuthUsersRepository,
   ) {}
 
   private async signJwtAsync<T>(sub: string, expiresIn: number, payload?: T) {
@@ -48,9 +48,7 @@ export class AuthService {
     let passwordIsValid = false;
     let throwError = true;
 
-    const user = await this.prisma.user.findUnique({
-      where: { email: loginDto.email },
-    });
+    const user = await this.repository.findByEmail(loginDto.email);
     if (user) {
       passwordIsValid = await this.hashingService.compare(
         loginDto.password,

@@ -8,14 +8,14 @@ import {
 } from '@nestjs/common';
 import { CreateUserType } from './dto/create-user.dto';
 import { UpdateUserType } from './dto/update-user.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { UsersRepository } from './repositories/users.repository';
 import { HashingService } from '../auth/hashing/hashing.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UserService {
   constructor(
-    private prisma: PrismaService,
+    private readonly repository: UsersRepository,
     private readonly hashingService: HashingService,
   ) {}
   async create(createUserDto: CreateUserType) {
@@ -32,25 +32,17 @@ export class UserService {
 
       if (process.env.PRISMA_DIAGNOSTICS === 'true') {
         console.info('[Prisma diagnostics] user.count() start');
-        await this.prisma.user.count();
+        await this.repository.count();
         console.info('[Prisma diagnostics] user.count() ok');
 
         console.info('[Prisma diagnostics] user.findMany() start');
-        await this.prisma.user.findMany({ take: 1 });
+        await this.repository.findSample();
         console.info('[Prisma diagnostics] user.findMany() ok');
 
         console.info('[Prisma diagnostics] user.create() start');
       }
 
-      const newUser = await this.prisma.user.create({
-        data: userData,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          createdAt: true,
-        },
-      });
+      const newUser = await this.repository.create(userData);
 
       if (process.env.PRISMA_DIAGNOSTICS === 'true') {
         console.info('[Prisma diagnostics] user.create() ok');
@@ -76,15 +68,7 @@ export class UserService {
 
   async findOneById(id: string) {
     try {
-      const user = await this.prisma.user.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          createdAt: true,
-        },
-      });
+      const user = await this.repository.findPublic(id);
 
       if (!user) {
         throw new NotFoundException('Usuário não encontrado');
@@ -116,15 +100,7 @@ export class UserService {
         );
       }
 
-      const updatedUser = await this.prisma.user.update({
-        where: { id: userId },
-        data: userData,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      });
+      const updatedUser = await this.repository.updatePublic(userId, userData);
 
       return {
         message: 'Usuário atualizado com sucesso',

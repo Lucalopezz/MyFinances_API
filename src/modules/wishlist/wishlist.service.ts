@@ -3,7 +3,6 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
 import {
   CreateWishlistItemDto,
   UpdateWishlistItemDto,
@@ -13,23 +12,20 @@ import { FinancialDataEncryptionService } from 'src/common/encryption/financial-
 import {
   buildDateIndex,
   decryptTransactions,
-  EncryptedTransactionRecord,
 } from '../transactions/transaction-encryption.mapper';
+import { WishlistRepository } from './repositories/wishlist.repository';
 
 @Injectable()
 export class WishlistService {
   constructor(
-    private prisma: PrismaService,
+    private readonly repository: WishlistRepository,
     private readonly encryptionService: FinancialDataEncryptionService,
   ) {}
   async updateWishlistItemsSavings(userId: string): Promise<void> {
     const monthlySavings = await this.calculateAnnualSavings(userId);
 
     // atualiza todos os itens da wishlist do usuário
-    await this.prisma.wishlistItem.updateMany({
-      where: { userId },
-      data: { savedAmount: monthlySavings },
-    });
+    await this.repository.updateSavings(userId, monthlySavings);
   }
   async calculateAnnualSavings(userId: string): Promise<number> {
     // Obtém a data atual
@@ -38,15 +34,11 @@ export class WishlistService {
     const endOfYear = new Date(now.getFullYear(), 11, 31);
 
     // busca todas as transações do usuário no ano atual
-    const transactions = await this.prisma.transaction.findMany({
-      where: {
-        userId,
-        dateIndex: {
-          gte: buildDateIndex(startOfYear),
-          lte: buildDateIndex(endOfYear),
-        },
-      } as never,
-    });
+    const transactions = await this.repository.findTransactionsByPeriod(
+      userId,
+      buildDateIndex(startOfYear),
+      buildDateIndex(endOfYear),
+    );
 
     if (!transactions || transactions.length === 0) {
       throw new NotFoundException(
@@ -55,7 +47,7 @@ export class WishlistService {
     }
 
     const decryptedTransactions = decryptTransactions(
-      transactions as unknown as EncryptedTransactionRecord[],
+      transactions,
       this.encryptionService,
     );
 
@@ -74,15 +66,11 @@ export class WishlistService {
     try {
       const annualSavings = await this.calculateAnnualSavings(userId);
 
-      const wishlistItem = await this.prisma.wishlistItem.create({
-        data: {
-          name: dto.name,
-          desiredValue: dto.desiredValue,
-          savedAmount: annualSavings,
-          targetDate: dto.targetDate,
-          userId: userId,
-        },
-      });
+      const wishlistItem = await this.repository.create(
+        dto,
+        userId,
+        annualSavings,
+      );
 
       await this.updateWishlistItemsSavings(userId);
 
@@ -94,21 +82,12 @@ export class WishlistService {
   }
 
   async getWishlistItems(userId: string) {
-    return this.prisma.wishlistItem.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    return this.repository.findByUser(userId);
   }
 
   async getWishlistItem(id: string, userId: string) {
     try {
-      const wish = await this.prisma.wishlistItem.findUnique({
-        where: { id: id, userId: userId },
-      });
+      const wish = await this.repository.findOwned(id, userId);
 
       if (!wish) {
         throw new NotFoundException(`Item com ID "${id}" não encontrado.`);
@@ -137,12 +116,7 @@ export class WishlistService {
   ) {
     const wishId = await this.getWishlistItem(id, userId);
 
-    const wish = await this.prisma.wishlistItem.update({
-      where: { id: wishId.id },
-      data: {
-        ...dto,
-      },
-    });
+    const wish = await this.repository.updateOwned(wishId.id, userId, dto);
     await this.updateWishlistItemsSavings(userId);
 
     return wish;
@@ -150,8 +124,6 @@ export class WishlistService {
 
   async deleteWishlistItem(id: string, userId: string) {
     const wishId = await this.getWishlistItem(id, userId);
-    return this.prisma.wishlistItem.delete({
-      where: { id: wishId.id },
-    });
+    return this.repository.removeOwned(wishId.id, userId);
   }
 }
