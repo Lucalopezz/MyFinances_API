@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { DashboardQueryDto } from './dtos/dashboard.dto';
 import { MonthlyComparisonDto } from './dtos/monthly-comparison.dto';
-import { TransactionType } from '@prisma/client';
+import { RecurrenceType, TransactionType } from '@prisma/client';
+import { addMonths, addYears } from 'date-fns';
 import { ExpenseCategory } from 'src/common/constants/categories.constants';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import {
   buildDateIndex,
   DecryptedTransaction,
   decryptTransactions,
-  EncryptedTransactionRecord,
 } from '../transactions/transaction-encryption.mapper';
+import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
+import { DashboardRepository } from './repositories/dashboard.repository';
+import { ForecastModel } from './models/forecast.model';
 
 type TransactionTotals = {
   totalIncomes: number;
@@ -31,9 +33,65 @@ type MonthlyComparisonMonth = {
 @Injectable()
 export class DashboardService {
   constructor(
-    private prisma: PrismaService,
+    private readonly repository: DashboardRepository,
+    private readonly transactionsRepository: TransactionsRepository,
     private readonly encryptionService: FinancialDataEncryptionService,
   ) {}
+
+  async getForecast(userId: string): Promise<ForecastModel> {
+    const now = new Date();
+    const start = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+    );
+    const nextMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+    );
+    const [transactions, fixedExpenses] = await Promise.all([
+      this.findTransactionsByPeriod(userId, start, now),
+      this.repository.findFixedExpensesDueBefore(userId, nextMonth),
+    ]);
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const expenses = fixedExpenses
+      .flatMap((expense) => {
+        let dueDate = expense.dueDate;
+        if (expense.isPaid) {
+          if (dueDate >= today) return [];
+          while (dueDate < today) {
+            dueDate =
+              expense.recurrence === RecurrenceType.MONTHLY
+                ? addMonths(dueDate, 1)
+                : addYears(dueDate, 1);
+          }
+        }
+        return dueDate < nextMonth
+          ? [
+              {
+                id: expense.id,
+                name: expense.name,
+                amount: expense.amount,
+                dueDate,
+              },
+            ]
+          : [];
+      })
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+    const { totalIncomes, totalExpenses } = this.calculateTotals(transactions);
+    const currentBalance = totalIncomes - totalExpenses;
+    const pendingFixedExpenses = expenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0,
+    );
+
+    return {
+      month: start.toISOString().slice(0, 7),
+      currentBalance,
+      pendingFixedExpenses,
+      projectedBalance: currentBalance - pendingFixedExpenses,
+      expenses,
+    };
+  }
 
   async getDashboardData(query: DashboardQueryDto, userId: string) {
     const { startDate, endDate } = query;
@@ -139,21 +197,10 @@ export class DashboardService {
     startDate: Date,
     endDate: Date,
   ): Promise<DecryptedTransaction[]> {
-    return this.prisma.transaction
-      .findMany({
-        where: {
-          userId,
-          dateIndex: {
-            gte: buildDateIndex(startDate),
-            lte: buildDateIndex(endDate),
-          },
-        } as never,
-      })
+    return this.transactionsRepository
+      .findByPeriod(userId, buildDateIndex(startDate), buildDateIndex(endDate))
       .then((transactions) =>
-        decryptTransactions(
-          transactions as unknown as EncryptedTransactionRecord[],
-          this.encryptionService,
-        ),
+        decryptTransactions(transactions, this.encryptionService),
       );
   }
 

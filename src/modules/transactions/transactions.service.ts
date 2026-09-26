@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { createHash } from 'crypto';
 import {
   CreateTransactionDto,
   TransactionsQueryDto,
+  TransactionSearchDto,
   UpdateTransactionDto,
 } from './dtos/transaction.dto';
 import { WishlistService } from '../wishlist/wishlist.service';
@@ -13,19 +18,28 @@ import {
   decryptTransaction,
   decryptTransactions,
   EncryptedTransactionRecord,
+  DecryptedTransaction,
 } from './transaction-encryption.mapper';
+import { TransactionsRepository } from './repositories/transactions.repository';
+
+type SearchCursor = {
+  v: 1;
+  dateIndex: number;
+  id: string;
+  fingerprint: string;
+};
 
 @Injectable()
 export class TransactionsService {
   constructor(
-    private prisma: PrismaService,
+    private readonly repository: TransactionsRepository,
     private readonly wishlistService: WishlistService,
     private readonly encryptionService: FinancialDataEncryptionService,
   ) {}
 
   async createTransaction(dto: CreateTransactionDto, userId: string) {
-    const transaction = await this.prisma.transaction.create({
-      data: buildEncryptedTransactionData(
+    const transaction = await this.repository.create(
+      buildEncryptedTransactionData(
         {
           value: dto.value,
           date: dto.date,
@@ -35,8 +49,8 @@ export class TransactionsService {
           userId,
         },
         this.encryptionService,
-      ) as never,
-    });
+      ),
+    );
     await this.wishlistService.updateWishlistItemsSavings(userId);
 
     return decryptTransaction(
@@ -46,23 +60,14 @@ export class TransactionsService {
   }
   async getTransactions(query: TransactionsQueryDto, userId: string) {
     const { page, limit } = query;
-    const where = { userId };
-
-    const [transactions, total] = await Promise.all([
-      this.prisma.transaction.findMany({
-        where,
-        orderBy: { dateIndex: 'desc' } as never,
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.transaction.count({ where }),
-    ]);
+    const { items, total } = await this.repository.findPage(
+      userId,
+      page,
+      limit,
+    );
 
     return {
-      data: decryptTransactions(
-        transactions as unknown as EncryptedTransactionRecord[],
-        this.encryptionService,
-      ),
+      data: decryptTransactions(items, this.encryptionService),
       meta: {
         page,
         limit,
@@ -71,10 +76,102 @@ export class TransactionsService {
       },
     };
   }
+
+  async searchTransactions(query: TransactionSearchDto, userId: string) {
+    const { limit, category, search, type, startDate, endDate } = query;
+    const fingerprint = createHash('sha256')
+      .update(
+        JSON.stringify({ userId, category, search, type, startDate, endDate }),
+      )
+      .digest('hex');
+    const cursor = query.cursor
+      ? this.parseSearchCursor(query.cursor, fingerprint)
+      : undefined;
+    const data: DecryptedTransaction[] = [];
+    const searchText = search?.toLocaleLowerCase('pt-BR');
+    const startDateIndex = startDate
+      ? Number(startDate.replaceAll('-', ''))
+      : undefined;
+    const endDateIndex = endDate
+      ? Number(endDate.replaceAll('-', ''))
+      : undefined;
+    let position = cursor
+      ? { dateIndex: cursor.dateIndex, id: cursor.id }
+      : undefined;
+    let lastReturnedPosition: { dateIndex: number; id: string } | undefined;
+
+    while (true) {
+      const batch = await this.repository.findSearchBatch(
+        {
+          userId,
+          type,
+          startDateIndex,
+          endDateIndex,
+          position,
+        },
+        100,
+      );
+
+      if (batch.length === 0) break;
+      for (const encrypted of batch) {
+        const item = decryptTransaction(
+          encrypted as unknown as EncryptedTransactionRecord,
+          this.encryptionService,
+        );
+        if (category && item.category !== category) continue;
+        if (
+          searchText &&
+          !item.category.toLocaleLowerCase('pt-BR').includes(searchText) &&
+          !item.description?.toLocaleLowerCase('pt-BR').includes(searchText)
+        )
+          continue;
+
+        if (data.length === limit) {
+          const nextCursor = Buffer.from(
+            JSON.stringify({
+              v: 1,
+              dateIndex: lastReturnedPosition.dateIndex,
+              id: lastReturnedPosition.id,
+              fingerprint,
+            } satisfies SearchCursor),
+          ).toString('base64url');
+          return { data, nextCursor, hasMore: true };
+        }
+        data.push(item);
+        lastReturnedPosition = {
+          dateIndex: encrypted.dateIndex,
+          id: encrypted.id,
+        };
+      }
+      const lastCandidate = batch[batch.length - 1];
+      position = { dateIndex: lastCandidate.dateIndex, id: lastCandidate.id };
+      if (batch.length < 100) break;
+    }
+
+    return { data, nextCursor: null, hasMore: false };
+  }
+
+  private parseSearchCursor(value: string, fingerprint: string): SearchCursor {
+    try {
+      if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error();
+      const cursor = JSON.parse(
+        Buffer.from(value, 'base64url').toString('utf8'),
+      ) as SearchCursor;
+      if (
+        cursor.v !== 1 ||
+        cursor.fingerprint !== fingerprint ||
+        !Number.isInteger(cursor.dateIndex) ||
+        cursor.dateIndex < 10000101 ||
+        !/^[a-f\d]{24}$/i.test(cursor.id)
+      )
+        throw new Error();
+      return cursor;
+    } catch {
+      throw new BadRequestException('Cursor inválido para esta busca.');
+    }
+  }
   async getTransaction(id: string, userId: string) {
-    const transaction = await this.prisma.transaction.findFirst({
-      where: { id, userId },
-    });
+    const transaction = await this.repository.findOwned(id, userId);
     if (!transaction) {
       throw new NotFoundException(`Transação com ID "${id}" não encontrada.`);
     }
@@ -92,14 +189,15 @@ export class TransactionsService {
   ) {
     const currentTransaction = await this.getTransaction(id, userId);
 
-    const transaction = await this.prisma.transaction.update({
-      where: { id },
-      data: buildEncryptedTransactionUpdateData(
+    const transaction = await this.repository.updateOwned(
+      id,
+      userId,
+      buildEncryptedTransactionUpdateData(
         dto,
         currentTransaction,
         this.encryptionService,
-      ) as never,
-    });
+      ),
+    );
     await this.wishlistService.updateWishlistItemsSavings(userId);
 
     return decryptTransaction(
@@ -111,9 +209,7 @@ export class TransactionsService {
   async deleteTransaction(id: string, userId: string) {
     await this.getTransaction(id, userId);
 
-    await this.prisma.transaction.delete({
-      where: { id },
-    });
+    await this.repository.deleteOwned(id, userId);
     await this.wishlistService.updateWishlistItemsSavings(userId);
     return { message: 'Deletado com sucesso!' };
   }

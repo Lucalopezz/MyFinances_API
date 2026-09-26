@@ -27,4 +27,9 @@ export class DashboardController {
   ) {
     return this.dashboardService.getMonthlyComparison(query, userId);
   }
+
+  @Get('forecast')
+  getForecast(@User('sub') userId: string) {
+    return this.dashboardService.getForecast(userId);
+  }
 }
