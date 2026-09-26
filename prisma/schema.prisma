@@ -47,6 +47,7 @@ model TransactionExport {
   userId       String                    @db.ObjectId
   status       TransactionExportStatus
   progress     Int                       @default(0)
+  format       TransactionExportFormat   @default(PDF)
   filters      TransactionExportFilters?
   fileName     String?
   errorMessage String?
@@ -55,6 +56,24 @@ model TransactionExport {
 
   @@index([userId, id])
   @@index([userId, createdAt, id])
+}
+
+enum TransactionExportFormat {
+  PDF
+  CSV
+}
+
+model MonthlyBudget {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  monthKey    String
+  category    String
+  limitAmount Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, monthKey, category])
+  @@index([userId, monthKey])
 }
 
 enum TransactionExportStatus {
