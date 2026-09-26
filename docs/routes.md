@@ -187,6 +187,24 @@ Resposta:
 }
 ```
 
+### `GET /transactions/search`
+
+Busca global por transações do usuário, em ordem de `dateIndex` e `id` decrescente. Rota separada; `GET /transactions` permanece igual.
+
+Query params opcionais: `cursor` (retornado na página anterior), `limit` (padrão `20`, máximo `100`), `startDate` e `endDate` (`YYYY-MM-DD`, inclusivas), `type` (`INCOME` ou `EXPENSE`), `category` (uma das categorias de transação) e `search` (texto de 1 a 100 caracteres, busca sem diferenciar maiúsculas em descrição ou categoria). Datas devem formar um intervalo válido. Categoria e texto são filtrados no servidor após descriptografia em lotes. Um cursor só pode ser reutilizado com os mesmos filtros e usuário.
+
+Resposta:
+
+```json
+{
+  "data": [{ "id": "64f000000000000000000010", "value": 120.5, "date": "2026-07-06T00:00:00.000Z", "category": "FOOD", "description": "Mercado", "type": "EXPENSE", "createdAt": "2026-07-06T12:00:00.000Z", "updatedAt": "2026-07-06T12:00:00.000Z", "userId": "64f000000000000000000001" }],
+  "nextCursor": "eyJ2IjoxLC4uLn0",
+  "hasMore": true
+}
+```
+
+Na última página, `nextCursor` é `null` e `hasMore` é `false`. Não há total exato. A ordenação é estável para registros sem alterações; mudanças nas transações entre requisições podem alterar o conjunto percorrido.
+
 ### `GET /transactions/:id`
 
 Busca uma transação pelo id.
@@ -581,6 +599,38 @@ Resposta:
 
 ---
 
+## Budgets
+
+Todas as rotas de orçamento são protegidas e isoladas por usuário. `monthKey` e o parâmetro `month` seguem `YYYY-MM`; `category` deve ser uma categoria de despesa e `limitAmount` deve ser positivo.
+
+- `GET /budgets?month=2026-07`: lista os orçamentos cadastrados no mês, ordenados por categoria.
+- `POST /budgets`: cria orçamento com `{ "monthKey": "2026-07", "category": "FOOD", "limitAmount": 800 }`. A combinação usuário, mês e categoria é única; duplicação retorna `409`.
+- `PATCH /budgets/:id`: altera `monthKey`, `category` e/ou `limitAmount` com as mesmas validações; requer ao menos um campo.
+- `DELETE /budgets/:id`: remove e retorna o orçamento removido.
+- `GET /budgets/summary?month=2026-07`: retorna os orçamentos do mês com `spentAmount` e `remainingAmount` calculados na leitura. A resposta é `[]` quando não há orçamentos.
+
+Exemplo de item no resumo:
+
+```json
+{ "id": "64f000000000000000000050", "userId": "64f000000000000000000001", "monthKey": "2026-07", "category": "FOOD", "limitAmount": 800, "createdAt": "2026-07-01T00:00:00.000Z", "updatedAt": "2026-07-01T00:00:00.000Z", "spentAmount": 650, "remainingAmount": 150 }
+```
+
+O gasto inclui apenas transações `EXPENSE` do mês, identificadas por `dateIndex`; a categoria é avaliada após descriptografia. Atualizar uma transação altera o próximo resumo sem atualização persistida do orçamento.
+
+---
+
+## Exports
+
+Todas as rotas de exportação são protegidas. O armazenamento é local e efêmero: arquivos podem desaparecer após reinicialização ou deploy.
+
+- `POST /exports/transactions`: aceita filtros opcionais `startDate`, `endDate`, `categoryId`, `type` e `format` (`PDF` ou `CSV`; padrão `PDF`). Retorna `202` com `id`, `status`, `progress` e `format`.
+- `GET /exports/status`: retorna o job mais recente do usuário, incluindo `format`, progresso, datas e eventual mensagem de erro.
+- `GET /exports/:id/download`: baixa o arquivo concluído do usuário com `application/pdf` ou `text/csv; charset=utf-8`, conforme o formato persistido. Retorna `404` se o arquivo não existir mais.
+
+CSV usa UTF-8 com BOM, cabeçalho `id,date,type,category,description,value`, datas ISO e números sem formatação localizada. Aspas, vírgulas e quebras de linha nos campos são escapadas. Os mesmos filtros e a leitura em lotes do PDF se aplicam ao CSV.
+
+---
+
 ## Notifications
 
 Todas as rotas de notificações são protegidas.
@@ -637,6 +687,10 @@ Resposta:
   }
 ]
 ```
+
+### `PATCH /notifications/mark-all-as-read`
+
+Marca como lidas apenas as notificações ainda não lidas do usuário autenticado. Não recebe body. Retorna `{ "count": 3 }` com a quantidade alterada; chamadas repetidas retornam `{ "count": 0 }`.
 
 ### `PATCH /notifications/:id/mark-as-read`
 
@@ -719,6 +773,20 @@ Resposta:
     "start": "2026-07-01T00:00:00.000Z",
     "end": "2026-07-31T00:00:00.000Z"
   }
+}
+```
+
+### `GET /dashboard/forecast`
+
+Projeta o fechamento do mês UTC atual. `currentBalance` é o saldo real das transações do primeiro dia do mês até hoje; `pendingFixedExpenses` soma despesas fixas do usuário ainda não pagas com vencimento anterior ao primeiro dia do mês seguinte, inclusive vencidas de meses anteriores. Despesas pagas não são descontadas novamente. A rota não cria transações.
+
+```json
+{
+  "month": "2026-07",
+  "currentBalance": 2500,
+  "pendingFixedExpenses": 800,
+  "projectedBalance": 1700,
+  "expenses": [{ "id": "64f000000000000000000030", "name": "Aluguel", "amount": 800, "dueDate": "2026-07-10T00:00:00.000Z" }]
 }
 ```
 

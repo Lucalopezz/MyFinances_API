@@ -15,6 +15,8 @@ A aplicação usa **MongoDB** como banco de dados e **Prisma** como ORM. Todos o
 | `WishlistItem` | `WishlistItem` | Controla objetivos financeiros e progresso de economia.           |
 | `FixedExpense` | `FixedExpense` | Controla despesas recorrentes, vencimentos e status de pagamento. |
 | `Notification` | `Notification` | Armazena alertas, lembretes e informações exibidas ao usuário.    |
+| `MonthlyBudget` | `MonthlyBudget` | Guarda limites mensais por categoria de despesa. |
+| `TransactionExport` | `TransactionExport` | Guarda estado, filtros e formato de exportações assíncronas. |
 
 Os modelos de dados relacionados ao usuário possuem `userId`, garantindo que cada registro seja consultado e alterado apenas dentro do contexto do usuário autenticado.
 
@@ -103,6 +105,7 @@ Categorias de despesa:
 
 - `POST /transactions`: cria uma transação do usuário autenticado.
 - `GET /transactions`: lista as transações paginadas do usuário, ordenadas por `dateIndex` decrescente.
+- `GET /transactions/search`: busca global com filtros, cursor e ordenação por `dateIndex` e `id` decrescentes; a resposta contém `data`, `nextCursor` e `hasMore`.
 - `GET /transactions/:id`: busca uma transação específica do usuário.
 - `PATCH /transactions/:id`: atualiza uma transação existente.
 - `DELETE /transactions/:id`: remove uma transação.
@@ -133,6 +136,7 @@ Os endpoints recebem:
 
 - `GET /dashboard`: retorna o resumo financeiro do período.
 - `GET /dashboard/monthly-comparison`: retorna o comparativo mensal dentro do período informado.
+- `GET /dashboard/forecast`: retorna saldo real do mês atual, despesas fixas pendentes até o fim do mês e saldo projetado, sem persistir lançamentos previstos.
 
 ### Cálculos
 
@@ -272,6 +276,7 @@ NotificationType = ALERT | REMINDER | INFO;
 - `POST /notifications`: cria uma notificação para o usuário autenticado.
 - `GET /notifications`: lista notificações do usuário, ordenadas por `createdAt` decrescente.
 - `PATCH /notifications/:id/mark-as-read`: marca uma notificação como lida.
+- `PATCH /notifications/mark-all-as-read`: marca como lidas apenas as notificações não lidas do usuário e retorna a quantidade alterada.
 - `DELETE /notifications/:id`: remove uma notificação.
 
 ### Regras de negócio
@@ -279,6 +284,16 @@ NotificationType = ALERT | REMINDER | INFO;
 - Notificações são sempre vinculadas a um usuário.
 - O tipo `REMINDER` é usado automaticamente para avisos de despesas fixas próximas do vencimento.
 - A marcação como lida altera apenas o campo `read`.
+
+---
+
+## MonthlyBudget
+
+Orçamento independente por usuário, mês (`YYYY-MM`) e categoria de despesa. Campos: `id`, `userId`, `monthKey`, `category`, `limitAmount`, `createdAt` e `updatedAt`. Há índice único em `(userId, monthKey, category)` e índice de consulta em `(userId, monthKey)`. O limite deve ser positivo. O gasto não é armazenado: `GET /budgets/summary` percorre transações de despesa do mês em lotes, descriptografa a categoria no servidor e retorna `spentAmount` e `remainingAmount` por orçamento.
+
+## TransactionExport
+
+Exportação assíncrona do usuário com `status` (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`), `progress`, filtros opcionais, `format` (`PDF` ou `CSV`, padrão `PDF`), `fileName`, erro e datas. O formato fica no registro para controlar a extensão e o content-type do download. Arquivos são locais e efêmeros.
 
 ---
 
@@ -291,7 +306,9 @@ User
 ├── Transaction[]
 ├── WishlistItem[]
 ├── FixedExpense[]
-└── Notification[]
+├── Notification[]
+├── MonthlyBudget[]
+└── TransactionExport[]
 ```
 
 ### Fluxos importantes
