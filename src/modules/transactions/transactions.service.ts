@@ -1,3 +1,4 @@
+import { CategoriesService } from '../categories/categories.service';
 import {
   BadRequestException,
   Injectable,
@@ -32,12 +33,14 @@ type SearchCursor = {
 @Injectable()
 export class TransactionsService {
   constructor(
+    private readonly categories: CategoriesService,
     private readonly repository: TransactionsRepository,
     private readonly wishlistService: WishlistService,
     private readonly encryptionService: FinancialDataEncryptionService,
   ) {}
 
   async createTransaction(dto: CreateTransactionDto, userId: string) {
+    await this.categories.resolveReference(dto.category, userId, dto.type);
     const transaction = await this.repository.create(
       buildEncryptedTransactionData(
         {
@@ -79,6 +82,9 @@ export class TransactionsService {
 
   async searchTransactions(query: TransactionSearchDto, userId: string) {
     const { limit, category, search, type, startDate, endDate } = query;
+    if (category)
+      await this.categories.resolveReference(category, userId, type, true);
+    const catalog = search ? await this.categories.list(userId) : [];
     const fingerprint = createHash('sha256')
       .update(
         JSON.stringify({ userId, category, search, type, startDate, endDate }),
@@ -122,6 +128,10 @@ export class TransactionsService {
         if (
           searchText &&
           !item.category.toLocaleLowerCase('pt-BR').includes(searchText) &&
+          !catalog
+            .find((entry) => entry.id === item.category)
+            ?.name.toLocaleLowerCase('pt-BR')
+            .includes(searchText) &&
           !item.description?.toLocaleLowerCase('pt-BR').includes(searchText)
         )
           continue;
@@ -189,6 +199,13 @@ export class TransactionsService {
   ) {
     const currentTransaction = await this.getTransaction(id, userId);
 
+    await this.categories.resolveReference(
+      dto.category ?? currentTransaction.category,
+      userId,
+      dto.type,
+      (!dto.category || dto.category === currentTransaction.category) &&
+        dto.type === currentTransaction.type,
+    );
     const transaction = await this.repository.updateOwned(
       id,
       userId,

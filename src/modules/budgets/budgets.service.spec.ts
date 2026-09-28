@@ -45,6 +45,10 @@ describe('BudgetsService.summary', () => {
       transaction: { findMany },
     };
     const service = new BudgetsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new MonthlyBudgetsRepository(prisma as never),
       new TransactionsRepository(prisma as never),
       { decrypt: (value: string) => JSON.parse(value) } as never,
@@ -75,6 +79,10 @@ describe('BudgetsService writes', () => {
     const update = jest.fn(async () => ({ ...budget, limitAmount: 200 }));
     const remove = jest.fn(async () => budget);
     const service = new BudgetsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new MonthlyBudgetsRepository({
         monthlyBudget: {
           create,

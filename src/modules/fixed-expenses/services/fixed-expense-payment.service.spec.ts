@@ -31,6 +31,10 @@ describe('FixedExpensePaymentService', () => {
       clearPaymentFields: jest.fn(async () => undefined),
     };
     const service = new FixedExpensePaymentService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new FixedExpensePaymentsRepository(prisma as never, rawFields as never),
       { encrypt: (value: unknown) => JSON.stringify(value) } as never,
     );

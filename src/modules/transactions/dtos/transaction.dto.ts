@@ -1,7 +1,4 @@
-import {
-  EXPENSE_CATEGORIES,
-  INCOME_CATEGORIES,
-} from 'src/common/constants/categories.constants';
+import { CategoryReferenceSchema } from '../../categories/category.dto';
 import { z } from 'zod';
 
 export const TransactionsQuerySchema = z.object({
@@ -28,12 +25,7 @@ export const TransactionSearchSchema = z
     startDate: calendarDate.optional(),
     endDate: calendarDate.optional(),
     type: z.enum(['INCOME', 'EXPENSE']).optional(),
-    category: z
-      .enum([...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES] as [
-        string,
-        ...string[],
-      ])
-      .optional(),
+    category: CategoryReferenceSchema.optional(),
     search: z.string().trim().min(1).max(100).optional(),
   })
   .refine(
@@ -52,14 +44,14 @@ const IncomeTransactionSchema = z.object({
   type: z.literal('INCOME'),
   value: z.number(),
   date: z.string().transform((v) => new Date(v)),
-  category: z.enum(INCOME_CATEGORIES),
+  category: CategoryReferenceSchema,
   description: z.string().optional(),
 });
 const ExpenseTransactionSchema = z.object({
   type: z.literal('EXPENSE'),
   value: z.number(),
   date: z.string().transform((v) => new Date(v)),
-  category: z.enum(EXPENSE_CATEGORIES),
+  category: CategoryReferenceSchema,
   description: z.string().optional(),
 });
 

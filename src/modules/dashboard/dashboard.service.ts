@@ -3,7 +3,6 @@ import { DashboardQueryDto } from './dtos/dashboard.dto';
 import { MonthlyComparisonDto } from './dtos/monthly-comparison.dto';
 import { RecurrenceType, TransactionType } from '@prisma/client';
 import { addMonths, addYears } from 'date-fns';
-import { ExpenseCategory } from 'src/common/constants/categories.constants';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import {
   buildDateIndex,
@@ -121,14 +120,14 @@ export class DashboardService {
 
         if (!highest || total > highest.total) {
           return {
-            category: category as ExpenseCategory,
+            category: category as string,
             total,
           };
         }
 
         return highest;
       },
-      null as { category: ExpenseCategory; total: number } | null,
+      null as { category: string; total: number } | null,
     );
 
     return {

@@ -1,3 +1,4 @@
+import { CategoriesModule } from '../categories/categories.module';
 import { forwardRef, Module } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { TransactionsController } from './transactions.controller';
@@ -15,6 +16,11 @@ import { TransactionsRepository } from './repositories/transactions.repository';
     FinancialDataEncryptionService,
   ],
   exports: [TransactionsRepository],
-  imports: [forwardRef(() => AppModule), WishlistModule, AuthModule],
+  imports: [
+    CategoriesModule,
+    forwardRef(() => AppModule),
+    WishlistModule,
+    AuthModule,
+  ],
 })
 export class TransactionsModule {}

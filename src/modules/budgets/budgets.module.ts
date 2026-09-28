@@ -1,3 +1,4 @@
+import { CategoriesModule } from '../categories/categories.module';
 import { forwardRef, Module } from '@nestjs/common';
 import { AppModule } from '../app/app.module';
 import { AuthModule } from '../auth/auth.module';
@@ -8,7 +9,12 @@ import { MonthlyBudgetsRepository } from './repositories/monthly-budgets.reposit
 import { TransactionsModule } from '../transactions/transactions.module';
 
 @Module({
-  imports: [forwardRef(() => AppModule), AuthModule, TransactionsModule],
+  imports: [
+    CategoriesModule,
+    forwardRef(() => AppModule),
+    AuthModule,
+    TransactionsModule,
+  ],
   controllers: [BudgetsController],
   providers: [
     BudgetsService,

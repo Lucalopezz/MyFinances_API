@@ -1,3 +1,4 @@
+import { CategoriesService } from '../../categories/categories.service';
 import { Injectable } from '@nestjs/common';
 import { FixedExpense, TransactionType } from '@prisma/client';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
@@ -7,6 +8,7 @@ import { FixedExpensePaymentsRepository } from '../repositories/fixed-expense-pa
 @Injectable()
 export class FixedExpensePaymentService {
   constructor(
+    private readonly categories: CategoriesService,
     private readonly repository: FixedExpensePaymentsRepository,
     private readonly encryptionService: FinancialDataEncryptionService,
   ) {}
@@ -16,6 +18,11 @@ export class FixedExpensePaymentService {
       return expenseData;
     }
 
+    await this.categories.resolveReference(
+      expenseData.category,
+      userId,
+      'EXPENSE',
+    );
     const paidAt = new Date();
 
     const encryptedTransactionData = buildEncryptedTransactionData(

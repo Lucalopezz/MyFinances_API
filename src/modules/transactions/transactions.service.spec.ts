@@ -28,6 +28,10 @@ describe('TransactionsService.searchTransactions', () => {
       return records.filter((item) => !after || item.id < after).slice(0, take);
     });
     const service = new TransactionsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new TransactionsRepository({ transaction: { findMany } } as never),
       {} as never,
       { decrypt: (value: string) => JSON.parse(value) } as never,
@@ -62,6 +66,10 @@ describe('TransactionsService legacy contract', () => {
     const findMany = jest.fn(async () => [records[0]]);
     const count = jest.fn(async () => 105);
     const service = new TransactionsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new TransactionsRepository({ transaction: { findMany, count } } as never),
       {} as never,
       { decrypt: (value: string) => JSON.parse(value) } as never,
@@ -101,6 +109,10 @@ describe('TransactionsService legacy contract', () => {
       updateWishlistItemsSavings: jest.fn(async () => undefined),
     };
     const service = new TransactionsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new TransactionsRepository({ transaction: { create } } as never),
       wishlist as never,
       {
@@ -153,6 +165,10 @@ describe('TransactionsService legacy contract', () => {
       updateWishlistItemsSavings: jest.fn(async () => undefined),
     };
     const service = new TransactionsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new TransactionsRepository({
         transaction: { findFirst, update, delete: remove },
       } as never),
