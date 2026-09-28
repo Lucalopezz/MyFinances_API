@@ -1,3 +1,4 @@
+import { CategoriesModule } from '../categories/categories.module';
 import { Module } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DashboardModule } from '../dashboard/dashboard.module';
@@ -14,6 +15,7 @@ import { BudgetsModule } from '../budgets/budgets.module';
 
 @Module({
   imports: [
+    CategoriesModule,
     ConfigModule.forRoot({ isGlobal: true }),
     BullModule.forRootAsync({
       inject: [ConfigService],

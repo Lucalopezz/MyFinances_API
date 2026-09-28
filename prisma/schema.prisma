@@ -130,3 +130,32 @@ enum RecurrenceType {
   MONTHLY
   YEARLY
 }
+
+// Standard categories retain their legacy codes; custom references use Category.id.
+model Category {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String          @db.ObjectId
+  type          TransactionType
+  encryptedName String
+  color         String
+  icon          String
+  archived      Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([userId, type])
+}
+
+model CategoryRule {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String          @db.ObjectId
+  type              TransactionType
+  category          String
+  encryptedContains String
+  priority          Int             @default(0)
+  enabled           Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([userId, type, enabled, priority, id])
+}
