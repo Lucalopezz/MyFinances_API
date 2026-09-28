@@ -409,7 +409,7 @@ Resposta:
 
 Todas as rotas de despesas fixas são protegidas.
 
-Categorias aceitas: `UTILITIES`, `SUBSCRIPTIONS`, `HOUSING`.
+Categorias aceitas: todas as categorias ativas de despesa do catálogo (`GET /categories`), incluindo personalizadas. Os códigos anteriores continuam válidos.
 
 Recorrências aceitas: `MONTHLY`, `YEARLY`.
 
@@ -829,3 +829,33 @@ Resposta:
   }
 }
 ```
+
+## Categorias personalizadas e regras (entrega A)
+
+Todas as rotas abaixo exigem Bearer JWT e usam exclusivamente o usuário autenticado.
+
+| Método e rota | Entrada / resposta |
+| --- | --- |
+| `GET /categories` | Catálogo padrão + categorias do usuário, incluindo arquivadas. Array de `{ id, name, type, color, icon, archived, isDefault }`. |
+| `POST /categories` | `{ name, type, color, icon }`; retorna a categoria criada. |
+| `PATCH /categories/:id` | Campos opcionais `name`, `color`, `icon`, `archived`. Apenas categorias personalizadas do usuário. Tipo imutável; sem exclusão física. |
+| `GET /category-rules` | Array de `{ id, type, contains, category, priority, enabled }`, ordenado por `priority` crescente e `id` crescente. |
+| `POST /category-rules` | `{ type, contains, category, priority, enabled }`; retorna a regra criada. |
+| `PATCH /category-rules/:id` | Atualização parcial dos mesmos campos, limitada ao proprietário. |
+| `DELETE /category-rules/:id` | Remove apenas a regra do usuário. |
+| `POST /category-rules/test` | Campos completos da regra + `description`; retorna `{ matches, category }`, sem salvar. O teste verifica o trecho independentemente de `enabled`; não compara com outras regras. |
+| `POST /categories/resolve` | `{ type, description, category? }`; retorna `{ category, ruleId, source }`. `source` é `manual`, `rule` ou `null`. Sem correspondência, os três valores são `null`. Não cria transação. |
+
+`name`: 1–60 caracteres após trim. `color`: hexadecimal `#RRGGBB`. `type`: `INCOME` ou `EXPENSE`. `icon`: `Briefcase`, `Car`, `CircleDollarSign`, `CircleHelp`, `CreditCard`, `Dog`, `Film`, `Gift`, `GraduationCap`, `HandCoins`, `Heart`, `Home`, `Landmark`, `Plane`, `Receipt`, `Scissors`, `Shield`, `ShoppingBag`, `TrendingUp`, `Utensils` ou `Tag`.
+
+`contains`: 1–100 caracteres, não vazio após normalização. `priority`: inteiro de 0 a 9999 (menor primeiro). `enabled`: booleano. `description` nos endpoints de teste/resolução: até 2000 caracteres. Comparação literal por trecho, com normalização NFD, remoção de marcas de acento, trim e minúsculas em português. Não usa expressões regulares fornecidas pelo usuário.
+
+Os códigos padrão (`FOOD`, `SALARY` etc.) permanecem válidos. Categorias personalizadas usam ObjectId hexadecimal de 24 caracteres como referência estável no campo `category`. Os DTOs validam o formato; os serviços validam existência, proprietário, tipo e estado. Categorias padrão são imutáveis. Renomear uma categoria mantém todas as referências; rótulos do histórico refletem o nome atual, sem recategorizar transações.
+
+Arquivamento impede novos lançamentos, novas associações de orçamento/despesa fixa e novos pagamentos com essa categoria. Edições de transações e despesas fixas podem manter a mesma categoria arquivada; em orçamento, também é necessário manter o mês. Para pagar uma despesa fixa arquivada, selecione uma categoria ativa ou restaure a anterior. Busca, relatórios e leituras preservam categorias arquivadas. Regras com destinos arquivados são ignoradas; é possível desativá-las, mas ativação requer destino ativo.
+
+Uma categoria explícita em `/categories/resolve` prevalece sobre todas as regras e também é validada. `POST /transactions` continua exigindo categoria explícita: o formulário oferece a sugestão com “Usar sugestão”. Nenhuma regra altera histórico ou edições automaticamente. O serviço de resolução pode ser reutilizado pela prévia da importação da entrega B, ainda não implementada.
+
+Transações, busca por código/nome, despesas fixas, orçamentos, dashboard e comparativos aceitam as referências personalizadas. Exportações filtram pelo mesmo identificador em `categoryId`; PDF mostra o nome atual, CSV preserva a coluna `category` com código/ID estável e o cabeçalho existente.
+
+Erros: `400` para categoria inexistente, de outro usuário, incompatível ou arquivada em novo uso; `404` para edição de categoria/regra não pertencente ao usuário; `401` sem autenticação. Respostas nunca incluem campos criptografados.

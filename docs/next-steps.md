@@ -2,7 +2,7 @@
 
 Atualizado em 28/09/2026.
 
-Status: planejamento. As funcionalidades abaixo ainda precisam ser implementadas e validadas. Este documento define a próxima rodada e substitui a ordem de prioridades dos planos anteriores; não altera os contratos atuais da API.
+Status: entrega A implementada e validada localmente; entregas B–F permanecem planejadas. A publicação e a sincronização do schema no ambiente de destino ainda não foram executadas. Este documento define a próxima rodada e substitui a ordem de prioridades dos planos anteriores; não altera os contratos atuais da API.
 
 Este plano é mantido em `docs/next-steps.md` nos repositórios da API e do frontend. Atualizações de escopo e critérios de aceite devem ser replicadas nas duas cópias. O [plano anterior](implementation-plan.md) e o [planejamento V2](v2.md) permanecem como referências históricas.
 
@@ -14,7 +14,7 @@ Reduzir o trabalho de registrar movimentações, antecipar compromissos financei
 
 O código já contém busca global de transações, duplicação pelo formulário, orçamento mensal por categoria, projeção de despesas fixas pendentes, exportação PDF/CSV e marcação de notificações em lote. Isso indica implementação no repositório, não validação do ambiente de produção.
 
-As categorias atuais são listas fixas. A projeção atual cobre despesas fixas pendentes no mês. A wishlist aplica a mesma economia líquida anual a todos os itens; esse valor não representa aportes individuais e não deve ser migrado como dinheiro reservado em cada meta.
+A entrega A adiciona catálogo de categorias personalizadas compatível com os códigos das listas fixas. A projeção atual cobre despesas fixas pendentes no mês. A wishlist aplica a mesma economia líquida anual a todos os itens; esse valor não representa aportes individuais e não deve ser migrado como dinheiro reservado em cada meta.
 
 ## Ordem proposta de entrega
 
@@ -32,6 +32,8 @@ A numeração original foi preservada na coluna de origem. A sequência abaixo c
 Cada entrega inclui API, interface e documentação. Contas bancárias, carteiras e gestão completa de cartões não são pré-requisitos desta rodada.
 
 ## A — Categorias personalizadas e regras automáticas
+
+Implementação: catálogo, gestão em configurações, regras com teste, sugestão manual, validações nos fluxos existentes e documentação. A prévia de importação consumirá o resolvedor na entrega B. Critérios abaixo verificados em testes locais; persistência em MongoDB real e homologação/deploy continuam pendentes. Veja [evidências e limites da validação](delivery-a-validation.md).
 
 ### Comportamento esperado
 
@@ -58,11 +60,11 @@ Cada entrega inclui API, interface e documentação. Contas bancárias, carteira
 
 ### Critérios de aceite
 
-- [ ] Categorias atuais continuam aparecendo corretamente em todos os fluxos.
-- [ ] Categoria personalizada funciona em lançamento, busca, orçamento, comparativo e exportação.
-- [ ] Arquivar uma categoria não apaga nem invalida o histórico.
-- [ ] Prioridade das regras é determinística e a correção manual prevalece.
-- [ ] Categorias e regras de outro usuário não podem ser consultadas ou utilizadas.
+- [x] Categorias atuais continuam aparecendo corretamente em todos os fluxos.
+- [x] Categoria personalizada funciona em lançamento, busca, orçamento, comparativo e exportação.
+- [x] Arquivar uma categoria não apaga nem invalida o histórico.
+- [x] Prioridade das regras é determinística e a correção manual prevalece.
+- [x] Categorias e regras de outro usuário não podem ser consultadas ou utilizadas.
 
 ## B — Importação de extratos CSV/OFX
 

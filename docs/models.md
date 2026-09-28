@@ -326,3 +326,20 @@ User
 - O dashboard depende da consistência das datas das transações.
 - A wishlist usa `createdAt` das transações para cálculo anual, enquanto o dashboard usa `date`.
 - A v2 pode evoluir o modelo de despesas fixas para criar transações automaticamente quando uma despesa for marcada como paga.
+
+## Category e CategoryRule — entrega A
+
+`Category` guarda `id`, `userId`, `type`, `encryptedName`, `color`, `icon`, `archived`, `createdAt` e `updatedAt`, com índice `[userId, type]`. Apenas categorias personalizadas são persistidas. O catálogo padrão é estático na API e mantém os códigos legados. Tipo é imutável e arquivamento é reversível.
+
+`CategoryRule` guarda `id`, `userId`, `type`, `category`, `encryptedContains`, `priority`, `enabled`, `createdAt` e `updatedAt`, com índice `[userId, type, enabled, priority, id]`. `category` aceita código padrão ou ID personalizado. A ordenação é `priority ASC, id ASC`; regras desativadas ou com destino arquivado são ignoradas.
+
+Nomes de categorias e trechos de regras usam o mesmo AES-256-GCM de `FinancialDataEncryptionService`. A chave `FINANCIAL_DATA_ENCRYPTION_KEY` deve ser preservada em backups e deploys. Cor, ícone, tipo, prioridade, vínculos e estado são metadados operacionais. A descrição de exemplo é transitória e não é persistida. O campo de categoria das transações continua criptografado; nenhum registro legado é reescrito.
+
+### Atualização do banco e publicação
+
+1. Fazer backup do MongoDB e preservar a chave de criptografia; verificar a restauração no processo operacional de deploy.
+2. Gerar o client com `npx prisma generate` e sincronizar as novas coleções/índices com `npx prisma db push` no ambiente de destino. MongoDB não usa Prisma Migrate. Conferir o diff e não aceitar remoções de dados.
+3. Publicar a API e verificar catálogo, isolamento e uso de categoria personalizada; publicar o frontend em seguida.
+4. Não é necessário backfill de transações. Em rollback, preservar as duas coleções e manter uma API capaz de ler IDs personalizados já usados; clientes antigos não oferecem essas categorias nos seletores.
+
+A implementação local não executa `db push` nem modifica dados de produção automaticamente.
