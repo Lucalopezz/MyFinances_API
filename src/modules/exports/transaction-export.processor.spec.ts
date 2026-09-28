@@ -7,9 +7,22 @@ import { TransactionPdfService } from './transaction-pdf.service';
 import { TRANSACTION_EXPORT_JOB } from './exports.constants';
 
 describe('TransactionExportProcessor', () => {
-  it.each(['CSV', 'PDF'] as const)(
-    'processes %s with the existing user-scoped batch flow',
-    async (format) => {
+  it.each([
+    { format: 'CSV', category: 'FOOD', label: 'Alimentação' },
+    { format: 'PDF', category: 'FOOD', label: 'Alimentação' },
+    {
+      format: 'CSV',
+      category: '64f000000000000000000070',
+      label: 'Café especial',
+    },
+    {
+      format: 'PDF',
+      category: '64f000000000000000000070',
+      label: 'Café especial',
+    },
+  ])(
+    'processes $format with category $category and user-scoped batches',
+    async ({ format, category, label }) => {
       const directory = await mkdtemp(
         join(tmpdir(), 'myfinances-export-test-'),
       );
@@ -26,7 +39,7 @@ describe('TransactionExportProcessor', () => {
           encryptedData: {
             value: JSON.stringify(12.5),
             date: JSON.stringify('2026-07-06T00:00:00.000Z'),
-            category: JSON.stringify('FOOD'),
+            category: JSON.stringify(category),
             description: JSON.stringify('Café, mercado'),
           },
         };
@@ -39,7 +52,7 @@ describe('TransactionExportProcessor', () => {
             id: exportId,
             userId,
             format,
-            filters: null,
+            filters: { categoryId: category },
           })),
           markProcessing: jest.fn(async () => undefined),
           updateProgress: jest.fn(async () => undefined),
@@ -50,7 +63,13 @@ describe('TransactionExportProcessor', () => {
           countExportCandidates: jest.fn(async () => 1),
           findExportBatch,
         };
+        const pdfService = new TransactionPdfService();
+        const addPdfTransaction = jest.spyOn(pdfService, 'addTransaction');
         const processor = new TransactionExportProcessor(
+          {
+            resolveReference: jest.fn(async () => ({})),
+            list: jest.fn(async () => [{ id: category, name: label }]),
+          } as never,
           repository as never,
           transactionsRepository as never,
           {
@@ -58,7 +77,7 @@ describe('TransactionExportProcessor', () => {
               key === 'EXPORT_STORAGE_PATH' ? directory : fallback,
           } as never,
           { decrypt: (value: string) => JSON.parse(value) } as never,
-          new TransactionPdfService(),
+          pdfService,
           new TransactionCsvService(),
         );
         const job = {
@@ -72,8 +91,13 @@ describe('TransactionExportProcessor', () => {
         const content = await readFile(join(directory, fileName));
         if (format === 'CSV') {
           expect(content.toString('utf8')).toContain('"Café, mercado",12.5');
+          expect(content.toString('utf8')).toContain(`"${category}"`);
         } else {
           expect(content.subarray(0, 4).toString()).toBe('%PDF');
+          expect(addPdfTransaction).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ category: label }),
+          );
         }
         expect(repository.findOwned).toHaveBeenCalledWith(exportId, userId);
         expect(

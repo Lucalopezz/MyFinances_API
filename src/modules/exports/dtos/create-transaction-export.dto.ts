@@ -1,10 +1,11 @@
+import { CategoryReferenceSchema } from '../../categories/category.dto';
 import { z } from 'zod';
 
 export const CreateTransactionExportSchema = z
   .object({
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional(),
-    categoryId: z.string().trim().min(1).optional(),
+    categoryId: CategoryReferenceSchema.optional(),
     type: z.enum(['INCOME', 'EXPENSE']).optional(),
     format: z.enum(['PDF', 'CSV']).default('PDF'),
   })
