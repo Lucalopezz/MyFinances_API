@@ -19,6 +19,8 @@ Uma aplicação full-stack para gerenciamento financeiro pessoal, permitindo que
 
 ## Documentação
 
+- [Próximos passos — plano ativo](docs/next-steps.md)
+- [Plano de implementação — rodada anterior](docs/implementation-plan.md)
 - [Documentação dos Models](docs/models.md)
 - [Organização da API](docs/architecture.md)
 - [Criptografia de Transações](docs/transaction-encryption.md)
