@@ -6,6 +6,8 @@ Uma aplicação full-stack para gerenciamento financeiro pessoal, permitindo que
 
 ## Funcionalidades
 
+- **Importação CSV/OFX:** prévia, categorias automáticas, revisão de duplicatas e confirmação idempotente, com modal no frontend. [Contrato e formatos](docs/transaction-imports.md).
+
 - **Transações:** Criação, atualização, listagem e remoção de transações (entradas/saídas).
 - **Dashboard:** Resumo financeiro com indicadores, gráficos interativos e comparativo mensal.
 - **Wishlist:** Gestão de itens desejados, com acompanhamento do progresso de economia.

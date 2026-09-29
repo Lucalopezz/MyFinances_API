@@ -17,6 +17,8 @@ A aplicação usa **MongoDB** como banco de dados e **Prisma** como ORM. Todos o
 | `Notification` | `Notification` | Armazena alertas, lembretes e informações exibidas ao usuário.    |
 | `MonthlyBudget` | `MonthlyBudget` | Guarda limites mensais por categoria de despesa. |
 | `TransactionExport` | `TransactionExport` | Guarda estado, filtros e formato de exportações assíncronas. |
+| `TransactionImport` | `TransactionImport` | Guarda prévia criptografada de extrato com expiração. |
+| `TransactionImportResult` | `TransactionImportResult` | Guarda recibos por linha para confirmação idempotente. |
 
 Os modelos de dados relacionados ao usuário possuem `userId`, garantindo que cada registro seja consultado e alterado apenas dentro do contexto do usuário autenticado.
 
@@ -61,6 +63,7 @@ Representa uma movimentação financeira. Pode ser uma receita (`INCOME`) ou uma
 | --------------- | --------------------- | ----------- | ------------------------------------------------------------------------ |
 | `id`            | `String @db.ObjectId` | Sim         | Identificador único da transação.                                        |
 | `encryptedData` | `Json`                | Sim         | Payload criptografado com `value`, `date`, `category` e `description`.   |
+| `encryptedImportIdentity` | `String?` | Não | Origem e identificador externo criptografados para correspondências de importação. |
 | `dateIndex`     | `Int`                 | Sim         | Índice operacional `YYYYMMDD` usado para filtro e ordenação por período. |
 | `type`          | `TransactionType`     | Sim         | Define se é `INCOME` ou `EXPENSE`.                                       |
 | `createdAt`     | `DateTime`            | Sim         | Data de criação do registro.                                             |
@@ -343,3 +346,20 @@ Nomes de categorias e trechos de regras usam o mesmo AES-256-GCM de `FinancialDa
 4. Não é necessário backfill de transações. Em rollback, preservar as duas coleções e manter uma API capaz de ler IDs personalizados já usados; clientes antigos não oferecem essas categorias nos seletores.
 
 A implementação local não executa `db push` nem modifica dados de produção automaticamente.
+
+## TransactionImport e TransactionImportResult — entrega B (backend)
+
+`TransactionImport` contém `id`, `userId`, `encryptedData` opcional, `expiresAt`, `rowCount`, `revision`, `createdAt` e `updatedAt`. Índices: `[userId, id]` e `[expiresAt]`. O payload é um único envelope AES-256-GCM com origem e registros normalizados; o arquivo bruto nunca é persistido. A prévia dura 24 horas. Descarte manual ou limpeza de expirados tornam `encryptedData` nulo; o cabeçalho operacional permanece. `revision` é incrementado na transação de cada resultado para serializar gravações com cancelamento e expiração.
+
+`TransactionImportResult` contém `id`, `batchId`, `userId`, `rowId`, `status`, `reason`, `transactionId` e `updatedAt`. Índice **único** `[userId, batchId, rowId]`, além de `[userId, batchId]`. Estados persistidos: `IMPORTED`, `IGNORED`, `REJECTED`. `PENDING` é resposta derivada para linhas sem resultado ou com falha transitória. Motivos são códigos fixos, sem descrição/valor/origem em texto aberto. Cada gravação de transação e recibo usa uma única transação MongoDB; recibos importados são definitivos e sobrevivem à exclusão da transação, impedindo recriação pelo mesmo lote/linha.
+
+`Transaction.encryptedImportIdentity` é opcional, não retornado pelo mapper público. Contém `{ source, externalId }`, criptografado com a chave financeira, permitindo buscar correspondências após a prévia expirar. Transações antigas e manuais não precisam desse campo. Edição genérica preserva-o.
+
+### Atualização e recuperação da entrega B
+
+1. Preservar backup e chave financeira. Revisar `schema.prisma`; mudanças são aditivas, sem conversão de registros existentes.
+2. Executar `npx prisma generate` e, no destino correto, `npx prisma db push`. MongoDB precisa de replica set (Atlas é compatível). Confirmar o índice único dos recibos antes de atender confirmações.
+3. Publicar a API e verificar prévia sem gravação, confirmação repetida, consulta de resultado e limpeza de expirados; publicar frontend depois da API.
+4. Em rollback, desativar rotas de importação e preservar as duas coleções, recibos, transações e chave. Não apagar recibos para repetir lotes. Clientes anteriores continuam lendo transações pelo mapper existente. Se a versão anterior da API não executa limpeza, o descarte de payloads expirados precisa ser mantido operacionalmente.
+
+Nesta entrega, `db push` é executado pelos testes apenas em banco local descartável, com nome aleatório. Nenhum schema de desenvolvimento existente ou produção é sincronizado automaticamente. Detalhes de retenção, limitações e retomada em [Importação de extratos](transaction-imports.md).

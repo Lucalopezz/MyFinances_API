@@ -133,7 +133,7 @@ export class CategoriesService {
     );
     return { matches, category: matches ? category.id : null };
   }
-  // Shared by manual suggestions and the future import preview. Never writes history.
+  // Shared by manual suggestions and import preview. Never writes history.
   async resolve(dto: ResolveCategoryDto, userId: string) {
     if (dto.category) {
       await this.resolveReference(dto.category, userId, dto.type);
@@ -143,35 +143,60 @@ export class CategoriesService {
         source: 'manual' as const,
       };
     }
+    return (await this.createResolver(userId))(dto);
+  }
+  // Load/decrypt once per import request rather than querying for every row.
+  async createResolver(userId: string) {
     const catalog = await this.list(userId);
-    const rules = await this.repository.rules(userId, dto.type);
-    const description = normalizeDescription(dto.description);
-    for (const rule of rules) {
-      if (
-        !rule.enabled ||
-        !catalog.some(
-          (item) =>
-            item.id === rule.category &&
-            item.type === dto.type &&
-            !item.archived,
-        )
-      )
-        continue;
-      if (
-        description.includes(
-          normalizeDescription(
-            this.encryption.decrypt<string>(rule.encryptedContains),
-          ),
-        )
-      ) {
+    const rules = (await this.repository.rules(userId)).map((rule) => ({
+      ...rule,
+      contains: normalizeDescription(
+        this.encryption.decrypt<string>(rule.encryptedContains),
+      ),
+    }));
+    return (dto: ResolveCategoryDto) => {
+      if (dto.category) {
+        if (
+          !catalog.some(
+            (item) =>
+              item.id === dto.category &&
+              item.type === dto.type &&
+              !item.archived,
+          )
+        ) {
+          throw new BadRequestException(
+            'Categoria inválida, arquivada ou incompatível.',
+          );
+        }
         return {
-          category: rule.category,
-          ruleId: rule.id,
-          source: 'rule' as const,
+          category: dto.category,
+          ruleId: null,
+          source: 'manual' as const,
         };
       }
-    }
-    return { category: null, ruleId: null, source: null };
+      const description = normalizeDescription(dto.description);
+      for (const rule of rules) {
+        if (
+          !rule.enabled ||
+          rule.type !== dto.type ||
+          !catalog.some(
+            (item) =>
+              item.id === rule.category &&
+              item.type === dto.type &&
+              !item.archived,
+          )
+        )
+          continue;
+        if (description.includes(rule.contains)) {
+          return {
+            category: rule.category,
+            ruleId: rule.id,
+            source: 'rule' as const,
+          };
+        }
+      }
+      return { category: null, ruleId: null, source: null };
+    };
   }
   private categoryView(item: Category): CategoryView {
     return {

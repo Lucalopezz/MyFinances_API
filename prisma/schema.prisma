@@ -25,9 +25,40 @@ model Transaction {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   userId        String          @db.ObjectId
+  encryptedImportIdentity String?
 
   @@index([userId, id])
   @@index([userId, dateIndex, id])
+}
+
+// Raw files are never stored. The encrypted preview is cleared after expiresAt.
+model TransactionImport {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  encryptedData String?
+  expiresAt     DateTime
+  revision      Int      @default(0)
+  rowCount      Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, id])
+  @@index([expiresAt])
+}
+
+// Durable receipts remain after preview expiry and transaction deletion.
+model TransactionImportResult {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  batchId       String   @db.ObjectId
+  userId        String   @db.ObjectId
+  rowId         Int
+  status        String
+  reason        String?
+  transactionId String?  @db.ObjectId
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, batchId, rowId])
+  @@index([userId, batchId])
 }
 
 enum TransactionType {

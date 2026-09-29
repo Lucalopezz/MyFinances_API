@@ -12,9 +12,11 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ExportsModule } from '../exports/exports.module';
 import { BudgetsModule } from '../budgets/budgets.module';
+import { ImportsModule } from '../imports/imports.module';
 
 @Module({
   imports: [
+    ImportsModule,
     CategoriesModule,
     ConfigModule.forRoot({ isGlobal: true }),
     BullModule.forRootAsync({

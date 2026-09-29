@@ -1,8 +1,8 @@
 # Próximos passos do MyFinances
 
-Atualizado em 28/09/2026.
+Atualizado em 29/09/2026.
 
-Status: entrega A implementada e validada localmente; entregas B–F permanecem planejadas. A publicação e a sincronização do schema no ambiente de destino ainda não foram executadas. Este documento define a próxima rodada e substitui a ordem de prioridades dos planos anteriores; não altera os contratos atuais da API.
+Status: entrega A implementada e validada localmente; entrega B implementada na API e no frontend, validada localmente; entregas C–F permanecem planejadas. A publicação e a sincronização do schema no ambiente de destino ainda não foram executadas. Este documento define a próxima rodada e substitui a ordem de prioridades dos planos anteriores; não altera os contratos atuais da API.
 
 Este plano é mantido em `docs/next-steps.md` nos repositórios da API e do frontend. Atualizações de escopo e critérios de aceite devem ser replicadas nas duas cópias. O [plano anterior](implementation-plan.md) e o [planejamento V2](v2.md) permanecem como referências históricas.
 
@@ -33,7 +33,7 @@ Cada entrega inclui API, interface e documentação. Contas bancárias, carteira
 
 ## A — Categorias personalizadas e regras automáticas
 
-Implementação: catálogo, gestão em configurações, regras com teste, sugestão manual, validações nos fluxos existentes e documentação. A prévia de importação consumirá o resolvedor na entrega B. Critérios abaixo verificados em testes locais; persistência em MongoDB real e homologação/deploy continuam pendentes. Veja [evidências e limites da validação](delivery-a-validation.md).
+Implementação: catálogo, gestão em configurações, regras com teste, sugestão manual, validações nos fluxos existentes e documentação. A importação da entrega B reutiliza o resolvedor. Critérios abaixo verificados em testes locais; persistência em MongoDB real e homologação/deploy continuam pendentes. Veja [evidências e limites da validação](delivery-a-validation.md).
 
 ### Comportamento esperado
 
@@ -68,6 +68,8 @@ Implementação: catálogo, gestão em configurações, regras com teste, sugest
 
 ## B — Importação de extratos CSV/OFX
 
+Implementação em 29/09/2026: upload limitado a 2 MiB/1.000 registros, prévia criptografada por 24h, regras/categorias, candidatos a duplicatas, confirmação idempotente por lote/linha e retomada parcial. O frontend oferece botão “Importar” ao lado da exportação, modal de arquivo/mapeamento, revisão, confirmação e resultado. Contratos em `docs/routes.md` da API e `docs/api-routes.md` do frontend; formatos e limites em `docs/transaction-imports.md` da API. Publicação e sincronização do schema de destino permanecem pendentes.
+
 ### Comportamento esperado
 
 1. Selecionar um arquivo CSV ou OFX.
@@ -95,14 +97,16 @@ Implementação: catálogo, gestão em configurações, regras com teste, sugest
 - Exibir duplicatas suspeitas inicialmente desmarcadas, com opção explícita de importar se forem movimentações distintas.
 - Manter erros visíveis por linha, impedir confirmação de linhas inválidas e atualizar listas e resumos após sucesso.
 
+Validação local dos fluxos abaixo concluída; produção e homologação com extratos reais permanecem pendentes. Veja [evidências e limites](delivery-b-validation.md).
+
 ### Critérios de aceite
 
-- [ ] CSV com vírgula/ponto e vírgula, acentos, aspas, valores negativos e formatos decimais documentados é interpretado corretamente.
-- [ ] OFX extrai data, descrição, valor e identificador externo quando presente.
-- [ ] Cancelar a prévia não cria transações.
-- [ ] Correções de categoria e seleção de linhas são respeitadas.
-- [ ] Reenviar a mesma confirmação não cria novos registros; reimportar arquivo sinaliza correspondências.
-- [ ] Falha parcial informa o que já foi gravado e permite retomar sem duplicação.
+- [x] CSV com vírgula/ponto e vírgula, acentos, aspas, valores negativos e formatos decimais documentados é interpretado corretamente.
+- [x] OFX extrai data, descrição, valor e identificador externo quando presente.
+- [x] Cancelar a prévia não cria transações.
+- [x] Correções de categoria e seleção de linhas são respeitadas.
+- [x] Reenviar a mesma confirmação não cria novos registros; reimportar arquivo sinaliza correspondências.
+- [x] Falha parcial informa o que já foi gravado e permite retomar sem duplicação.
 
 ## C — Calendário financeiro e receitas recorrentes
 

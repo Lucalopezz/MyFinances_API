@@ -854,8 +854,40 @@ Os códigos padrão (`FOOD`, `SALARY` etc.) permanecem válidos. Categorias pers
 
 Arquivamento impede novos lançamentos, novas associações de orçamento/despesa fixa e novos pagamentos com essa categoria. Edições de transações e despesas fixas podem manter a mesma categoria arquivada; em orçamento, também é necessário manter o mês. Para pagar uma despesa fixa arquivada, selecione uma categoria ativa ou restaure a anterior. Busca, relatórios e leituras preservam categorias arquivadas. Regras com destinos arquivados são ignoradas; é possível desativá-las, mas ativação requer destino ativo.
 
-Uma categoria explícita em `/categories/resolve` prevalece sobre todas as regras e também é validada. `POST /transactions` continua exigindo categoria explícita: o formulário oferece a sugestão com “Usar sugestão”. Nenhuma regra altera histórico ou edições automaticamente. O serviço de resolução pode ser reutilizado pela prévia da importação da entrega B, ainda não implementada.
+Uma categoria explícita em `/categories/resolve` prevalece sobre todas as regras e também é validada. `POST /transactions` continua exigindo categoria explícita: o formulário oferece a sugestão com “Usar sugestão”. Nenhuma regra altera histórico ou edições automaticamente. O mesmo resolvedor é usado na prévia e na confirmação da importação da entrega B.
 
 Transações, busca por código/nome, despesas fixas, orçamentos, dashboard e comparativos aceitam as referências personalizadas. Exportações filtram pelo mesmo identificador em `categoryId`; PDF mostra o nome atual, CSV preserva a coluna `category` com código/ID estável e o cabeçalho existente.
 
 Erros: `400` para categoria inexistente, de outro usuário, incompatível ou arquivada em novo uso; `404` para edição de categoria/regra não pertencente ao usuário; `401` sem autenticação. Respostas nunca incluem campos criptografados.
+
+
+## Importação de extratos — entrega B
+
+Rotas implementadas, protegidas por Bearer e isoladas por usuário:
+
+| Método e rota | Contrato |
+| --- | --- |
+| `POST /transaction-imports/preview` | Multipart: `file` (até 2 MiB) e `options` (JSON, até 8 KiB). Retorna `201` com `batchId`, `expiresAt`, `rows`. Não cria transações. |
+| `GET /transaction-imports/:id` | Retorna `batchId`, `expiresAt`, `expired`, `rows`, `results`, `summary`. Permite recuperar um lote após falha. |
+| `POST /transaction-imports/:id/confirm` | JSON `{ rows: [{ rowId, selected, category?, allowDuplicate? }] }`. Retorna resultados por linha, resumo e `recalculationPending`. Repetir lote/linha não duplica transações. |
+| `DELETE /transaction-imports/:id` | Descarta a prévia sem apagar transações já importadas. |
+
+Opções CSV de exemplo:
+
+```json
+{ "format": "CSV", "encoding": "utf-8", "source": "banco:conta", "csv": { "delimiter": ";", "dateFormat": "DD/MM/YYYY", "decimalSeparator": ",", "header": true, "columns": { "date": 0, "description": 1, "value": 2 } } }
+```
+
+Opções OFX: `{ "format": "OFX", "encoding": "utf-8", "source": "banco:conta" }`. `source` é um nome estável de origem (banco/conta), repetido nos próximos extratos da mesma conta. Codificações: `utf-8` (padrão) e `windows-1252`. OFX aceita um extrato XML/SGML bancário ou de cartão em BRL. Limite: 1.000 registros; até 100 colunas no CSV. Prévia disponível por 24h, com dados criptografados e descarte automático do payload expirado.
+
+CSV aceita delimitador vírgula, ponto e vírgula ou tabulação; datas `YYYY-MM-DD`, `DD/MM/YYYY`, `MM/DD/YYYY`; decimal `,` ou `.`. Índices começam em zero. Em lugar de `value`, podem ser usadas `income` e `expense` (positivos, apenas um lado preenchido). Opcionais: `category` (código/ID), `externalId`, `type` (INCOME/EXPENSE, com `value`). Datas CSV não incluem horário. Aspas escapadas, acentos e campos multilinha são suportados.
+
+Cada linha de prévia contém `rowId`, campos normalizados disponíveis (`date`, `description`, `value`, `type`, `externalId`), `category`, `categorySource`, `ruleId`, `errors`, `categoryError`, `duplicates` e `selected`. Categorias inválidas podem ser corrigidas; erros em data/valor/descrição exigem corrigir o arquivo. Categoria explícita prevalece sobre regras; sem correspondência usa `OTHER`/`OTHER_INCOME`. Duplicatas por origem/ID externo ou data/valor/tipo/descrição normalizada vêm desmarcadas. `duplicates` usa `{ kind: "FILE", rowId, reason }` ou `{ kind: "HISTORY", transactionId, reason }`, com motivo `EXTERNAL_ID`/`FINGERPRINT`.
+
+Confirmação aceita até 1.000 decisões sem linhas repetidas. Dados financeiros não podem ser reescritos pelo navegador. Linhas omitidas são ignoradas; recibos já importados permanecem definitivos. Suspeitas exigem `allowDuplicate: true`. Para categoria em lote, envie a mesma referência nas decisões compatíveis. O servidor revalida antes de gravar.
+
+Resultado: `results: [{ rowId, status, reason, transactionId }]`, `summary: { imported, ignored, rejected, pending }`, `recalculationPending`. Estados: `IMPORTED`, `IGNORED`, `REJECTED`, `PENDING`. Motivos: `NOT_SELECTED`, `DUPLICATE_REQUIRES_APPROVAL`, `INVALID_CATEGORY`, `INVALID_ROW`, `RETRY_REQUIRED`, `EXPIRED_OR_CANCELLED`, `NOT_PROCESSED`. Contagens são cumulativas do lote, não devem ser somadas a cada tentativa. Falhas parciais preservam linhas já importadas; repetir tenta pendências. `recalculationPending` indica repetir a confirmação para atualizar a wishlist sem duplicação.
+
+Erros globais: `400` opções/layout/linhas inválidos; `401` sessão inválida; `404` lote inexistente ou alheio; `410` confirmação expirada/cancelada; `413` tamanho excedido. Depois da expiração, GET retorna `rows: []` e preserva recibos. Idempotência é por lote/linha; reenvio do arquivo cria outro lote com sugestões de duplicatas. Confirmações simultâneas de lotes distintos não têm restrição única global.
+
+Formatos, exemplos, segurança e publicação: [Importação de extratos](transaction-imports.md).
