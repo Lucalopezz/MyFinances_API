@@ -15,6 +15,7 @@ model User {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  reservationRevision Int? @default(0)
 }
 
 model Transaction {
@@ -119,10 +120,28 @@ model WishlistItem {
   name         String
   desiredValue Float
   savedAmount  Float     @default(0)
+  reservationMigrationState String? @default("PENDING")
+  status       String?    @default("ACTIVE")
+  completedAt  DateTime?
+  purchaseTransactionId String? @db.ObjectId
   targetDate   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   userId       String    @db.ObjectId
+
+  @@index([userId, status])
+  @@index([userId, purchaseTransactionId])
+}
+
+model WishlistMovement {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  wishlistItemId String  @db.ObjectId
+  kind          String
+  encryptedData Json
+  createdAt     DateTime @default(now())
+
+  @@index([userId, wishlistItemId, createdAt])
 }
 
 model Notification {

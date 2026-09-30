@@ -2,7 +2,7 @@
 
 Atualizado em 30/09/2026.
 
-Status: entrega A implementada e validada localmente; entrega B implementada na API e no frontend, validada localmente; entrega C implementada na API e no frontend, com validação funcional local e revisão visual em navegador pendente; entregas D–F permanecem planejadas. A publicação e a sincronização do schema no ambiente de destino ainda não foram executadas. Este documento define a próxima rodada e substitui a ordem de prioridades dos planos anteriores; não altera os contratos atuais da API.
+Status: entrega A implementada e validada localmente; entrega B implementada na API e no frontend, validada localmente; entrega C implementada na API e no frontend, com validação funcional local e revisão visual em navegador pendente; entregas D e E implementadas no código, com validação funcional em banco pendente; entrega F permanece planejada. A publicação e a sincronização do schema no ambiente de destino ainda não foram executadas. Este documento define a próxima rodada e substitui a ordem de prioridades dos planos anteriores; não altera os contratos atuais da API.
 
 Este plano é mantido em `docs/next-steps.md` nos repositórios da API e do frontend. Atualizações de escopo e critérios de aceite devem ser replicadas nas duas cópias. O [plano anterior](implementation-plan.md) e o [planejamento V2](v2.md) permanecem como referências históricas.
 
@@ -146,6 +146,8 @@ Implementação em 30/09/2026: calendário/agenda responsiva em `/calendar`, rec
 
 ## D — Metas com histórico de aportes
 
+Implementação no código em 30/09/2026: movimentos individuais criptografados, saldo livre, migração explícita e interface de aportes/histórico. Validação funcional em banco e publicação pendentes.
+
 ### Comportamento esperado
 
 - Evoluir itens da wishlist para metas com valor desejado, prazo opcional e saldo reservado individual.
@@ -179,6 +181,8 @@ Implementação em 30/09/2026: calendário/agenda responsiva em `/calendar`, rec
 - [ ] A sugestão mensal trata meta atingida, ausência de prazo e prazo vencido.
 
 ## E — Concluir compra da wishlist e gerar transação
+
+Implementação no código em 30/09/2026: despesa e consumo/liberação atômicos, conclusão idempotente, vínculo protegido e histórico na interface. Validação funcional em banco e publicação pendentes.
 
 ### Comportamento esperado
 

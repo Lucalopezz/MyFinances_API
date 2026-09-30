@@ -3,16 +3,10 @@ import { AppModule } from '../app/app.module';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { AuthModule } from '../auth/auth.module';
 import { CategoriesModule } from '../categories/categories.module';
-import { WishlistModule } from '../wishlist/wishlist.module';
 import { CalendarController } from './calendar.controller';
 import { CalendarService } from './calendar.service';
 @Module({
-  imports: [
-    forwardRef(() => AppModule),
-    AuthModule,
-    CategoriesModule,
-    WishlistModule,
-  ],
+  imports: [forwardRef(() => AppModule), AuthModule, CategoriesModule],
   controllers: [CalendarController],
   providers: [FinancialDataEncryptionService, CalendarService],
   exports: [CalendarService],

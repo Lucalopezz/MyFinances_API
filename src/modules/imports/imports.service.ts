@@ -14,7 +14,6 @@ import {
   buildEncryptedTransactionData,
   decryptTransaction,
 } from '../transactions/transaction-encryption.mapper';
-import { WishlistService } from '../wishlist/wishlist.service';
 import {
   ConfirmImport,
   DuplicateCandidate,
@@ -42,7 +41,6 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
     private readonly transactions: TransactionsRepository,
     private readonly categories: CategoriesService,
     private readonly encryption: FinancialDataEncryptionService,
-    private readonly wishlist: WishlistService,
   ) {}
 
   onModuleInit() {
@@ -251,19 +249,11 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
         });
       }
     }
-    let recalculationPending = false;
-    if (results.some((row) => row.status === 'IMPORTED')) {
-      try {
-        await this.wishlist.updateWishlistItemsSavings(userId);
-      } catch {
-        recalculationPending = true;
-      }
-    }
     return {
       batchId: id,
       results,
       summary: this.summary(results),
-      recalculationPending,
+      recalculationPending: false,
     };
   }
 

@@ -275,135 +275,24 @@ Resposta:
 
 ---
 
-## Wishlist
+## Wishlist — metas e compras (entregas D e E)
 
-Todas as rotas de wishlist são protegidas.
+Implantação, migração e recuperação: [wishlist-reservations.md](wishlist-reservations.md).
 
-### `POST /wishlist`
+Todas as rotas exigem autenticação e isolam dados pelo usuário. Valores monetários usam BRL em duas casas decimais; datas de entrada usam `YYYY-MM-DD` em UTC. `targetDate` é opcional (`null`).
 
-Cria um item na wishlist.
+- `POST /wishlist`: `{ name, desiredValue, targetDate? }` cria meta ativa com reserva zero. `savedAmount` enviado pelo cliente é ignorado/rejeitado pela validação.
+- `GET /wishlist`: lista metas ativas e concluídas, mais movimentos. `GET /wishlist/:id` retorna uma meta.
+- `GET /wishlist/summary`: `{ financialBalance, totalReserved, freeBalance, insufficient }`. Saldo financeiro soma transações realizadas; saldo livre = financeiro − reservas ativas. `insufficient` sinaliza despesas posteriores que consumiram o saldo livre sem apagar reservas.
+- `PATCH /wishlist/:id`: altera `name`, `desiredValue` e/ou `targetDate` de meta ativa. Não altera reservas.
+- `POST /wishlist/:id/movements`: `{ kind: "DEPOSIT" | "WITHDRAWAL", value, date, note? }`. Aporte exige saldo livre suficiente entre todas as metas; retirada não pode exceder a reserva da meta. Não cria transação. Valor e observação são criptografados.
+- `POST /wishlist/settle-migration`: marca a distribuição inicial como concluída após o usuário decidir seus aportes. Nenhum valor antigo é convertido automaticamente.
+- `POST /wishlist/:id/complete`: `{ value, date, category, description }`. Cria uma única despesa, consome até o valor pago da reserva e libera a sobra em operação atômica. Retorna `{ item, transaction, coveredAmount, releasedAmount, uncoveredAmount, alreadyCompleted }`. Repetir a conclusão retorna a compra original. `value` pode superar a reserva.
+- `DELETE /wishlist/:id`: exclui apenas meta ativa e libera sua reserva sem criar despesa. Compra concluída permanece no histórico.
 
-Entrada:
+Cada meta retornada inclui `reservedAmount`, `remainingAmount`, `progressPercent`, `monthlySuggestion`, `deadlineState`, `legacySavedAmount`, `reservationMigrationState`, `status`, `completedAt`, `purchaseTransactionId` e `movements`. Um movimento inclui `id`, `kind`, `value`, `date`, `note` e `createdAt`. `kind` também pode ser `CONSUMPTION` ou `RELEASE` na conclusão. O saldo reservado é a soma dos aportes menos retiradas, consumo e liberação. A sugestão usa os meses civis de UTC, incluindo o mês atual e o mês do prazo, com divisão arredondada para cima em centavos. Meta alcançada, sem prazo ou vencida não recebe sugestão.
 
-```json
-{
-  "name": "Notebook",
-  "desiredValue": 5000,
-  "savedAmount": 0,
-  "targetDate": "2026-12-31"
-}
-```
-
-Resposta:
-
-```json
-{
-  "id": "64f000000000000000000020",
-  "name": "Notebook",
-  "desiredValue": 5000,
-  "savedAmount": 1200,
-  "targetDate": "2026-12-31T00:00:00.000Z",
-  "createdAt": "2026-07-06T12:00:00.000Z",
-  "updatedAt": "2026-07-06T12:00:00.000Z",
-  "userId": "64f000000000000000000001"
-}
-```
-
-### `GET /wishlist`
-
-Lista os itens da wishlist.
-
-Entrada: não possui body.
-
-Resposta:
-
-```json
-[
-  {
-    "id": "64f000000000000000000020",
-    "name": "Notebook",
-    "desiredValue": 5000,
-    "savedAmount": 1200,
-    "targetDate": "2026-12-31T00:00:00.000Z",
-    "createdAt": "2026-07-06T12:00:00.000Z",
-    "updatedAt": "2026-07-06T12:00:00.000Z",
-    "userId": "64f000000000000000000001"
-  }
-]
-```
-
-### `GET /wishlist/:id`
-
-Busca um item da wishlist.
-
-Entrada: não possui body.
-
-Resposta:
-
-```json
-{
-  "id": "64f000000000000000000020",
-  "name": "Notebook",
-  "desiredValue": 5000,
-  "savedAmount": 1200,
-  "targetDate": "2026-12-31T00:00:00.000Z",
-  "createdAt": "2026-07-06T12:00:00.000Z",
-  "updatedAt": "2026-07-06T12:00:00.000Z",
-  "userId": "64f000000000000000000001"
-}
-```
-
-### `PATCH /wishlist/:id`
-
-Atualiza um item da wishlist.
-
-Entrada:
-
-```json
-{
-  "name": "Notebook novo",
-  "desiredValue": 6000,
-  "targetDate": "2027-01-31"
-}
-```
-
-Resposta:
-
-```json
-{
-  "id": "64f000000000000000000020",
-  "name": "Notebook novo",
-  "desiredValue": 6000,
-  "savedAmount": 1200,
-  "targetDate": "2027-01-31T00:00:00.000Z",
-  "createdAt": "2026-07-06T12:00:00.000Z",
-  "updatedAt": "2026-07-06T12:10:00.000Z",
-  "userId": "64f000000000000000000001"
-}
-```
-
-### `DELETE /wishlist/:id`
-
-Remove um item da wishlist.
-
-Entrada: não possui body.
-
-Resposta:
-
-```json
-{
-  "id": "64f000000000000000000020",
-  "name": "Notebook novo",
-  "desiredValue": 6000,
-  "savedAmount": 1200,
-  "targetDate": "2027-01-31T00:00:00.000Z",
-  "createdAt": "2026-07-06T12:00:00.000Z",
-  "updatedAt": "2026-07-06T12:10:00.000Z",
-  "userId": "64f000000000000000000001"
-}
-```
-
----
+Registros antigos preservam `savedAmount` como `legacySavedAmount` e começam com `reservationMigrationState: "PENDING"`; a reserva real inicia em zero. Novos registros começam em `SETTLED`. A mudança de schema exige sincronização do Prisma com MongoDB antes de ativar o frontend. Transações vinculadas a compras concluídas não podem ser editadas ou excluídas pelas rotas genéricas.
 
 ## Fixed Expenses
 
@@ -886,7 +775,7 @@ Cada linha de prévia contém `rowId`, campos normalizados disponíveis (`date`,
 
 Confirmação aceita até 1.000 decisões sem linhas repetidas. Dados financeiros não podem ser reescritos pelo navegador. Linhas omitidas são ignoradas; recibos já importados permanecem definitivos. Suspeitas exigem `allowDuplicate: true`. Para categoria em lote, envie a mesma referência nas decisões compatíveis. O servidor revalida antes de gravar.
 
-Resultado: `results: [{ rowId, status, reason, transactionId }]`, `summary: { imported, ignored, rejected, pending }`, `recalculationPending`. Estados: `IMPORTED`, `IGNORED`, `REJECTED`, `PENDING`. Motivos: `NOT_SELECTED`, `DUPLICATE_REQUIRES_APPROVAL`, `INVALID_CATEGORY`, `INVALID_ROW`, `RETRY_REQUIRED`, `EXPIRED_OR_CANCELLED`, `NOT_PROCESSED`. Contagens são cumulativas do lote, não devem ser somadas a cada tentativa. Falhas parciais preservam linhas já importadas; repetir tenta pendências. `recalculationPending` indica repetir a confirmação para atualizar a wishlist sem duplicação.
+Resultado: `results: [{ rowId, status, reason, transactionId }]`, `summary: { imported, ignored, rejected, pending }`, `recalculationPending`. Estados: `IMPORTED`, `IGNORED`, `REJECTED`, `PENDING`. Motivos: `NOT_SELECTED`, `DUPLICATE_REQUIRES_APPROVAL`, `INVALID_CATEGORY`, `INVALID_ROW`, `RETRY_REQUIRED`, `EXPIRED_OR_CANCELLED`, `NOT_PROCESSED`. Contagens são cumulativas do lote, não devem ser somadas a cada tentativa. Falhas parciais preservam linhas já importadas; repetir tenta pendências. `recalculationPending` é mantido por compatibilidade e retorna `false`; reservas não são recalculadas por importações.
 
 Erros globais: `400` opções/layout/linhas inválidos; `401` sessão inválida; `404` lote inexistente ou alheio; `410` confirmação expirada/cancelada; `413` tamanho excedido. Depois da expiração, GET retorna `rows: []` e preserva recibos. Idempotência é por lote/linha; reenvio do arquivo cria outro lote com sugestões de duplicatas. Confirmações simultâneas de lotes distintos não têm restrição única global.
 

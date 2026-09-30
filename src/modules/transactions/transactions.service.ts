@@ -11,7 +11,6 @@ import {
   TransactionSearchDto,
   UpdateTransactionDto,
 } from './dtos/transaction.dto';
-import { WishlistService } from '../wishlist/wishlist.service';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import {
   buildEncryptedTransactionData,
@@ -35,7 +34,6 @@ export class TransactionsService {
   constructor(
     private readonly categories: CategoriesService,
     private readonly repository: TransactionsRepository,
-    private readonly wishlistService: WishlistService,
     private readonly encryptionService: FinancialDataEncryptionService,
   ) {}
 
@@ -54,7 +52,6 @@ export class TransactionsService {
         this.encryptionService,
       ),
     );
-    await this.wishlistService.updateWishlistItemsSavings(userId);
 
     return decryptTransaction(
       transaction as unknown as EncryptedTransactionRecord,
@@ -215,7 +212,6 @@ export class TransactionsService {
         this.encryptionService,
       ),
     );
-    await this.wishlistService.updateWishlistItemsSavings(userId);
 
     return decryptTransaction(
       transaction as unknown as EncryptedTransactionRecord,
@@ -227,7 +223,6 @@ export class TransactionsService {
     await this.getTransaction(id, userId);
 
     await this.repository.deleteOwned(id, userId);
-    await this.wishlistService.updateWishlistItemsSavings(userId);
     return { message: 'Deletado com sucesso!' };
   }
 }

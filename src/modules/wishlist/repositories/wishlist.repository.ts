@@ -34,7 +34,9 @@ export class WishlistRepository {
         name: dto.name,
         desiredValue: dto.desiredValue,
         savedAmount,
-        targetDate: dto.targetDate,
+        targetDate: dto.targetDate
+          ? new Date(`${dto.targetDate}T00:00:00.000Z`)
+          : null,
         userId,
       },
     });
@@ -54,7 +56,15 @@ export class WishlistRepository {
   updateOwned(id: string, userId: string, dto: UpdateWishlistItemDto) {
     return this.prisma.wishlistItem.update({
       where: { id, userId },
-      data: dto,
+      data: {
+        ...dto,
+        targetDate:
+          dto.targetDate === undefined
+            ? undefined
+            : dto.targetDate
+              ? new Date(`${dto.targetDate}T00:00:00.000Z`)
+              : null,
+      },
     });
   }
 

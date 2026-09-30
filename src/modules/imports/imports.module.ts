@@ -4,7 +4,6 @@ import { AppModule } from '../app/app.module';
 import { AuthModule } from '../auth/auth.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { TransactionsModule } from '../transactions/transactions.module';
-import { WishlistModule } from '../wishlist/wishlist.module';
 import { ImportsController } from './imports.controller';
 import { ImportsRepository } from './imports.repository';
 import { ImportsService } from './imports.service';
@@ -15,7 +14,6 @@ import { ImportsService } from './imports.service';
     AuthModule,
     CategoriesModule,
     TransactionsModule,
-    WishlistModule,
   ],
   controllers: [ImportsController],
   providers: [

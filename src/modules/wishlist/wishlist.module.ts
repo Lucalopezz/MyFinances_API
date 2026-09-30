@@ -5,6 +5,7 @@ import { AppModule } from '../app/app.module';
 import { AuthModule } from '../auth/auth.module';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { WishlistRepository } from './repositories/wishlist.repository';
+import { CategoriesModule } from '../categories/categories.module';
 
 @Module({
   controllers: [WishlistController],
@@ -13,7 +14,7 @@ import { WishlistRepository } from './repositories/wishlist.repository';
     WishlistRepository,
     FinancialDataEncryptionService,
   ],
-  imports: [forwardRef(() => AppModule), AuthModule],
+  imports: [forwardRef(() => AppModule), AuthModule, CategoriesModule],
   exports: [WishlistService],
 })
 export class WishlistModule {}

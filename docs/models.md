@@ -117,7 +117,7 @@ Categorias de despesa:
 
 - A validação diferencia receitas e despesas usando `type`.
 - As categorias permitidas mudam conforme o tipo da transação.
-- Ao criar, atualizar ou remover uma transação, a aplicação recalcula a economia dos itens da wishlist.
+- Criar, atualizar ou remover uma transação altera o saldo financeiro disponível para novos aportes, sem modificar reservas existentes.
 - A API descriptografa os dados sensíveis antes de responder, mantendo o contrato externo com `value`, `date`, `category` e `description`.
 
 ---
@@ -159,41 +159,17 @@ Comparativo mensal:
 
 ---
 
-## WishlistItem
+## WishlistItem e WishlistMovement
 
-Representa um objetivo financeiro do usuário, como um produto, viagem ou meta de compra.
+Operação e migração: [wishlist-reservations.md](wishlist-reservations.md).
 
-### Campos
+`WishlistItem` guarda nome, valor desejado, prazo opcional, `status` (`ACTIVE` ou `COMPLETED`), `completedAt`, `purchaseTransactionId` e `userId`. O antigo `savedAmount` permanece como referência histórica; não é reserva. `reservationMigrationState` identifica metas antigas pendentes de distribuição (`PENDING`) e metas novas ou já revisadas (`SETTLED`). Campos novos são opcionais no schema para leitura dos documentos MongoDB anteriores à sincronização; a API interpreta ausência como `ACTIVE` e `PENDING`.
 
-| Campo          | Tipo                  | Obrigatório | Descrição                                   |
-| -------------- | --------------------- | ----------- | ------------------------------------------- |
-| `id`           | `String @db.ObjectId` | Sim         | Identificador único do item.                |
-| `name`         | `String`              | Sim         | Nome do objetivo.                           |
-| `desiredValue` | `Float`               | Sim         | Valor desejado para atingir a meta.         |
-| `savedAmount`  | `Float`               | Sim         | Valor economizado calculado pela aplicação. |
-| `targetDate`   | `DateTime?`           | Não         | Data alvo para alcançar a meta.             |
-| `createdAt`    | `DateTime`            | Sim         | Data de criação do item.                    |
-| `updatedAt`    | `DateTime`            | Sim         | Data da última atualização.                 |
-| `userId`       | `String @db.ObjectId` | Sim         | Dono do item.                               |
+`WishlistMovement` guarda `userId`, `wishlistItemId`, `kind` (`DEPOSIT`, `WITHDRAWAL`, `CONSUMPTION`, `RELEASE`), `createdAt` e `encryptedData` com valor, data e observação criptografados em AES-256-GCM. A reserva é derivada do histórico em centavos; nenhuma transação é criada por aporte ou retirada.
 
-### Principais funções
+O saldo registrado é a soma das transações descriptografadas do usuário; o total reservado soma apenas metas ativas; o saldo livre é a diferença. Aportes e conclusões concorrentes escrevem `User.reservationRevision` na mesma transação MongoDB para serializar atualizações de reservas. Conclusão cria despesa criptografada, movimentos de consumo/liberação e marca a meta concluída na mesma transação. Repetição retorna a transação vinculada. `Transaction` vinculada não pode ser editada ou excluída pelo CRUD genérico. Excluir uma meta ativa remove seus movimentos e libera a reserva; excluí-la após compra é bloqueado.
 
-- `POST /wishlist`: cria um item na wishlist.
-- `GET /wishlist`: lista os itens do usuário.
-- `GET /wishlist/:id`: busca um item específico.
-- `PATCH /wishlist/:id`: atualiza um item.
-- `DELETE /wishlist/:id`: remove um item.
-
-### Regras de negócio
-
-- O campo `savedAmount` é atualizado com base na economia anual calculada pelas transações.
-- A economia anual considera transações do ano atual:
-
-```ts
-savedAmount = totalIncomeAnoAtual - totalExpensesAnoAtual;
-```
-
-- Sempre que uma transação é criada, atualizada ou excluída, os itens da wishlist são recalculados.
+A sugestão mensal divide o valor restante pelos meses civis de UTC desde o mês atual até o mês do prazo, ambos incluídos, arredondando para cima em centavos. Prazo passado, ausente ou meta alcançada não produz divisão. Migração preserva nome, valor e prazo; o usuário escolhe seus aportes iniciais e confirma a distribuição. A economia anual antiga nunca vira aporte automaticamente.
 
 ---
 
@@ -316,7 +292,7 @@ User
 
 ### Fluxos importantes
 
-- **Transação alterada:** recalcula a economia da wishlist.
+- **Transação alterada:** modifica o saldo livre calculado; reservas existentes permanecem.
 - **Despesa fixa consultada:** atualiza ciclos vencidos e dispara lembretes próximos do vencimento.
 - **Despesa fixa paga e vencida:** no próximo ciclo, volta para `isPaid = false`.
 - **Dashboard consultado:** calcula tudo em tempo de execução a partir das transações.
@@ -327,7 +303,7 @@ User
 
 - Como `userId` é usado como vínculo lógico, todo endpoint protegido deve filtrar por `userId`.
 - O dashboard depende da consistência das datas das transações.
-- A wishlist usa `createdAt` das transações para cálculo anual, enquanto o dashboard usa `date`.
+- A wishlist usa transações realizadas para calcular saldo financeiro e movimentos próprios para calcular reservas.
 - A v2 pode evoluir o modelo de despesas fixas para criar transações automaticamente quando uma despesa for marcada como paga.
 
 ## Category e CategoryRule — entrega A

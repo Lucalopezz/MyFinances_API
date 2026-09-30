@@ -105,6 +105,13 @@ export class TransactionsRepository {
   }
 
   private async assertUnlinked(id: string, userId: string) {
+    const purchase = await this.prisma.wishlistItem.findFirst({
+      where: { userId, purchaseTransactionId: id },
+    });
+    if (purchase)
+      throw new BadRequestException(
+        'Transação vinculada a uma compra concluída. Use um fluxo específico de correção da compra.',
+      );
     const receipt = await this.prisma.calendarReceipt.findFirst({
       where: { userId, transactionId: id },
     });

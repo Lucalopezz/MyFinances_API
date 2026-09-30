@@ -9,7 +9,6 @@ import { z } from 'zod';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { CategoriesService } from '../categories/categories.service';
-import { WishlistService } from '../wishlist/wishlist.service';
 import {
   buildEncryptedTransactionData,
   decryptTransaction,
@@ -36,7 +35,6 @@ export class CalendarService {
     private readonly prisma: PrismaService,
     private readonly encryption: FinancialDataEncryptionService,
     private readonly categories: CategoriesService,
-    private readonly wishlist: WishlistService,
   ) {}
   private revisions(encrypted: string) {
     return this.encryption.decrypt<IncomeRevision[]>(encrypted);
@@ -194,7 +192,6 @@ export class CalendarService {
             },
           });
         });
-        await this.wishlist.updateWishlistItemsSavings(userId);
         return this.encryption.decrypt<CalendarEvent>(receipt.encryptedData);
       } catch (error) {
         if (
