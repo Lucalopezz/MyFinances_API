@@ -10,6 +10,8 @@ describe('FixedExpensePaymentService', () => {
       id: expenseId,
       userId,
       name: 'Aluguel',
+      dueDate: new Date('2026-09-01T12:00:00Z'),
+      recurrence: 'MONTHLY',
       amount: 100,
       category: 'HOUSING',
       isPaid: false,
@@ -20,7 +22,12 @@ describe('FixedExpensePaymentService', () => {
         findFirst: jest.fn(async () => ({ id: transactionId })),
         delete: jest.fn(async () => ({ id: transactionId })),
       },
+      calendarReceipt: {
+        create: jest.fn(async () => ({})),
+        deleteMany: jest.fn(async () => ({ count: 1 })),
+      },
       fixedExpense: {
+        updateMany: jest.fn(async () => ({ count: 1 })),
         update: jest.fn(async ({ data }) => ({ ...expense, ...data })),
       },
     };

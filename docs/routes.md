@@ -891,3 +891,12 @@ Resultado: `results: [{ rowId, status, reason, transactionId }]`, `summary: { im
 Erros globais: `400` opções/layout/linhas inválidos; `401` sessão inválida; `404` lote inexistente ou alheio; `410` confirmação expirada/cancelada; `413` tamanho excedido. Depois da expiração, GET retorna `rows: []` e preserva recibos. Idempotência é por lote/linha; reenvio do arquivo cria outro lote com sugestões de duplicatas. Confirmações simultâneas de lotes distintos não têm restrição única global.
 
 Formatos, exemplos, segurança e publicação: [Importação de extratos](transaction-imports.md).
+
+
+## Calendário financeiro e receitas recorrentes (entrega C)
+
+Implementado: `GET /calendar?month=YYYY-MM`, `GET /calendar/incomes`, `POST /calendar/incomes`, `PATCH /calendar/incomes/:id` e `POST /calendar/incomes/:id/occurrences/:date/confirm`. Todas as rotas exigem autenticação e isolamento por usuário. Não é criado lançamento por cadastrar ou consultar uma previsão.
+
+Consulte [contrato completo, exemplos de campos, datas, projeção e implantação](financial-calendar.md). A API retorna agenda mensal, pendências anteriores e linha diária com saldo-base acumulado, impacto das pendências e primeiro dia negativo. Confirmações criam uma única transação criptografada por competência.
+
+O endpoint legado `/dashboard/forecast` é mantido; o novo dashboard do frontend usa `/calendar`. Transações vinculadas a recibos não podem ser editadas/excluídas pelas rotas genéricas; pagamento de despesa pode ser desmarcado pelo fluxo específico.

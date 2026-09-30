@@ -1,8 +1,8 @@
 # Próximos passos do MyFinances
 
-Atualizado em 29/09/2026.
+Atualizado em 30/09/2026.
 
-Status: entrega A implementada e validada localmente; entrega B implementada na API e no frontend, validada localmente; entregas C–F permanecem planejadas. A publicação e a sincronização do schema no ambiente de destino ainda não foram executadas. Este documento define a próxima rodada e substitui a ordem de prioridades dos planos anteriores; não altera os contratos atuais da API.
+Status: entrega A implementada e validada localmente; entrega B implementada na API e no frontend, validada localmente; entrega C implementada na API e no frontend, com validação funcional local e revisão visual em navegador pendente; entregas D–F permanecem planejadas. A publicação e a sincronização do schema no ambiente de destino ainda não foram executadas. Este documento define a próxima rodada e substitui a ordem de prioridades dos planos anteriores; não altera os contratos atuais da API.
 
 Este plano é mantido em `docs/next-steps.md` nos repositórios da API e do frontend. Atualizações de escopo e critérios de aceite devem ser replicadas nas duas cópias. O [plano anterior](implementation-plan.md) e o [planejamento V2](v2.md) permanecem como referências históricas.
 
@@ -110,6 +110,8 @@ Validação local dos fluxos abaixo concluída; produção e homologação com e
 
 ## C — Calendário financeiro e receitas recorrentes
 
+Implementação em 30/09/2026: calendário/agenda responsiva em `/calendar`, receitas mensais/anuais com edição e pausa, confirmação atômica e idempotente por competência, histórico criptografado, pagamentos de despesas fixas vinculados e projeção diária compartilhada com o dashboard. Alterações valem a partir de amanhã; ocorrências passadas e realizadas são preservadas. Contrato, implantação, saldo-base e limites em [financial-calendar.md](financial-calendar.md). Evidências de testes e limitações em [delivery-c-validation.md](delivery-c-validation.md). Revisão visual em navegador e publicação/sincronização do schema no destino permanecem pendentes.
+
 ### Comportamento esperado
 
 - Exibir calendário mensal e agenda por dia com despesas fixas e recebimentos previstos, pagos/recebidos e vencidos.
@@ -136,11 +138,11 @@ Validação local dos fluxos abaixo concluída; produção e homologação com e
 
 ### Critérios de aceite
 
-- [ ] Receita mensal no dia 31 gera ocorrência válida em fevereiro.
-- [ ] Confirmar duas vezes o mesmo recebimento cria apenas uma receita.
-- [ ] Confirmar pagamento/recebimento troca previsão por realizado sem duplicar valores.
-- [ ] Calendário inclui pendências e respeita limites de período e usuário.
-- [ ] Projeção explica seu saldo-base e identifica corretamente o primeiro dia negativo.
+- [x] Receita mensal no dia 31 gera ocorrência válida em fevereiro.
+- [x] Confirmar duas vezes o mesmo recebimento cria apenas uma receita.
+- [x] Confirmar pagamento/recebimento troca previsão por realizado sem duplicar valores.
+- [x] Calendário inclui pendências e respeita limites de período e usuário.
+- [x] Projeção explica seu saldo-base e identifica corretamente o primeiro dia negativo.
 
 ## D — Metas com histórico de aportes
 

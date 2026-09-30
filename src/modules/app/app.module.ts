@@ -1,3 +1,4 @@
+import { CalendarModule } from '../calendar/calendar.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { Module } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -16,6 +17,7 @@ import { ImportsModule } from '../imports/imports.module';
 
 @Module({
   imports: [
+    CalendarModule,
     ImportsModule,
     CategoriesModule,
     ConfigModule.forRoot({ isGlobal: true }),

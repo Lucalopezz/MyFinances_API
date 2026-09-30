@@ -363,3 +363,10 @@ A implementação local não executa `db push` nem modifica dados de produção 
 4. Em rollback, desativar rotas de importação e preservar as duas coleções, recibos, transações e chave. Não apagar recibos para repetir lotes. Clientes anteriores continuam lendo transações pelo mapper existente. Se a versão anterior da API não executa limpeza, o descarte de payloads expirados precisa ser mantido operacionalmente.
 
 Nesta entrega, `db push` é executado pelos testes apenas em banco local descartável, com nome aleatório. Nenhum schema de desenvolvimento existente ou produção é sincronizado automaticamente. Detalhes de retenção, limitações e retomada em [Importação de extratos](transaction-imports.md).
+
+
+## Entrega C — RecurringIncome e CalendarReceipt
+
+`RecurringIncome`: ObjectId, userId, encryptedData (revisões de descrição/valor/categoria/data inicial/periodicidade/pausa/vigência), revision e timestamps. `CalendarReceipt`: ObjectId, userId, sourceId, dueDate civil, periodKey (`MONTHLY:YYYY-MM` ou `YEARLY:YYYY`), type, transactionId e snapshot encryptedData. Unicidade por usuário/origem/período e por usuário/origem/data; índice por usuário/transação.
+
+`FixedExpense.recurrenceDay` é opcional e mantém a âncora do dia de vencimento. Recibos de pagamento preservam ciclos realizados após o avanço. Histórico já sobrescrito pela versão anterior não é inferido. Transações novas mantêm o esquema de criptografia existente. Veja [calendário financeiro](financial-calendar.md) para implantação e recuperação.

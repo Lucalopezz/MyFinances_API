@@ -171,6 +171,7 @@ describe('TransactionsService legacy contract', () => {
       } as never,
       new TransactionsRepository({
         transaction: { findFirst, update, delete: remove },
+        calendarReceipt: { findFirst: jest.fn(async () => null) },
       } as never),
       wishlist as never,
       {

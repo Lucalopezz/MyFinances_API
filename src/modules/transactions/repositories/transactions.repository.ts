@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
@@ -91,6 +91,7 @@ export class TransactionsRepository {
     userId: string,
     data: Record<string, unknown>,
   ): Promise<EncryptedTransactionRecord> {
+    await this.assertUnlinked(id, userId);
     const item = await this.prisma.transaction.update({
       where: { id, userId },
       data: data as never,
@@ -98,8 +99,19 @@ export class TransactionsRepository {
     return item as unknown as EncryptedTransactionRecord;
   }
 
-  deleteOwned(id: string, userId: string) {
+  async deleteOwned(id: string, userId: string) {
+    await this.assertUnlinked(id, userId);
     return this.prisma.transaction.delete({ where: { id, userId } });
+  }
+
+  private async assertUnlinked(id: string, userId: string) {
+    const receipt = await this.prisma.calendarReceipt.findFirst({
+      where: { userId, transactionId: id },
+    });
+    if (receipt)
+      throw new BadRequestException(
+        'Transação vinculada ao calendário. Para despesas, desmarque o pagamento na despesa fixa. Recebimentos confirmados preservam o histórico e não podem ser alterados por esta rota.',
+      );
   }
 
   async findByPeriod(

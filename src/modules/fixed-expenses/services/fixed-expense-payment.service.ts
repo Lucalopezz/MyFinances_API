@@ -1,3 +1,4 @@
+import { todayKey } from '../../calendar/calendar-calculation';
 import { CategoriesService } from '../../categories/categories.service';
 import { Injectable } from '@nestjs/common';
 import { FixedExpense, TransactionType } from '@prisma/client';
@@ -23,7 +24,7 @@ export class FixedExpensePaymentService {
       userId,
       'EXPENSE',
     );
-    const paidAt = new Date();
+    const paidAt = new Date(`${todayKey()}T12:00:00Z`);
 
     const encryptedTransactionData = buildEncryptedTransactionData(
       {
@@ -41,6 +42,21 @@ export class FixedExpensePaymentService {
       userId,
       paidAt,
       encryptedTransactionData,
+      (transactionId) =>
+        this.encryptionService.encrypt({
+          id: `${expenseData.id}:${expenseData.dueDate.toISOString().slice(0, 10)}`,
+          sourceId: expenseData.id,
+          dueDate: expenseData.dueDate.toISOString().slice(0, 10),
+          description: expenseData.name,
+          amount: expenseData.amount,
+          category: expenseData.category,
+          periodKey: `${expenseData.recurrence}:${expenseData.dueDate.toISOString().slice(0, expenseData.recurrence === 'MONTHLY' ? 7 : 4)}`,
+          type: 'EXPENSE',
+          status: 'SETTLED',
+          actualDate: paidAt.toISOString().slice(0, 10),
+          actualAmount: expenseData.amount,
+          transactionId,
+        }),
     );
   }
 

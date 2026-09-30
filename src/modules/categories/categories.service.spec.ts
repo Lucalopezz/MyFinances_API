@@ -314,6 +314,7 @@ describe('custom categories and automatic rules', () => {
   it('uses custom categories in encrypted transactions, search by name and budgets; preserves archived edits', async () => {
     let stored;
     const transactionRepository = new TransactionsRepository({
+      calendarReceipt: { findFirst: jest.fn(async () => null) },
       transaction: {
         create: jest.fn(async ({ data }) => {
           stored = {

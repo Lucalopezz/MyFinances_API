@@ -150,6 +150,7 @@ model FixedExpense {
   isPaid                  Boolean        @default(false)
   paidAt                  DateTime?
   paidTransactionId       String?
+  recurrenceDay           Int?
   recurrence              RecurrenceType
   lastNotificationDueDate DateTime?
   createdAt               DateTime       @default(now())
@@ -189,4 +190,30 @@ model CategoryRule {
   updatedAt         DateTime        @updatedAt
 
   @@index([userId, type, enabled, priority, id])
+}
+
+// Financial fields and effective-dated revisions are encrypted together.
+model RecurringIncome {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  encryptedData String
+  revision      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([userId])
+}
+
+// One durable receipt per source and due date; written atomically with Transaction.
+model CalendarReceipt {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  sourceId      String   @db.ObjectId
+  dueDate       String
+  periodKey     String
+  type          TransactionType
+  transactionId String   @db.ObjectId
+  encryptedData String
+  @@unique([userId, sourceId, dueDate])
+  @@unique([userId, sourceId, periodKey])
+  @@index([userId, transactionId])
 }
