@@ -3,6 +3,7 @@ import { NotificationService } from './notification.service';
 import { NotificationController } from './notification.controller';
 import { AppModule } from '../app/app.module';
 import { AuthModule } from '../auth/auth.module';
+import { CategoriesModule } from '../categories/categories.module';
 import { FixedExpensesService } from '../fixed-expenses/fixed-expenses.service';
 import { FixedExpensesRepository } from '../fixed-expenses/repositories/fixed-expenses.repository';
 import { FixedExpensePaymentService } from '../fixed-expenses/services/fixed-expense-payment.service';
@@ -30,6 +31,6 @@ import { FixedExpensePaymentsRepository } from '../fixed-expenses/repositories/f
     FinancialDataEncryptionService,
   ],
   exports: [NotificationService],
-  imports: [forwardRef(() => AppModule), AuthModule],
+  imports: [forwardRef(() => AppModule), AuthModule, CategoriesModule],
 })
 export class NotificationModule {}
