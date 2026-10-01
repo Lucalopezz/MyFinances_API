@@ -1,6 +1,6 @@
 # Plano de implementação — rodada anterior
 
-> Atualização em 28/09/2026: o planejamento ativo está em [Próximos passos](next-steps.md). Este documento preserva o desenho da rodada anterior; sua ordem, checklist e exclusões de escopo não definem as próximas entregas.
+> Atualização em 01/10/2026: o [escopo da v2.2.0](next-steps.md) registra as entregas A–E, cartões de crédito e a retirada do simulador. Este documento preserva o desenho da rodada anterior; sua ordem, checklist e exclusões de escopo são históricos.
 
 ## Situação após a rodada anterior
 

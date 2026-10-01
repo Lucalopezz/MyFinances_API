@@ -789,3 +789,17 @@ Implementado: `GET /calendar?month=YYYY-MM`, `GET /calendar/incomes`, `POST /cal
 Consulte [contrato completo, exemplos de campos, datas, projeção e implantação](financial-calendar.md). A API retorna agenda mensal, pendências anteriores e linha diária com saldo-base acumulado, impacto das pendências e primeiro dia negativo. Confirmações criam uma única transação criptografada por competência.
 
 O endpoint legado `/dashboard/forecast` é mantido; o novo dashboard do frontend usa `/calendar`. Transações vinculadas a recibos não podem ser editadas/excluídas pelas rotas genéricas; pagamento de despesa pode ser desmarcado pelo fluxo específico.
+
+## Cartões de crédito — v2.2.0
+
+Todas as rotas exigem Bearer JWT e isolam dados pelo usuário autenticado.
+
+| Método e rota | Contrato |
+| --- | --- |
+| `GET /cards` | Lista cartões com compras, faturas e limites total, em uso e disponível. |
+| `POST /cards` | `{ name, limit, closingDay, dueDay, annualFee }`; cadastra cartão. |
+| `GET /cards/:id` | Detalha cartão, compras e faturas por competência. |
+| `POST /cards/:id/purchases` | `{ description, amount, date, category, installments }`; cria compra e parcelas, sem criar transação realizada. |
+| `POST /cards/:id/invoices/:cycle/pay` | `{ date }`; quita integralmente fatura fechada e cria as transações de despesa correspondentes. Repetição não duplica o pagamento. |
+
+`date` usa `YYYY-MM-DD`, `cycle` usa `YYYY-MM`; a categoria da compra aceita categorias de despesa ativas. A compra compromete o limite total imediatamente. Faturas pendentes entram como previsão no calendário; após o pagamento, as despesas entram no saldo pela data efetiva. [Regras, limites e implantação](credit-cards.md).

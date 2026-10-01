@@ -1,5 +1,7 @@
 # Cartões de crédito
 
+Funcionalidade da v2.2.0. A interface fica em `/cards` e no formulário de nova despesa do frontend. O simulador de compras do plano anterior não integra esta versão.
+
 ## Modelo e regras
 
 `CreditCard` guarda nome, limite e anuidade criptografados; dias de fechamento e vencimento são índices do ciclo. `CardPurchase` guarda descrição, valor, categoria e número de parcelas criptografados. `CardInstallment` guarda valor criptografado e competência/data de vencimento. `CardPayment` guarda o pagamento da fatura, seus IDs de transações realizadas e valor/data criptografados. Todos os registros pertencem ao usuário do JWT.

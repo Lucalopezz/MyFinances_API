@@ -1,24 +1,24 @@
 # Próximos passos do MyFinances
 
-Atualizado em 30/09/2026.
+Atualizado em 01/10/2026 para o escopo da v2.2.0.
 
-Status: entrega A implementada e validada localmente; entrega B implementada na API e no frontend, validada localmente; entrega C implementada na API e no frontend, com validação funcional local e revisão visual em navegador pendente; entregas D e E implementadas no código, com validação funcional em banco pendente; entrega F permanece planejada. A publicação e a sincronização do schema no ambiente de destino ainda não foram executadas. Este documento define a próxima rodada e substitui a ordem de prioridades dos planos anteriores; não altera os contratos atuais da API.
+Status da v2.2.0: entregas A e B implementadas e validadas localmente; C implementada e validada funcionalmente, com revisão visual pendente; D e E implementadas, com validação funcional em banco pendente. A funcionalidade de cartões de crédito também foi implementada. O item F (simulador de compras) foi retirado do escopo da v2.2.0 por decisão de produto. Publicação e sincronização do schema no ambiente de destino não foram verificadas nesta documentação; consulte os guias de implantação de cada domínio.
 
-Este plano é mantido em `docs/next-steps.md` nos repositórios da API e do frontend. Atualizações de escopo e critérios de aceite devem ser replicadas nas duas cópias. O [plano anterior](implementation-plan.md) e o [planejamento V2](v2.md) permanecem como referências históricas.
+Este registro de escopo é mantido em `docs/next-steps.md` nos repositórios da API e do frontend. Atualizações devem ser replicadas nas duas cópias. O [plano anterior](implementation-plan.md) e o [planejamento V2](v2.md) permanecem como referências históricas.
 
 ## Objetivo
 
-Reduzir o trabalho de registrar movimentações, antecipar compromissos financeiros e acompanhar metas com valores reservados individualmente. O escopo reúne os itens 3 a 7 selecionados e a conclusão de compras da wishlist com geração de despesa e saída da lista ativa.
+Reduzir o trabalho de registrar movimentações, antecipar compromissos financeiros e acompanhar metas com valores reservados individualmente. A v2.2.0 reúne os itens 3 a 6 selecionados, a conclusão de compras da wishlist e cartões de crédito com parcelas e faturas. O item 7, simulador de compras, não integra esta versão.
 
-## Ponto de partida
+## Contexto anterior à implementação
 
-O código já contém busca global de transações, duplicação pelo formulário, orçamento mensal por categoria, projeção de despesas fixas pendentes, exportação PDF/CSV e marcação de notificações em lote. Isso indica implementação no repositório, não validação do ambiente de produção.
+Antes da v2.2.0, o código já continha busca global de transações, duplicação pelo formulário, orçamento mensal por categoria, projeção de despesas fixas pendentes, exportação PDF/CSV e marcação de notificações em lote. A presença no repositório não comprova implantação no ambiente de produção.
 
-A entrega A adiciona catálogo de categorias personalizadas compatível com os códigos das listas fixas. A projeção atual cobre despesas fixas pendentes no mês. A wishlist aplica a mesma economia líquida anual a todos os itens; esse valor não representa aportes individuais e não deve ser migrado como dinheiro reservado em cada meta.
+O catálogo anterior usava códigos fixos; a entrega A acrescentou categorias personalizadas sem perder essa compatibilidade. A projeção anterior cobria despesas fixas pendentes no mês. O progresso antigo da wishlist aplicava a mesma economia líquida anual a todos os itens; esse valor permanece somente como referência e não é migrado como reserva de cada meta.
 
-## Ordem proposta de entrega
+## Escopo da v2.2.0
 
-A numeração original foi preservada na coluna de origem. A sequência abaixo considera dependências, não altera os itens escolhidos.
+A numeração original foi preservada na coluna de origem. As dependências registram a ordem de implementação.
 
 | Entrega | Origem | Funcionalidade | Dependência |
 | --- | --- | --- | --- |
@@ -27,9 +27,9 @@ A numeração original foi preservada na coluna de origem. A sequência abaixo c
 | C | Item 4 | Calendário financeiro e receitas recorrentes | Reaproveita despesas fixas e projeção atuais |
 | D | Item 6 | Metas com histórico de aportes | Substituição controlada do cálculo atual da wishlist |
 | E | Pedido adicional | Concluir compra da wishlist | D para consumir/liberar reservas individuais; reutiliza criação de transação |
-| F | Item 7 | Simulador de compras | C e D para considerar previsões e metas |
+| Cartões | Pedido adicional | Cartões de crédito, compras parceladas, limite e faturas | Calendário e transações para previsão e pagamento |
 
-Cada entrega inclui API, interface e documentação. Contas bancárias, carteiras e gestão completa de cartões não são pré-requisitos desta rodada.
+As entregas incluídas têm API, interface e documentação. A gestão de cartões desta versão cobre cadastro, compras, parcelas e pagamento integral de faturas; seus limites estão em [Cartões de crédito](credit-cards.md) na API. Contas bancárias e carteiras não integram este escopo.
 
 ## A — Categorias personalizadas e regras automáticas
 
@@ -218,7 +218,13 @@ Implementação no código em 30/09/2026: despesa e consumo/liberação atômico
 - [ ] Item concluído mantém histórico de aportes e vínculo com a transação.
 - [ ] Excluir um objetivo sem concluir compra não gera transação; sua reserva é liberada.
 
-## F — Simulador de compras
+## Cartões de crédito — pedido adicional
+
+Cadastro de cartões com limite, fechamento, vencimento e anuidade; compras à vista ou parceladas; faturas por ciclo; pagamento integral de fatura fechada e previsão no calendário. Compras comprometem o limite no ato, mas só geram despesas realizadas no pagamento da fatura. Contrato e limites em [Cartões de crédito](credit-cards.md).
+
+## F — Simulador de compras (retirado da v2.2.0)
+
+Este item não foi implementado e não deve ser apresentado como funcionalidade da v2.2.0. A especificação abaixo permanece apenas como histórico do plano anterior, sem compromisso de entrega nesta versão.
 
 ### Comportamento esperado
 
@@ -268,6 +274,6 @@ Implementação no código em 30/09/2026: despesa e consumo/liberação atômico
 ## Fora desta rodada
 
 - Sincronização bancária automática/Open Finance: o item B importa arquivos fornecidos pelo usuário.
-- Gestão completa de contas, cartões, faturas e compras parceladas reais: o item F apenas simula parcelas.
+- Gestão de contas bancárias e carteiras; em cartões, pagamento parcial, estorno, edição de compras/cartões, juros e conciliação de extratos continuam fora do escopo.
 - OCR de comprovantes, categorização por IA, recomendações de investimentos e compartilhamento familiar.
 - Desfazer conclusão de compra por fluxo dedicado; a primeira entrega preserva o histórico e protege o vínculo.

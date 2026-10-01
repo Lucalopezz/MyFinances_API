@@ -19,6 +19,10 @@ A aplicação usa **MongoDB** como banco de dados e **Prisma** como ORM. Todos o
 | `TransactionExport` | `TransactionExport` | Guarda estado, filtros e formato de exportações assíncronas. |
 | `TransactionImport` | `TransactionImport` | Guarda prévia criptografada de extrato com expiração. |
 | `TransactionImportResult` | `TransactionImportResult` | Guarda recibos por linha para confirmação idempotente. |
+| `CreditCard` | `CreditCard` | Guarda configuração e limite do cartão, com dados financeiros criptografados. |
+| `CardPurchase` | `CardPurchase` | Guarda compras no crédito, sem criar transações no ato. |
+| `CardInstallment` | `CardInstallment` | Guarda parcelas por ciclo e vencimento. |
+| `CardPayment` | `CardPayment` | Guarda quitação de fatura e vínculos com transações realizadas. |
 
 Os modelos de dados relacionados ao usuário possuem `userId`, garantindo que cada registro seja consultado e alterado apenas dentro do contexto do usuário autenticado.
 
@@ -284,6 +288,11 @@ O schema atual não declara relações Prisma formais entre os modelos, mas a ap
 User
 ├── Transaction[]
 ├── WishlistItem[]
+├── WishlistMovement[]
+├── CreditCard[]
+├── CardPurchase[]
+├── CardInstallment[]
+├── CardPayment[]
 ├── FixedExpense[]
 ├── Notification[]
 ├── MonthlyBudget[]
@@ -304,7 +313,7 @@ User
 - Como `userId` é usado como vínculo lógico, todo endpoint protegido deve filtrar por `userId`.
 - O dashboard depende da consistência das datas das transações.
 - A wishlist usa transações realizadas para calcular saldo financeiro e movimentos próprios para calcular reservas.
-- A v2 pode evoluir o modelo de despesas fixas para criar transações automaticamente quando uma despesa for marcada como paga.
+- O pagamento de despesas fixas cria transações vinculadas; pagamentos de faturas criam transações próprias e protegidas contra edição/exclusão genérica.
 
 ## Category e CategoryRule — entrega A
 
@@ -346,3 +355,9 @@ Nesta entrega, `db push` é executado pelos testes apenas em banco local descart
 `RecurringIncome`: ObjectId, userId, encryptedData (revisões de descrição/valor/categoria/data inicial/periodicidade/pausa/vigência), revision e timestamps. `CalendarReceipt`: ObjectId, userId, sourceId, dueDate civil, periodKey (`MONTHLY:YYYY-MM` ou `YEARLY:YYYY`), type, transactionId e snapshot encryptedData. Unicidade por usuário/origem/período e por usuário/origem/data; índice por usuário/transação.
 
 `FixedExpense.recurrenceDay` é opcional e mantém a âncora do dia de vencimento. Recibos de pagamento preservam ciclos realizados após o avanço. Histórico já sobrescrito pela versão anterior não é inferido. Transações novas mantêm o esquema de criptografia existente. Veja [calendário financeiro](financial-calendar.md) para implantação e recuperação.
+
+## Cartões de crédito — v2.2.0
+
+`CreditCard` guarda `userId`, dias de fechamento/vencimento, revisão para concorrência e payload criptografado com nome, limite e anuidade. `CardPurchase` guarda cartão, data civil e payload criptografado com descrição, valor, categoria e número de parcelas. `CardInstallment` vincula compra e cartão à parcela, competência e vencimento, com valor criptografado; o índice único por usuário/compra/número impede parcela repetida.
+
+`CardPayment` registra usuário, cartão, competência, IDs das transações realizadas e valor/data criptografados. O índice único `(userId, cardId, cycle)` protege a quitação idempotente. Compras não criam `Transaction`; a quitação da fatura cria as despesas vinculadas em operação atômica. Consulte [Cartões de crédito](credit-cards.md) para cálculo do ciclo, limite, calendário e implantação.
