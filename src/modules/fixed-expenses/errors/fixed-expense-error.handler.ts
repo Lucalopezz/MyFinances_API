@@ -1,5 +1,6 @@
 import {
   Injectable,
+  HttpException,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
@@ -30,7 +31,7 @@ export class FixedExpenseErrorHandler {
     id: string,
     fallbackMessage: string,
   ): never {
-    if (error instanceof NotFoundException) {
+    if (error instanceof HttpException) {
       throw error;
     }
 
@@ -47,7 +48,7 @@ export class FixedExpenseErrorHandler {
   }
 
   handleUnexpected(error: unknown, fallbackMessage: string): never {
-    if (error instanceof NotFoundException) {
+    if (error instanceof HttpException) {
       throw error;
     }
 

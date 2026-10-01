@@ -1,8 +1,8 @@
+import { CategoriesModule } from '../categories/categories.module';
 import { forwardRef, Module } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { TransactionsController } from './transactions.controller';
 import { AppModule } from '../app/app.module';
-import { WishlistModule } from '../wishlist/wishlist.module';
 import { AuthModule } from '../auth/auth.module';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { TransactionsRepository } from './repositories/transactions.repository';
@@ -15,6 +15,6 @@ import { TransactionsRepository } from './repositories/transactions.repository';
     FinancialDataEncryptionService,
   ],
   exports: [TransactionsRepository],
-  imports: [forwardRef(() => AppModule), WishlistModule, AuthModule],
+  imports: [CategoriesModule, forwardRef(() => AppModule), AuthModule],
 })
 export class TransactionsModule {}

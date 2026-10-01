@@ -15,6 +15,7 @@ model User {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  reservationRevision Int? @default(0)
 }
 
 model Transaction {
@@ -25,9 +26,85 @@ model Transaction {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   userId        String          @db.ObjectId
+  encryptedImportIdentity String?
 
   @@index([userId, id])
   @@index([userId, dateIndex, id])
+}
+
+model CreditCard {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  encryptedData String
+  closingDay    Int
+  dueDay        Int
+  revision      Int      @default(0)
+  createdAt     DateTime @default(now())
+  @@index([userId])
+}
+
+model CardPurchase {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  cardId        String   @db.ObjectId
+  encryptedData String
+  purchaseDate  String
+  createdAt     DateTime @default(now())
+  @@index([userId, cardId])
+}
+
+model CardInstallment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @db.ObjectId
+  cardId          String   @db.ObjectId
+  purchaseId      String   @db.ObjectId
+  number          Int
+  cycle           String
+  dueDate         String
+  encryptedAmount String
+  @@unique([userId, purchaseId, number])
+  @@index([userId, cardId, cycle])
+}
+
+model CardPayment {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  cardId        String   @db.ObjectId
+  cycle         String
+  transactionIds String[] @db.ObjectId
+  encryptedData String
+  createdAt     DateTime @default(now())
+  @@unique([userId, cardId, cycle])
+}
+
+// Raw files are never stored. The encrypted preview is cleared after expiresAt.
+model TransactionImport {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  encryptedData String?
+  expiresAt     DateTime
+  revision      Int      @default(0)
+  rowCount      Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, id])
+  @@index([expiresAt])
+}
+
+// Durable receipts remain after preview expiry and transaction deletion.
+model TransactionImportResult {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  batchId       String   @db.ObjectId
+  userId        String   @db.ObjectId
+  rowId         Int
+  status        String
+  reason        String?
+  transactionId String?  @db.ObjectId
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, batchId, rowId])
+  @@index([userId, batchId])
 }
 
 enum TransactionType {
@@ -88,10 +165,28 @@ model WishlistItem {
   name         String
   desiredValue Float
   savedAmount  Float     @default(0)
+  reservationMigrationState String? @default("PENDING")
+  status       String?    @default("ACTIVE")
+  completedAt  DateTime?
+  purchaseTransactionId String? @db.ObjectId
   targetDate   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   userId       String    @db.ObjectId
+
+  @@index([userId, status])
+  @@index([userId, purchaseTransactionId])
+}
+
+model WishlistMovement {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  wishlistItemId String  @db.ObjectId
+  kind          String
+  encryptedData Json
+  createdAt     DateTime @default(now())
+
+  @@index([userId, wishlistItemId, createdAt])
 }
 
 model Notification {
@@ -119,6 +214,7 @@ model FixedExpense {
   isPaid                  Boolean        @default(false)
   paidAt                  DateTime?
   paidTransactionId       String?
+  recurrenceDay           Int?
   recurrence              RecurrenceType
   lastNotificationDueDate DateTime?
   createdAt               DateTime       @default(now())
@@ -129,4 +225,59 @@ model FixedExpense {
 enum RecurrenceType {
   MONTHLY
   YEARLY
+}
+
+// Standard categories retain their legacy codes; custom references use Category.id.
+model Category {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String          @db.ObjectId
+  type          TransactionType
+  encryptedName String
+  color         String
+  icon          String
+  archived      Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([userId, type])
+}
+
+model CategoryRule {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String          @db.ObjectId
+  type              TransactionType
+  category          String
+  encryptedContains String
+  priority          Int             @default(0)
+  enabled           Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([userId, type, enabled, priority, id])
+}
+
+// Financial fields and effective-dated revisions are encrypted together.
+model RecurringIncome {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  encryptedData String
+  revision      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  @@index([userId])
+}
+
+// One durable receipt per source and due date; written atomically with Transaction.
+model CalendarReceipt {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  sourceId      String   @db.ObjectId
+  dueDate       String
+  periodKey     String
+  type          TransactionType
+  transactionId String   @db.ObjectId
+  encryptedData String
+  @@unique([userId, sourceId, dueDate])
+  @@unique([userId, sourceId, periodKey])
+  @@index([userId, transactionId])
 }

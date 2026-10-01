@@ -1,4 +1,14 @@
-# Plano de implementação de novas funcionalidades
+# Plano de implementação — rodada anterior
+
+> Atualização em 01/10/2026: o [escopo da v2.2.0](next-steps.md) registra as entregas A–E, cartões de crédito e a retirada do simulador. Este documento preserva o desenho da rodada anterior; sua ordem, checklist e exclusões de escopo são históricos.
+
+## Situação após a rodada anterior
+
+O código atual contém duplicação de transação pelo formulário, busca global com cursor, projeção de despesas fixas, orçamento mensal por categoria, marcação de notificações em lote e exportação CSV/PDF. A presença no código não equivale a uma verificação do deploy ou de todos os critérios de aceite.
+
+A próxima rodada inclui categorias personalizadas e regras automáticas, importação CSV/OFX com prévia, calendário e receitas recorrentes, metas com aportes individuais, conclusão da wishlist com geração de despesa e simulador de compras. A importação e a evolução das metas passam a fazer parte do escopo, conforme [o novo plano](next-steps.md).
+
+## Registro do planejamento original
 
 Plano para evoluir a API e o frontend do MyFinances em entregas pequenas e compatíveis com a aplicação em produção.
 
@@ -11,7 +21,7 @@ Plano para evoluir a API e o frontend do MyFinances em entregas pequenas e compa
 - Publicar primeiro suporte compatível na API; ativar a interface depois que a API estiver disponível.
 - Atualizar a documentação de rotas da API e os modelos/contratos do frontend na mesma entrega.
 
-## Estado atual que orienta o plano
+## Estado na elaboração do plano anterior
 
 - `GET /transactions` aceita paginação (`page` e `limit`); a busca e os filtros atuais do frontend atuam somente sobre a página carregada.
 - O payload sensível de transações é criptografado. `dateIndex`, `type` e `userId` permanecem disponíveis para consultas operacionais.
@@ -206,7 +216,7 @@ Filtros em campos criptografados não podem ser delegados ao MongoDB. Para evita
 - [ ] Fazer rollout API primeiro quando houver alteração de contrato.
 - [ ] Validar o fluxo afetado em ambiente de homologação antes da publicação.
 
-## Fora do escopo desta rodada
+## Fora do escopo da rodada anterior
 
 - Importação automática de extrato bancário, cartões/parcelas e integração com instituições financeiras.
 - Alterar o cálculo atual da wishlist ou converter objetivos existentes em metas com aportes individuais.

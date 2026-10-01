@@ -1,3 +1,5 @@
+import { CalendarModule } from '../calendar/calendar.module';
+import { CategoriesModule } from '../categories/categories.module';
 import { Module } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DashboardModule } from '../dashboard/dashboard.module';
@@ -11,9 +13,15 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ExportsModule } from '../exports/exports.module';
 import { BudgetsModule } from '../budgets/budgets.module';
+import { ImportsModule } from '../imports/imports.module';
+import { CardsModule } from '../cards/cards.module';
 
 @Module({
   imports: [
+    CalendarModule,
+    CardsModule,
+    ImportsModule,
+    CategoriesModule,
     ConfigModule.forRoot({ isGlobal: true }),
     BullModule.forRootAsync({
       inject: [ConfigService],

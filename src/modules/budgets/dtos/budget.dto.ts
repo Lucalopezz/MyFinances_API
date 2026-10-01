@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EXPENSE_CATEGORIES } from 'src/common/constants/categories.constants';
+import { CategoryReferenceSchema } from '../../categories/category.dto';
 
 export const MonthKeySchema = z
   .string()
@@ -9,7 +9,7 @@ export type BudgetMonthQueryDto = z.infer<typeof BudgetMonthQuerySchema>;
 
 const budgetFields = z.object({
   monthKey: MonthKeySchema,
-  category: z.enum(EXPENSE_CATEGORIES),
+  category: CategoryReferenceSchema,
   limitAmount: z.number().finite().positive(),
 });
 export const CreateBudgetSchema = budgetFields;

@@ -17,6 +17,12 @@ A aplicação usa **MongoDB** como banco de dados e **Prisma** como ORM. Todos o
 | `Notification` | `Notification` | Armazena alertas, lembretes e informações exibidas ao usuário.    |
 | `MonthlyBudget` | `MonthlyBudget` | Guarda limites mensais por categoria de despesa. |
 | `TransactionExport` | `TransactionExport` | Guarda estado, filtros e formato de exportações assíncronas. |
+| `TransactionImport` | `TransactionImport` | Guarda prévia criptografada de extrato com expiração. |
+| `TransactionImportResult` | `TransactionImportResult` | Guarda recibos por linha para confirmação idempotente. |
+| `CreditCard` | `CreditCard` | Guarda configuração e limite do cartão, com dados financeiros criptografados. |
+| `CardPurchase` | `CardPurchase` | Guarda compras no crédito, sem criar transações no ato. |
+| `CardInstallment` | `CardInstallment` | Guarda parcelas por ciclo e vencimento. |
+| `CardPayment` | `CardPayment` | Guarda quitação de fatura e vínculos com transações realizadas. |
 
 Os modelos de dados relacionados ao usuário possuem `userId`, garantindo que cada registro seja consultado e alterado apenas dentro do contexto do usuário autenticado.
 
@@ -61,6 +67,7 @@ Representa uma movimentação financeira. Pode ser uma receita (`INCOME`) ou uma
 | --------------- | --------------------- | ----------- | ------------------------------------------------------------------------ |
 | `id`            | `String @db.ObjectId` | Sim         | Identificador único da transação.                                        |
 | `encryptedData` | `Json`                | Sim         | Payload criptografado com `value`, `date`, `category` e `description`.   |
+| `encryptedImportIdentity` | `String?` | Não | Origem e identificador externo criptografados para correspondências de importação. |
 | `dateIndex`     | `Int`                 | Sim         | Índice operacional `YYYYMMDD` usado para filtro e ordenação por período. |
 | `type`          | `TransactionType`     | Sim         | Define se é `INCOME` ou `EXPENSE`.                                       |
 | `createdAt`     | `DateTime`            | Sim         | Data de criação do registro.                                             |
@@ -114,7 +121,7 @@ Categorias de despesa:
 
 - A validação diferencia receitas e despesas usando `type`.
 - As categorias permitidas mudam conforme o tipo da transação.
-- Ao criar, atualizar ou remover uma transação, a aplicação recalcula a economia dos itens da wishlist.
+- Criar, atualizar ou remover uma transação altera o saldo financeiro disponível para novos aportes, sem modificar reservas existentes.
 - A API descriptografa os dados sensíveis antes de responder, mantendo o contrato externo com `value`, `date`, `category` e `description`.
 
 ---
@@ -156,41 +163,17 @@ Comparativo mensal:
 
 ---
 
-## WishlistItem
+## WishlistItem e WishlistMovement
 
-Representa um objetivo financeiro do usuário, como um produto, viagem ou meta de compra.
+Operação e migração: [wishlist-reservations.md](wishlist-reservations.md).
 
-### Campos
+`WishlistItem` guarda nome, valor desejado, prazo opcional, `status` (`ACTIVE` ou `COMPLETED`), `completedAt`, `purchaseTransactionId` e `userId`. O antigo `savedAmount` permanece como referência histórica; não é reserva. `reservationMigrationState` identifica metas antigas pendentes de distribuição (`PENDING`) e metas novas ou já revisadas (`SETTLED`). Campos novos são opcionais no schema para leitura dos documentos MongoDB anteriores à sincronização; a API interpreta ausência como `ACTIVE` e `PENDING`.
 
-| Campo          | Tipo                  | Obrigatório | Descrição                                   |
-| -------------- | --------------------- | ----------- | ------------------------------------------- |
-| `id`           | `String @db.ObjectId` | Sim         | Identificador único do item.                |
-| `name`         | `String`              | Sim         | Nome do objetivo.                           |
-| `desiredValue` | `Float`               | Sim         | Valor desejado para atingir a meta.         |
-| `savedAmount`  | `Float`               | Sim         | Valor economizado calculado pela aplicação. |
-| `targetDate`   | `DateTime?`           | Não         | Data alvo para alcançar a meta.             |
-| `createdAt`    | `DateTime`            | Sim         | Data de criação do item.                    |
-| `updatedAt`    | `DateTime`            | Sim         | Data da última atualização.                 |
-| `userId`       | `String @db.ObjectId` | Sim         | Dono do item.                               |
+`WishlistMovement` guarda `userId`, `wishlistItemId`, `kind` (`DEPOSIT`, `WITHDRAWAL`, `CONSUMPTION`, `RELEASE`), `createdAt` e `encryptedData` com valor, data e observação criptografados em AES-256-GCM. A reserva é derivada do histórico em centavos; nenhuma transação é criada por aporte ou retirada.
 
-### Principais funções
+O saldo registrado é a soma das transações descriptografadas do usuário; o total reservado soma apenas metas ativas; o saldo livre é a diferença. Aportes e conclusões concorrentes escrevem `User.reservationRevision` na mesma transação MongoDB para serializar atualizações de reservas. Conclusão cria despesa criptografada, movimentos de consumo/liberação e marca a meta concluída na mesma transação. Repetição retorna a transação vinculada. `Transaction` vinculada não pode ser editada ou excluída pelo CRUD genérico. Excluir uma meta ativa remove seus movimentos e libera a reserva; excluí-la após compra é bloqueado.
 
-- `POST /wishlist`: cria um item na wishlist.
-- `GET /wishlist`: lista os itens do usuário.
-- `GET /wishlist/:id`: busca um item específico.
-- `PATCH /wishlist/:id`: atualiza um item.
-- `DELETE /wishlist/:id`: remove um item.
-
-### Regras de negócio
-
-- O campo `savedAmount` é atualizado com base na economia anual calculada pelas transações.
-- A economia anual considera transações do ano atual:
-
-```ts
-savedAmount = totalIncomeAnoAtual - totalExpensesAnoAtual;
-```
-
-- Sempre que uma transação é criada, atualizada ou excluída, os itens da wishlist são recalculados.
+A sugestão mensal divide o valor restante pelos meses civis de UTC desde o mês atual até o mês do prazo, ambos incluídos, arredondando para cima em centavos. Prazo passado, ausente ou meta alcançada não produz divisão. Migração preserva nome, valor e prazo; o usuário escolhe seus aportes iniciais e confirma a distribuição. A economia anual antiga nunca vira aporte automaticamente.
 
 ---
 
@@ -305,6 +288,11 @@ O schema atual não declara relações Prisma formais entre os modelos, mas a ap
 User
 ├── Transaction[]
 ├── WishlistItem[]
+├── WishlistMovement[]
+├── CreditCard[]
+├── CardPurchase[]
+├── CardInstallment[]
+├── CardPayment[]
 ├── FixedExpense[]
 ├── Notification[]
 ├── MonthlyBudget[]
@@ -313,7 +301,7 @@ User
 
 ### Fluxos importantes
 
-- **Transação alterada:** recalcula a economia da wishlist.
+- **Transação alterada:** modifica o saldo livre calculado; reservas existentes permanecem.
 - **Despesa fixa consultada:** atualiza ciclos vencidos e dispara lembretes próximos do vencimento.
 - **Despesa fixa paga e vencida:** no próximo ciclo, volta para `isPaid = false`.
 - **Dashboard consultado:** calcula tudo em tempo de execução a partir das transações.
@@ -324,5 +312,52 @@ User
 
 - Como `userId` é usado como vínculo lógico, todo endpoint protegido deve filtrar por `userId`.
 - O dashboard depende da consistência das datas das transações.
-- A wishlist usa `createdAt` das transações para cálculo anual, enquanto o dashboard usa `date`.
-- A v2 pode evoluir o modelo de despesas fixas para criar transações automaticamente quando uma despesa for marcada como paga.
+- A wishlist usa transações realizadas para calcular saldo financeiro e movimentos próprios para calcular reservas.
+- O pagamento de despesas fixas cria transações vinculadas; pagamentos de faturas criam transações próprias e protegidas contra edição/exclusão genérica.
+
+## Category e CategoryRule — entrega A
+
+`Category` guarda `id`, `userId`, `type`, `encryptedName`, `color`, `icon`, `archived`, `createdAt` e `updatedAt`, com índice `[userId, type]`. Apenas categorias personalizadas são persistidas. O catálogo padrão é estático na API e mantém os códigos legados. Tipo é imutável e arquivamento é reversível.
+
+`CategoryRule` guarda `id`, `userId`, `type`, `category`, `encryptedContains`, `priority`, `enabled`, `createdAt` e `updatedAt`, com índice `[userId, type, enabled, priority, id]`. `category` aceita código padrão ou ID personalizado. A ordenação é `priority ASC, id ASC`; regras desativadas ou com destino arquivado são ignoradas.
+
+Nomes de categorias e trechos de regras usam o mesmo AES-256-GCM de `FinancialDataEncryptionService`. A chave `FINANCIAL_DATA_ENCRYPTION_KEY` deve ser preservada em backups e deploys. Cor, ícone, tipo, prioridade, vínculos e estado são metadados operacionais. A descrição de exemplo é transitória e não é persistida. O campo de categoria das transações continua criptografado; nenhum registro legado é reescrito.
+
+### Atualização do banco e publicação
+
+1. Fazer backup do MongoDB e preservar a chave de criptografia; verificar a restauração no processo operacional de deploy.
+2. Gerar o client com `npx prisma generate` e sincronizar as novas coleções/índices com `npx prisma db push` no ambiente de destino. MongoDB não usa Prisma Migrate. Conferir o diff e não aceitar remoções de dados.
+3. Publicar a API e verificar catálogo, isolamento e uso de categoria personalizada; publicar o frontend em seguida.
+4. Não é necessário backfill de transações. Em rollback, preservar as duas coleções e manter uma API capaz de ler IDs personalizados já usados; clientes antigos não oferecem essas categorias nos seletores.
+
+A implementação local não executa `db push` nem modifica dados de produção automaticamente.
+
+## TransactionImport e TransactionImportResult — entrega B (backend)
+
+`TransactionImport` contém `id`, `userId`, `encryptedData` opcional, `expiresAt`, `rowCount`, `revision`, `createdAt` e `updatedAt`. Índices: `[userId, id]` e `[expiresAt]`. O payload é um único envelope AES-256-GCM com origem e registros normalizados; o arquivo bruto nunca é persistido. A prévia dura 24 horas. Descarte manual ou limpeza de expirados tornam `encryptedData` nulo; o cabeçalho operacional permanece. `revision` é incrementado na transação de cada resultado para serializar gravações com cancelamento e expiração.
+
+`TransactionImportResult` contém `id`, `batchId`, `userId`, `rowId`, `status`, `reason`, `transactionId` e `updatedAt`. Índice **único** `[userId, batchId, rowId]`, além de `[userId, batchId]`. Estados persistidos: `IMPORTED`, `IGNORED`, `REJECTED`. `PENDING` é resposta derivada para linhas sem resultado ou com falha transitória. Motivos são códigos fixos, sem descrição/valor/origem em texto aberto. Cada gravação de transação e recibo usa uma única transação MongoDB; recibos importados são definitivos e sobrevivem à exclusão da transação, impedindo recriação pelo mesmo lote/linha.
+
+`Transaction.encryptedImportIdentity` é opcional, não retornado pelo mapper público. Contém `{ source, externalId }`, criptografado com a chave financeira, permitindo buscar correspondências após a prévia expirar. Transações antigas e manuais não precisam desse campo. Edição genérica preserva-o.
+
+### Atualização e recuperação da entrega B
+
+1. Preservar backup e chave financeira. Revisar `schema.prisma`; mudanças são aditivas, sem conversão de registros existentes.
+2. Executar `npx prisma generate` e, no destino correto, `npx prisma db push`. MongoDB precisa de replica set (Atlas é compatível). Confirmar o índice único dos recibos antes de atender confirmações.
+3. Publicar a API e verificar prévia sem gravação, confirmação repetida, consulta de resultado e limpeza de expirados; publicar frontend depois da API.
+4. Em rollback, desativar rotas de importação e preservar as duas coleções, recibos, transações e chave. Não apagar recibos para repetir lotes. Clientes anteriores continuam lendo transações pelo mapper existente. Se a versão anterior da API não executa limpeza, o descarte de payloads expirados precisa ser mantido operacionalmente.
+
+Nesta entrega, `db push` é executado pelos testes apenas em banco local descartável, com nome aleatório. Nenhum schema de desenvolvimento existente ou produção é sincronizado automaticamente. Detalhes de retenção, limitações e retomada em [Importação de extratos](transaction-imports.md).
+
+
+## Entrega C — RecurringIncome e CalendarReceipt
+
+`RecurringIncome`: ObjectId, userId, encryptedData (revisões de descrição/valor/categoria/data inicial/periodicidade/pausa/vigência), revision e timestamps. `CalendarReceipt`: ObjectId, userId, sourceId, dueDate civil, periodKey (`MONTHLY:YYYY-MM` ou `YEARLY:YYYY`), type, transactionId e snapshot encryptedData. Unicidade por usuário/origem/período e por usuário/origem/data; índice por usuário/transação.
+
+`FixedExpense.recurrenceDay` é opcional e mantém a âncora do dia de vencimento. Recibos de pagamento preservam ciclos realizados após o avanço. Histórico já sobrescrito pela versão anterior não é inferido. Transações novas mantêm o esquema de criptografia existente. Veja [calendário financeiro](financial-calendar.md) para implantação e recuperação.
+
+## Cartões de crédito — v2.2.0
+
+`CreditCard` guarda `userId`, dias de fechamento/vencimento, revisão para concorrência e payload criptografado com nome, limite e anuidade. `CardPurchase` guarda cartão, data civil e payload criptografado com descrição, valor, categoria e número de parcelas. `CardInstallment` vincula compra e cartão à parcela, competência e vencimento, com valor criptografado; o índice único por usuário/compra/número impede parcela repetida.
+
+`CardPayment` registra usuário, cartão, competência, IDs das transações realizadas e valor/data criptografados. O índice único `(userId, cardId, cycle)` protege a quitação idempotente. Compras não criam `Transaction`; a quitação da fatura cria as despesas vinculadas em operação atômica. Consulte [Cartões de crédito](credit-cards.md) para cálculo do ciclo, limite, calendário e implantação.

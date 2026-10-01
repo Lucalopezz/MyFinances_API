@@ -1,3 +1,4 @@
+import { CategoriesService } from '../categories/categories.service';
 import {
   ConflictException,
   Injectable,
@@ -14,6 +15,7 @@ import { MonthlyBudgetSummaryModel } from './models/monthly-budget.model';
 @Injectable()
 export class BudgetsService {
   constructor(
+    private readonly categories: CategoriesService,
     private readonly repository: MonthlyBudgetsRepository,
     private readonly transactionsRepository: TransactionsRepository,
     private readonly encryptionService: FinancialDataEncryptionService,
@@ -24,6 +26,7 @@ export class BudgetsService {
   }
 
   async create(dto: CreateBudgetDto, userId: string) {
+    await this.categories.resolveReference(dto.category, userId, 'EXPENSE');
     try {
       return await this.repository.create(dto, userId);
     } catch (error) {
@@ -32,7 +35,14 @@ export class BudgetsService {
   }
 
   async update(id: string, dto: UpdateBudgetDto, userId: string) {
-    await this.findOwned(id, userId);
+    const current = await this.findOwned(id, userId);
+    await this.categories.resolveReference(
+      dto.category ?? current.category,
+      userId,
+      'EXPENSE',
+      (!dto.category || dto.category === current.category) &&
+        (!dto.monthKey || dto.monthKey === current.monthKey),
+    );
     try {
       return await this.repository.update(id, dto, userId);
     } catch (error) {

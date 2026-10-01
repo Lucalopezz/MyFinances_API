@@ -28,8 +28,11 @@ describe('TransactionsService.searchTransactions', () => {
       return records.filter((item) => !after || item.id < after).slice(0, take);
     });
     const service = new TransactionsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new TransactionsRepository({ transaction: { findMany } } as never),
-      {} as never,
       { decrypt: (value: string) => JSON.parse(value) } as never,
     );
     const query = { limit: 2, category: 'FOOD' as const };
@@ -62,8 +65,11 @@ describe('TransactionsService legacy contract', () => {
     const findMany = jest.fn(async () => [records[0]]);
     const count = jest.fn(async () => 105);
     const service = new TransactionsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new TransactionsRepository({ transaction: { findMany, count } } as never),
-      {} as never,
       { decrypt: (value: string) => JSON.parse(value) } as never,
     );
 
@@ -90,19 +96,19 @@ describe('TransactionsService legacy contract', () => {
     });
   });
 
-  it('creates a new encrypted record, returns plaintext fields and recalculates wishlist savings', async () => {
+  it('creates a new encrypted record and returns plaintext fields', async () => {
     const create = jest.fn(async ({ data }) => ({
       ...data,
       id: '64f000000000000000000010',
       createdAt: new Date(date),
       updatedAt: new Date(date),
     }));
-    const wishlist = {
-      updateWishlistItemsSavings: jest.fn(async () => undefined),
-    };
     const service = new TransactionsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new TransactionsRepository({ transaction: { create } } as never),
-      wishlist as never,
       {
         encrypt: (value: unknown) => JSON.stringify(value),
         decrypt: (value: string) => JSON.parse(value),
@@ -133,7 +139,6 @@ describe('TransactionsService legacy contract', () => {
       type: 'EXPENSE',
     });
     expect(result).not.toHaveProperty('encryptedData');
-    expect(wishlist.updateWishlistItemsSavings).toHaveBeenCalledWith(userId);
   });
 
   it('keeps ownership in update and delete queries', async () => {
@@ -149,14 +154,17 @@ describe('TransactionsService legacy contract', () => {
     const update = jest.fn(async ({ data }) => ({ ...encrypted, ...data }));
     const remove = jest.fn(async () => encrypted);
     const findFirst = jest.fn(async () => encrypted);
-    const wishlist = {
-      updateWishlistItemsSavings: jest.fn(async () => undefined),
-    };
     const service = new TransactionsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new TransactionsRepository({
         transaction: { findFirst, update, delete: remove },
+        cardPayment: { findFirst: jest.fn(async () => null) },
+        wishlistItem: { findFirst: jest.fn(async () => null) },
+        calendarReceipt: { findFirst: jest.fn(async () => null) },
       } as never),
-      wishlist as never,
       {
         encrypt: (value: unknown) => JSON.stringify(value),
         decrypt: (value: string) => JSON.parse(value),
@@ -180,6 +188,5 @@ describe('TransactionsService legacy contract', () => {
     expect(remove).toHaveBeenCalledWith({
       where: { id: encrypted.id, userId },
     });
-    expect(wishlist.updateWishlistItemsSavings).toHaveBeenCalledTimes(2);
   });
 });

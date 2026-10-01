@@ -1,16 +1,19 @@
 import { z } from 'zod';
-import { FIXED_EXPENSE_CATEGORIES } from 'src/common/constants/categories.constants';
+import { CategoryReferenceSchema } from '../../categories/category.dto';
+import { todayKey } from '../../calendar/calendar-calculation';
 
 export const RecurrenceTypeEnum = z.enum(['MONTHLY', 'YEARLY']);
 
 export const CreateFixedExpenseDto = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   amount: z.number().positive('Valor deve ser positivo'),
-  category: z.enum(FIXED_EXPENSE_CATEGORIES),
+  category: CategoryReferenceSchema,
   dueDate: z.coerce
     .date()
-    .min(new Date(), 'Data não pode ser no passado')
-    .transform((val) => val),
+    .refine(
+      (value) => value.toISOString().slice(0, 10) >= todayKey(),
+      'Data não pode ser no passado',
+    ),
   recurrence: RecurrenceTypeEnum,
 });
 

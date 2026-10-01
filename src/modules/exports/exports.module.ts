@@ -1,3 +1,4 @@
+import { CategoriesModule } from '../categories/categories.module';
 import { BullModule } from '@nestjs/bullmq';
 import { forwardRef, Module } from '@nestjs/common';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
@@ -14,6 +15,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
 
 @Module({
   imports: [
+    CategoriesModule,
     forwardRef(() => AppModule),
     AuthModule,
     TransactionsModule,

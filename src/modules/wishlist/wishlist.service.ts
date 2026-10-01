@@ -1,112 +1,144 @@
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma, WishlistItem } from '@prisma/client';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { CategoriesService } from '../categories/categories.service';
 import {
+  buildEncryptedTransactionData,
+  decryptTransaction,
+  decryptTransactions,
+  EncryptedTransactionRecord,
+} from '../transactions/transaction-encryption.mapper';
+import {
+  CompleteWishlistItemDto,
   CreateWishlistItemDto,
   UpdateWishlistItemDto,
+  WishlistMovementDto,
 } from './dtos/wishlist.dto';
-import { Prisma } from '@prisma/client';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
-import {
-  buildDateIndex,
-  decryptTransactions,
-} from '../transactions/transaction-encryption.mapper';
-import { WishlistRepository } from './repositories/wishlist.repository';
+import { amount, cents, itemView, movementView } from './wishlist-view.mapper';
 
 @Injectable()
 export class WishlistService {
   constructor(
-    private readonly repository: WishlistRepository,
-    private readonly encryptionService: FinancialDataEncryptionService,
+    private readonly prisma: PrismaService,
+    private readonly encryption: FinancialDataEncryptionService,
+    private readonly categories: CategoriesService,
   ) {}
-  async updateWishlistItemsSavings(userId: string): Promise<void> {
-    const monthlySavings = await this.calculateAnnualSavings(userId);
 
-    // atualiza todos os itens da wishlist do usuário
-    await this.repository.updateSavings(userId, monthlySavings);
+  private movementData(value: number, date: string, note?: string | null) {
+    return {
+      value: this.encryption.encrypt(value),
+      date: this.encryption.encrypt(date),
+      note: this.encryption.encrypt(note ?? null),
+    };
   }
-  async calculateAnnualSavings(userId: string): Promise<number> {
-    // Obtém a data atual
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const endOfYear = new Date(now.getFullYear(), 11, 31);
 
-    // busca todas as transações do usuário no ano atual
-    const transactions = await this.repository.findTransactionsByPeriod(
-      userId,
-      buildDateIndex(startOfYear),
-      buildDateIndex(endOfYear),
+  private async findOwned(
+    id: string,
+    userId: string,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
+    const item = await tx.wishlistItem.findFirst({ where: { id, userId } });
+    if (!item) throw new NotFoundException('Meta não encontrada.');
+    return item;
+  }
+
+  private async view(
+    item: WishlistItem,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
+    const movements = await tx.wishlistMovement.findMany({
+      where: { userId: item.userId, wishlistItemId: item.id },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    return itemView(item, movements, this.encryption);
+  }
+
+  private async summaryFor(
+    userId: string,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
+    const [transactions, items, movements] = await Promise.all([
+      tx.transaction.findMany({ where: { userId } }),
+      tx.wishlistItem.findMany({ where: { userId } }),
+      tx.wishlistMovement.findMany({ where: { userId } }),
+    ]);
+    const financialCents = decryptTransactions(
+      transactions as unknown as EncryptedTransactionRecord[],
+      this.encryption,
+    ).reduce(
+      (sum, transaction) =>
+        sum +
+        (transaction.type === 'INCOME'
+          ? cents(transaction.value)
+          : -cents(transaction.value)),
+      0,
     );
-
-    if (!transactions || transactions.length === 0) {
-      throw new NotFoundException(
-        'Transações não encontradas para o ano atual.',
-      );
-    }
-
-    const decryptedTransactions = decryptTransactions(
-      transactions,
-      this.encryptionService,
+    const activeIds = new Set(
+      items
+        .filter((item) => (item.status ?? 'ACTIVE') === 'ACTIVE')
+        .map((item) => item.id),
     );
+    const reservedCents = movements
+      .filter((movement) => activeIds.has(movement.wishlistItemId))
+      .reduce((sum, movement) => {
+        const value = cents(movementView(movement, this.encryption).value);
+        return sum + (movement.kind === 'DEPOSIT' ? value : -value);
+      }, 0);
+    return {
+      financialBalance: amount(financialCents),
+      totalReserved: amount(reservedCents),
+      freeBalance: amount(financialCents - reservedCents),
+      insufficient: financialCents < reservedCents,
+    };
+  }
 
-    const totalIncome = decryptedTransactions
-      .filter((t) => t.type === 'INCOME')
-      .reduce((sum, t) => sum + t.value, 0);
-
-    const totalExpenses = decryptedTransactions
-      .filter((t) => t.type === 'EXPENSE')
-      .reduce((sum, t) => sum + t.value, 0);
-
-    return totalIncome - totalExpenses;
+  async getSummary(userId: string) {
+    return this.summaryFor(userId);
   }
 
   async createWishlistItem(dto: CreateWishlistItemDto, userId: string) {
-    try {
-      const annualSavings = await this.calculateAnnualSavings(userId);
-
-      const wishlistItem = await this.repository.create(
-        dto,
+    const item = await this.prisma.wishlistItem.create({
+      data: {
+        name: dto.name,
+        desiredValue: dto.desiredValue,
+        targetDate: dto.targetDate
+          ? new Date(`${dto.targetDate}T00:00:00.000Z`)
+          : null,
         userId,
-        annualSavings,
-      );
-
-      await this.updateWishlistItemsSavings(userId);
-
-      return wishlistItem;
-    } catch (error) {
-      console.log(error);
-      throw new NotFoundException('Erro ao criar item na wishlist.');
-    }
+        savedAmount: 0,
+        reservationMigrationState: 'SETTLED',
+        status: 'ACTIVE',
+      },
+    });
+    return this.view(item);
   }
 
   async getWishlistItems(userId: string) {
-    return this.repository.findByUser(userId);
+    const items = await this.prisma.wishlistItem.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    const movements = await this.prisma.wishlistMovement.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    return items.map((item) =>
+      itemView(
+        item,
+        movements.filter((movement) => movement.wishlistItemId === item.id),
+        this.encryption,
+      ),
+    );
   }
 
   async getWishlistItem(id: string, userId: string) {
-    try {
-      const wish = await this.repository.findOwned(id, userId);
-
-      if (!wish) {
-        throw new NotFoundException(`Item com ID "${id}" não encontrado.`);
-      }
-
-      return wish;
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException(`Item com ID "${id}" não encontrado.`);
-        }
-
-        throw new InternalServerErrorException(
-          'Erro ao buscar o item na wishlist.',
-        );
-      }
-
-      throw new InternalServerErrorException('Ocorreu um erro inesperado.');
-    }
+    return this.view(await this.findOwned(id, userId));
   }
 
   async updateWishlistItem(
@@ -114,16 +146,217 @@ export class WishlistService {
     dto: UpdateWishlistItemDto,
     userId: string,
   ) {
-    const wishId = await this.getWishlistItem(id, userId);
+    return this.atomic(userId, async (tx) => {
+      const item = await this.findOwned(id, userId, tx);
+      if ((item.status ?? 'ACTIVE') !== 'ACTIVE')
+        throw new ConflictException('A compra concluída não pode ser editada.');
+      return this.view(
+        await tx.wishlistItem.update({
+          where: { id, userId },
+          data: {
+            ...dto,
+            targetDate:
+              dto.targetDate === undefined
+                ? undefined
+                : dto.targetDate
+                  ? new Date(`${dto.targetDate}T00:00:00.000Z`)
+                  : null,
+          },
+        }),
+        tx,
+      );
+    });
+  }
 
-    const wish = await this.repository.updateOwned(wishId.id, userId, dto);
-    await this.updateWishlistItemsSavings(userId);
+  private async atomic<T>(
+    userId: string,
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            // One write per user serializes competing reservation and completion requests.
+            await tx.user.update({
+              where: { id: userId },
+              data: { reservationRevision: { increment: 1 } },
+            });
+            return operation(tx);
+          },
+          { maxWait: 5000, timeout: 20000 },
+        );
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034' &&
+          attempt < 3
+        )
+          continue;
+        throw error;
+      }
+    }
+    throw new ConflictException(
+      'Conflito ao atualizar reservas. Tente novamente.',
+    );
+  }
 
-    return wish;
+  async addMovement(id: string, dto: WishlistMovementDto, userId: string) {
+    return this.atomic(userId, async (tx) => {
+      const item = await this.findOwned(id, userId, tx);
+      if ((item.status ?? 'ACTIVE') !== 'ACTIVE')
+        throw new ConflictException('Meta já concluída.');
+      const current = await this.view(item, tx);
+      if (
+        dto.kind === 'WITHDRAWAL' &&
+        cents(dto.value) > cents(current.reservedAmount)
+      )
+        throw new BadRequestException('Retirada maior que a reserva da meta.');
+      if (dto.kind === 'DEPOSIT') {
+        const summary = await this.summaryFor(userId, tx);
+        if (cents(dto.value) > cents(summary.freeBalance))
+          throw new BadRequestException(
+            'Saldo livre insuficiente para este aporte.',
+          );
+      }
+      await tx.wishlistMovement.create({
+        data: {
+          userId,
+          wishlistItemId: id,
+          kind: dto.kind,
+          encryptedData: this.movementData(dto.value, dto.date, dto.note),
+        },
+      });
+      return this.view(item, tx);
+    });
+  }
+
+  async settleMigration(userId: string) {
+    await this.prisma.wishlistItem.updateMany({
+      where: { userId },
+      data: { reservationMigrationState: 'SETTLED' },
+    });
+    return this.getWishlistItems(userId);
+  }
+
+  async complete(id: string, dto: CompleteWishlistItemDto, userId: string) {
+    return this.atomic(userId, async (tx) => {
+      const item = await this.findOwned(id, userId, tx);
+      if ((item.status ?? 'ACTIVE') === 'COMPLETED') {
+        if (!item.purchaseTransactionId)
+          throw new ConflictException(
+            'Compra concluída sem transação vinculada.',
+          );
+        const transaction = await tx.transaction.findFirst({
+          where: { id: item.purchaseTransactionId, userId },
+        });
+        if (!transaction)
+          throw new ConflictException(
+            'Compra concluída sem transação vinculada.',
+          );
+        const view = await this.view(item, tx);
+        const purchase = decryptTransaction(
+          transaction as unknown as EncryptedTransactionRecord,
+          this.encryption,
+        );
+        const coveredAmount = amount(
+          view.movements
+            .filter((movement) => movement.kind === 'CONSUMPTION')
+            .reduce((sum, movement) => sum + cents(movement.value), 0),
+        );
+        const releasedAmount = amount(
+          view.movements
+            .filter((movement) => movement.kind === 'RELEASE')
+            .reduce((sum, movement) => sum + cents(movement.value), 0),
+        );
+        return {
+          item: view,
+          transaction: purchase,
+          coveredAmount,
+          releasedAmount,
+          uncoveredAmount: amount(cents(purchase.value) - cents(coveredAmount)),
+          alreadyCompleted: true,
+        };
+      }
+      if ((item.status ?? 'ACTIVE') !== 'ACTIVE')
+        throw new ConflictException('Meta indisponível para conclusão.');
+      await this.categories.resolveReference(dto.category, userId, 'EXPENSE');
+      const current = await this.view(item, tx);
+      const purchaseDate = new Date(`${dto.date}T00:00:00.000Z`);
+      const transaction = await tx.transaction.create({
+        data: buildEncryptedTransactionData(
+          {
+            value: dto.value,
+            date: purchaseDate,
+            category: dto.category,
+            description: dto.description,
+            type: 'EXPENSE',
+            userId,
+          },
+          this.encryption,
+        ) as never,
+      });
+      const used = Math.min(cents(current.reservedAmount), cents(dto.value));
+      const released = cents(current.reservedAmount) - used;
+      if (used > 0)
+        await tx.wishlistMovement.create({
+          data: {
+            userId,
+            wishlistItemId: id,
+            kind: 'CONSUMPTION',
+            encryptedData: this.movementData(
+              amount(used),
+              dto.date,
+              'Reserva usada na compra',
+            ),
+          },
+        });
+      if (released > 0)
+        await tx.wishlistMovement.create({
+          data: {
+            userId,
+            wishlistItemId: id,
+            kind: 'RELEASE',
+            encryptedData: this.movementData(
+              amount(released),
+              dto.date,
+              'Sobra liberada após compra',
+            ),
+          },
+        });
+      const completed = await tx.wishlistItem.update({
+        where: { id, userId },
+        data: {
+          status: 'COMPLETED',
+          completedAt: purchaseDate,
+          purchaseTransactionId: transaction.id,
+        },
+      });
+      return {
+        item: await this.view(completed, tx),
+        transaction: decryptTransaction(
+          transaction as unknown as EncryptedTransactionRecord,
+          this.encryption,
+        ),
+        coveredAmount: amount(used),
+        releasedAmount: amount(released),
+        uncoveredAmount: amount(cents(dto.value) - used),
+        alreadyCompleted: false,
+      };
+    });
   }
 
   async deleteWishlistItem(id: string, userId: string) {
-    const wishId = await this.getWishlistItem(id, userId);
-    return this.repository.removeOwned(wishId.id, userId);
+    return this.atomic(userId, async (tx) => {
+      const item = await this.findOwned(id, userId, tx);
+      if ((item.status ?? 'ACTIVE') !== 'ACTIVE')
+        throw new ConflictException(
+          'Compra concluída deve permanecer no histórico.',
+        );
+      await tx.wishlistMovement.deleteMany({
+        where: { userId, wishlistItemId: id },
+      });
+      await tx.wishlistItem.delete({ where: { id, userId } });
+      return { deleted: true };
+    });
   }
 }

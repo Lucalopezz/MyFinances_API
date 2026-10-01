@@ -1,3 +1,4 @@
+import { CategoriesService } from '../categories/categories.service';
 import { Injectable } from '@nestjs/common';
 import {
   CreateFixedExpenseDto,
@@ -13,6 +14,7 @@ import { FixedExpenseRecurrenceService } from './services/fixed-expense-recurren
 @Injectable()
 export class FixedExpensesService {
   constructor(
+    private readonly categories: CategoriesService,
     private readonly repository: FixedExpensesRepository,
     private readonly paymentService: FixedExpensePaymentService,
     private readonly recurrenceService: FixedExpenseRecurrenceService,
@@ -21,6 +23,7 @@ export class FixedExpensesService {
   ) {}
 
   async createFixedExpense(dto: CreateFixedExpenseDto, userId: string) {
+    await this.categories.resolveReference(dto.category, userId, 'EXPENSE');
     try {
       const expense = await this.repository.create(dto, userId);
 
@@ -67,6 +70,12 @@ export class FixedExpensesService {
       await this.recurrenceService.refreshRecurringExpenses(userId);
 
       const expense = await this.repository.findByIdOrThrow(id, userId);
+      await this.categories.resolveReference(
+        dto.category ?? expense.category,
+        userId,
+        'EXPENSE',
+        !dto.category || dto.category === expense.category,
+      );
       const updatedExpense = await this.repository.update(expense.id, dto);
 
       await this.notificationService.processUpcomingDueNotifications(userId);

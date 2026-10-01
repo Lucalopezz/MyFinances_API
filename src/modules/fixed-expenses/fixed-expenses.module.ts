@@ -1,3 +1,4 @@
+import { CategoriesModule } from '../categories/categories.module';
 import { forwardRef, Module } from '@nestjs/common';
 import { FixedExpensesService } from './fixed-expenses.service';
 import { FixedExpensesController } from './fixed-expenses.controller';
@@ -35,6 +36,11 @@ import { FixedExpensePaymentsRepository } from './repositories/fixed-expense-pay
     FixedExpenseRawFieldsService,
     FixedExpenseErrorHandler,
   ],
-  imports: [forwardRef(() => AppModule), NotificationModule, AuthModule],
+  imports: [
+    CategoriesModule,
+    forwardRef(() => AppModule),
+    NotificationModule,
+    AuthModule,
+  ],
 })
 export class FixedExpensesModule {}

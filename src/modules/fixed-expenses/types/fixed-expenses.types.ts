@@ -7,6 +7,7 @@ export type RecurringExpenseToRefresh = Prisma.FixedExpenseGetPayload<{
     id: true;
     dueDate: true;
     recurrence: true;
+    recurrenceDay: true;
   };
 }>;
 export type UpcomingExpenseToNotify = Prisma.FixedExpenseGetPayload<{

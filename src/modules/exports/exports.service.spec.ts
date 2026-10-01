@@ -9,6 +9,10 @@ describe('ExportsService', () => {
     const create = jest.fn(async ({ data }) => ({ id, ...data }));
     const add = jest.fn(async () => undefined);
     const service = new ExportsService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
       new TransactionExportsRepository({
         transactionExport: { create },
       } as never),

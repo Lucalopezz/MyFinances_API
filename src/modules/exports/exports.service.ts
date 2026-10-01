@@ -1,3 +1,4 @@
+import { CategoriesService } from '../categories/categories.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   ConflictException,
@@ -26,6 +27,7 @@ export class ExportsService {
   private readonly storagePath: string;
 
   constructor(
+    private readonly categories: CategoriesService,
     private readonly repository: TransactionExportsRepository,
     private readonly configService: ConfigService,
     @InjectQueue(TRANSACTION_EXPORT_QUEUE)
@@ -41,6 +43,13 @@ export class ExportsService {
     userId: string,
     filters: CreateTransactionExportDto,
   ) {
+    if (filters.categoryId)
+      await this.categories.resolveReference(
+        filters.categoryId,
+        userId,
+        filters.type,
+        true,
+      );
     const { format, ...transactionFilters } = filters;
     // Creates a new transaction export record in the database with status PENDING.
     const transactionExport = await this.repository.create(

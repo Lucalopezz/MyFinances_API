@@ -1,0 +1,11 @@
+# Reservas da wishlist: implantação e recuperação
+
+A entrega D/E exige MongoDB configurado como replica set para transações atômicas. Publique a API e sincronize o schema (`npx prisma db push`) antes de publicar o frontend. Faça backup de `User`, `WishlistItem`, `Transaction` e `WishlistMovement` antes da sincronização. O código preserva o campo legado `savedAmount` e não o altera, o que permite auditar o progresso antigo após a publicação.
+
+Não é necessário executar uma migração que atribua valores às metas. Documentos antigos sem `status` e `reservationMigrationState` são lidos como `ACTIVE` e `PENDING`. Eles começam com reserva real zero e mostram `savedAmount` como `legacySavedAmount`. O usuário distribui reservas por aportes dentro do saldo livre e marca a distribuição como concluída. Itens novos já nascem `SETTLED`.
+
+`WishlistMovement.encryptedData` protege valor, data e observação com a mesma chave `FINANCIAL_DATA_ENCRYPTION_KEY` usada nas transações. A chave deve ser mantida para ler históricos existentes. Aportes, retiradas e conclusões escrevem o documento `User` dentro da transação para serializar alterações de reservas por usuário. A conclusão cria a despesa e os movimentos de consumo/liberação no mesmo commit. Retries de conflito transacional são limitados a quatro tentativas. A rota retorna a compra já concluída em novas chamadas, sem nova despesa.
+
+O saldo registrado soma transações realizadas no aplicativo. Ele não é saldo bancário. Reservas não diminuem esse saldo; apenas diminuem o saldo livre. Despesas posteriores podem tornar o saldo livre negativo, e o aviso `insufficient` preserva os aportes existentes. O cálculo lê todo o histórico do usuário; monitore custo de leitura em contas volumosas antes de ampliar escala.
+
+Em caso de falha durante a publicação, interrompa a ativação do frontend. Reverta a aplicação para a versão anterior e restaure o backup apenas se o schema ou dados forem alterados de forma incompatível. Movimentos criados após o backup precisam ser conciliados manualmente antes de uma restauração, pois restaurar sem conciliação apagaria reservas legítimas. A conclusão de compra permanece irreversível pelo fluxo genérico; correções futuras exigem operação específica que preserve o vínculo da transação.

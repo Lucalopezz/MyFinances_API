@@ -1,3 +1,4 @@
+import { CategoriesService } from '../categories/categories.service';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -31,6 +32,7 @@ export class TransactionExportProcessor extends WorkerHost {
   private readonly batchSize: number;
 
   constructor(
+    private readonly categories: CategoriesService,
     private readonly repository: TransactionExportsRepository,
     private readonly transactionsRepository: TransactionsRepository,
     private readonly configService: ConfigService,
@@ -70,6 +72,7 @@ export class TransactionExportProcessor extends WorkerHost {
         throw new Error('Exportação não encontrada para o job informado.');
       }
 
+      const catalog = await this.categories.list(userId);
       const format = transactionExport.format ?? TransactionExportFormat.PDF;
       const fileName = `${exportId}.${format === TransactionExportFormat.CSV ? 'csv' : 'pdf'}`;
       filePath = join(this.storagePath, fileName);
@@ -135,7 +138,12 @@ export class TransactionExportProcessor extends WorkerHost {
             if (format === TransactionExportFormat.CSV) {
               await this.csvService.addTransaction(output, decrypted);
             } else {
-              this.pdfService.addTransaction(document, decrypted);
+              this.pdfService.addTransaction(document, {
+                ...decrypted,
+                category:
+                  catalog.find((item) => item.id === decrypted.category)
+                    ?.name ?? decrypted.category,
+              });
             }
           }
 

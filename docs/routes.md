@@ -275,141 +275,30 @@ Resposta:
 
 ---
 
-## Wishlist
+## Wishlist — metas e compras (entregas D e E)
 
-Todas as rotas de wishlist são protegidas.
+Implantação, migração e recuperação: [wishlist-reservations.md](wishlist-reservations.md).
 
-### `POST /wishlist`
+Todas as rotas exigem autenticação e isolam dados pelo usuário. Valores monetários usam BRL em duas casas decimais; datas de entrada usam `YYYY-MM-DD` em UTC. `targetDate` é opcional (`null`).
 
-Cria um item na wishlist.
+- `POST /wishlist`: `{ name, desiredValue, targetDate? }` cria meta ativa com reserva zero. `savedAmount` enviado pelo cliente é ignorado/rejeitado pela validação.
+- `GET /wishlist`: lista metas ativas e concluídas, mais movimentos. `GET /wishlist/:id` retorna uma meta.
+- `GET /wishlist/summary`: `{ financialBalance, totalReserved, freeBalance, insufficient }`. Saldo financeiro soma transações realizadas; saldo livre = financeiro − reservas ativas. `insufficient` sinaliza despesas posteriores que consumiram o saldo livre sem apagar reservas.
+- `PATCH /wishlist/:id`: altera `name`, `desiredValue` e/ou `targetDate` de meta ativa. Não altera reservas.
+- `POST /wishlist/:id/movements`: `{ kind: "DEPOSIT" | "WITHDRAWAL", value, date, note? }`. Aporte exige saldo livre suficiente entre todas as metas; retirada não pode exceder a reserva da meta. Não cria transação. Valor e observação são criptografados.
+- `POST /wishlist/settle-migration`: marca a distribuição inicial como concluída após o usuário decidir seus aportes. Nenhum valor antigo é convertido automaticamente.
+- `POST /wishlist/:id/complete`: `{ value, date, category, description }`. Cria uma única despesa, consome até o valor pago da reserva e libera a sobra em operação atômica. Retorna `{ item, transaction, coveredAmount, releasedAmount, uncoveredAmount, alreadyCompleted }`. Repetir a conclusão retorna a compra original. `value` pode superar a reserva.
+- `DELETE /wishlist/:id`: exclui apenas meta ativa e libera sua reserva sem criar despesa. Compra concluída permanece no histórico.
 
-Entrada:
+Cada meta retornada inclui `reservedAmount`, `remainingAmount`, `progressPercent`, `monthlySuggestion`, `deadlineState`, `legacySavedAmount`, `reservationMigrationState`, `status`, `completedAt`, `purchaseTransactionId` e `movements`. Um movimento inclui `id`, `kind`, `value`, `date`, `note` e `createdAt`. `kind` também pode ser `CONSUMPTION` ou `RELEASE` na conclusão. O saldo reservado é a soma dos aportes menos retiradas, consumo e liberação. A sugestão usa os meses civis de UTC, incluindo o mês atual e o mês do prazo, com divisão arredondada para cima em centavos. Meta alcançada, sem prazo ou vencida não recebe sugestão.
 
-```json
-{
-  "name": "Notebook",
-  "desiredValue": 5000,
-  "savedAmount": 0,
-  "targetDate": "2026-12-31"
-}
-```
-
-Resposta:
-
-```json
-{
-  "id": "64f000000000000000000020",
-  "name": "Notebook",
-  "desiredValue": 5000,
-  "savedAmount": 1200,
-  "targetDate": "2026-12-31T00:00:00.000Z",
-  "createdAt": "2026-07-06T12:00:00.000Z",
-  "updatedAt": "2026-07-06T12:00:00.000Z",
-  "userId": "64f000000000000000000001"
-}
-```
-
-### `GET /wishlist`
-
-Lista os itens da wishlist.
-
-Entrada: não possui body.
-
-Resposta:
-
-```json
-[
-  {
-    "id": "64f000000000000000000020",
-    "name": "Notebook",
-    "desiredValue": 5000,
-    "savedAmount": 1200,
-    "targetDate": "2026-12-31T00:00:00.000Z",
-    "createdAt": "2026-07-06T12:00:00.000Z",
-    "updatedAt": "2026-07-06T12:00:00.000Z",
-    "userId": "64f000000000000000000001"
-  }
-]
-```
-
-### `GET /wishlist/:id`
-
-Busca um item da wishlist.
-
-Entrada: não possui body.
-
-Resposta:
-
-```json
-{
-  "id": "64f000000000000000000020",
-  "name": "Notebook",
-  "desiredValue": 5000,
-  "savedAmount": 1200,
-  "targetDate": "2026-12-31T00:00:00.000Z",
-  "createdAt": "2026-07-06T12:00:00.000Z",
-  "updatedAt": "2026-07-06T12:00:00.000Z",
-  "userId": "64f000000000000000000001"
-}
-```
-
-### `PATCH /wishlist/:id`
-
-Atualiza um item da wishlist.
-
-Entrada:
-
-```json
-{
-  "name": "Notebook novo",
-  "desiredValue": 6000,
-  "targetDate": "2027-01-31"
-}
-```
-
-Resposta:
-
-```json
-{
-  "id": "64f000000000000000000020",
-  "name": "Notebook novo",
-  "desiredValue": 6000,
-  "savedAmount": 1200,
-  "targetDate": "2027-01-31T00:00:00.000Z",
-  "createdAt": "2026-07-06T12:00:00.000Z",
-  "updatedAt": "2026-07-06T12:10:00.000Z",
-  "userId": "64f000000000000000000001"
-}
-```
-
-### `DELETE /wishlist/:id`
-
-Remove um item da wishlist.
-
-Entrada: não possui body.
-
-Resposta:
-
-```json
-{
-  "id": "64f000000000000000000020",
-  "name": "Notebook novo",
-  "desiredValue": 6000,
-  "savedAmount": 1200,
-  "targetDate": "2027-01-31T00:00:00.000Z",
-  "createdAt": "2026-07-06T12:00:00.000Z",
-  "updatedAt": "2026-07-06T12:10:00.000Z",
-  "userId": "64f000000000000000000001"
-}
-```
-
----
+Registros antigos preservam `savedAmount` como `legacySavedAmount` e começam com `reservationMigrationState: "PENDING"`; a reserva real inicia em zero. Novos registros começam em `SETTLED`. A mudança de schema exige sincronização do Prisma com MongoDB antes de ativar o frontend. Transações vinculadas a compras concluídas não podem ser editadas ou excluídas pelas rotas genéricas.
 
 ## Fixed Expenses
 
 Todas as rotas de despesas fixas são protegidas.
 
-Categorias aceitas: `UTILITIES`, `SUBSCRIPTIONS`, `HOUSING`.
+Categorias aceitas: todas as categorias ativas de despesa do catálogo (`GET /categories`), incluindo personalizadas. Os códigos anteriores continuam válidos.
 
 Recorrências aceitas: `MONTHLY`, `YEARLY`.
 
@@ -829,3 +718,88 @@ Resposta:
   }
 }
 ```
+
+## Categorias personalizadas e regras (entrega A)
+
+Todas as rotas abaixo exigem Bearer JWT e usam exclusivamente o usuário autenticado.
+
+| Método e rota | Entrada / resposta |
+| --- | --- |
+| `GET /categories` | Catálogo padrão + categorias do usuário, incluindo arquivadas. Array de `{ id, name, type, color, icon, archived, isDefault }`. |
+| `POST /categories` | `{ name, type, color, icon }`; retorna a categoria criada. |
+| `PATCH /categories/:id` | Campos opcionais `name`, `color`, `icon`, `archived`. Apenas categorias personalizadas do usuário. Tipo imutável; sem exclusão física. |
+| `GET /category-rules` | Array de `{ id, type, contains, category, priority, enabled }`, ordenado por `priority` crescente e `id` crescente. |
+| `POST /category-rules` | `{ type, contains, category, priority, enabled }`; retorna a regra criada. |
+| `PATCH /category-rules/:id` | Atualização parcial dos mesmos campos, limitada ao proprietário. |
+| `DELETE /category-rules/:id` | Remove apenas a regra do usuário. |
+| `POST /category-rules/test` | Campos completos da regra + `description`; retorna `{ matches, category }`, sem salvar. O teste verifica o trecho independentemente de `enabled`; não compara com outras regras. |
+| `POST /categories/resolve` | `{ type, description, category? }`; retorna `{ category, ruleId, source }`. `source` é `manual`, `rule` ou `null`. Sem correspondência, os três valores são `null`. Não cria transação. |
+
+`name`: 1–60 caracteres após trim. `color`: hexadecimal `#RRGGBB`. `type`: `INCOME` ou `EXPENSE`. `icon`: `Briefcase`, `Car`, `CircleDollarSign`, `CircleHelp`, `CreditCard`, `Dog`, `Film`, `Gift`, `GraduationCap`, `HandCoins`, `Heart`, `Home`, `Landmark`, `Plane`, `Receipt`, `Scissors`, `Shield`, `ShoppingBag`, `TrendingUp`, `Utensils` ou `Tag`.
+
+`contains`: 1–100 caracteres, não vazio após normalização. `priority`: inteiro de 0 a 9999 (menor primeiro). `enabled`: booleano. `description` nos endpoints de teste/resolução: até 2000 caracteres. Comparação literal por trecho, com normalização NFD, remoção de marcas de acento, trim e minúsculas em português. Não usa expressões regulares fornecidas pelo usuário.
+
+Os códigos padrão (`FOOD`, `SALARY` etc.) permanecem válidos. Categorias personalizadas usam ObjectId hexadecimal de 24 caracteres como referência estável no campo `category`. Os DTOs validam o formato; os serviços validam existência, proprietário, tipo e estado. Categorias padrão são imutáveis. Renomear uma categoria mantém todas as referências; rótulos do histórico refletem o nome atual, sem recategorizar transações.
+
+Arquivamento impede novos lançamentos, novas associações de orçamento/despesa fixa e novos pagamentos com essa categoria. Edições de transações e despesas fixas podem manter a mesma categoria arquivada; em orçamento, também é necessário manter o mês. Para pagar uma despesa fixa arquivada, selecione uma categoria ativa ou restaure a anterior. Busca, relatórios e leituras preservam categorias arquivadas. Regras com destinos arquivados são ignoradas; é possível desativá-las, mas ativação requer destino ativo.
+
+Uma categoria explícita em `/categories/resolve` prevalece sobre todas as regras e também é validada. `POST /transactions` continua exigindo categoria explícita: o formulário oferece a sugestão com “Usar sugestão”. Nenhuma regra altera histórico ou edições automaticamente. O mesmo resolvedor é usado na prévia e na confirmação da importação da entrega B.
+
+Transações, busca por código/nome, despesas fixas, orçamentos, dashboard e comparativos aceitam as referências personalizadas. Exportações filtram pelo mesmo identificador em `categoryId`; PDF mostra o nome atual, CSV preserva a coluna `category` com código/ID estável e o cabeçalho existente.
+
+Erros: `400` para categoria inexistente, de outro usuário, incompatível ou arquivada em novo uso; `404` para edição de categoria/regra não pertencente ao usuário; `401` sem autenticação. Respostas nunca incluem campos criptografados.
+
+
+## Importação de extratos — entrega B
+
+Rotas implementadas, protegidas por Bearer e isoladas por usuário:
+
+| Método e rota | Contrato |
+| --- | --- |
+| `POST /transaction-imports/preview` | Multipart: `file` (até 2 MiB) e `options` (JSON, até 8 KiB). Retorna `201` com `batchId`, `expiresAt`, `rows`. Não cria transações. |
+| `GET /transaction-imports/:id` | Retorna `batchId`, `expiresAt`, `expired`, `rows`, `results`, `summary`. Permite recuperar um lote após falha. |
+| `POST /transaction-imports/:id/confirm` | JSON `{ rows: [{ rowId, selected, category?, allowDuplicate? }] }`. Retorna resultados por linha, resumo e `recalculationPending`. Repetir lote/linha não duplica transações. |
+| `DELETE /transaction-imports/:id` | Descarta a prévia sem apagar transações já importadas. |
+
+Opções CSV de exemplo:
+
+```json
+{ "format": "CSV", "encoding": "utf-8", "source": "banco:conta", "csv": { "delimiter": ";", "dateFormat": "DD/MM/YYYY", "decimalSeparator": ",", "header": true, "columns": { "date": 0, "description": 1, "value": 2 } } }
+```
+
+Opções OFX: `{ "format": "OFX", "encoding": "utf-8", "source": "banco:conta" }`. `source` é um nome estável de origem (banco/conta), repetido nos próximos extratos da mesma conta. Codificações: `utf-8` (padrão) e `windows-1252`. OFX aceita um extrato XML/SGML bancário ou de cartão em BRL. Limite: 1.000 registros; até 100 colunas no CSV. Prévia disponível por 24h, com dados criptografados e descarte automático do payload expirado.
+
+CSV aceita delimitador vírgula, ponto e vírgula ou tabulação; datas `YYYY-MM-DD`, `DD/MM/YYYY`, `MM/DD/YYYY`; decimal `,` ou `.`. Índices começam em zero. Em lugar de `value`, podem ser usadas `income` e `expense` (positivos, apenas um lado preenchido). Opcionais: `category` (código/ID), `externalId`, `type` (INCOME/EXPENSE, com `value`). Datas CSV não incluem horário. Aspas escapadas, acentos e campos multilinha são suportados.
+
+Cada linha de prévia contém `rowId`, campos normalizados disponíveis (`date`, `description`, `value`, `type`, `externalId`), `category`, `categorySource`, `ruleId`, `errors`, `categoryError`, `duplicates` e `selected`. Categorias inválidas podem ser corrigidas; erros em data/valor/descrição exigem corrigir o arquivo. Categoria explícita prevalece sobre regras; sem correspondência usa `OTHER`/`OTHER_INCOME`. Duplicatas por origem/ID externo ou data/valor/tipo/descrição normalizada vêm desmarcadas. `duplicates` usa `{ kind: "FILE", rowId, reason }` ou `{ kind: "HISTORY", transactionId, reason }`, com motivo `EXTERNAL_ID`/`FINGERPRINT`.
+
+Confirmação aceita até 1.000 decisões sem linhas repetidas. Dados financeiros não podem ser reescritos pelo navegador. Linhas omitidas são ignoradas; recibos já importados permanecem definitivos. Suspeitas exigem `allowDuplicate: true`. Para categoria em lote, envie a mesma referência nas decisões compatíveis. O servidor revalida antes de gravar.
+
+Resultado: `results: [{ rowId, status, reason, transactionId }]`, `summary: { imported, ignored, rejected, pending }`, `recalculationPending`. Estados: `IMPORTED`, `IGNORED`, `REJECTED`, `PENDING`. Motivos: `NOT_SELECTED`, `DUPLICATE_REQUIRES_APPROVAL`, `INVALID_CATEGORY`, `INVALID_ROW`, `RETRY_REQUIRED`, `EXPIRED_OR_CANCELLED`, `NOT_PROCESSED`. Contagens são cumulativas do lote, não devem ser somadas a cada tentativa. Falhas parciais preservam linhas já importadas; repetir tenta pendências. `recalculationPending` é mantido por compatibilidade e retorna `false`; reservas não são recalculadas por importações.
+
+Erros globais: `400` opções/layout/linhas inválidos; `401` sessão inválida; `404` lote inexistente ou alheio; `410` confirmação expirada/cancelada; `413` tamanho excedido. Depois da expiração, GET retorna `rows: []` e preserva recibos. Idempotência é por lote/linha; reenvio do arquivo cria outro lote com sugestões de duplicatas. Confirmações simultâneas de lotes distintos não têm restrição única global.
+
+Formatos, exemplos, segurança e publicação: [Importação de extratos](transaction-imports.md).
+
+
+## Calendário financeiro e receitas recorrentes (entrega C)
+
+Implementado: `GET /calendar?month=YYYY-MM`, `GET /calendar/incomes`, `POST /calendar/incomes`, `PATCH /calendar/incomes/:id` e `POST /calendar/incomes/:id/occurrences/:date/confirm`. Todas as rotas exigem autenticação e isolamento por usuário. Não é criado lançamento por cadastrar ou consultar uma previsão.
+
+Consulte [contrato completo, exemplos de campos, datas, projeção e implantação](financial-calendar.md). A API retorna agenda mensal, pendências anteriores e linha diária com saldo-base acumulado, impacto das pendências e primeiro dia negativo. Confirmações criam uma única transação criptografada por competência.
+
+O endpoint legado `/dashboard/forecast` é mantido; o novo dashboard do frontend usa `/calendar`. Transações vinculadas a recibos não podem ser editadas/excluídas pelas rotas genéricas; pagamento de despesa pode ser desmarcado pelo fluxo específico.
+
+## Cartões de crédito — v2.2.0
+
+Todas as rotas exigem Bearer JWT e isolam dados pelo usuário autenticado.
+
+| Método e rota | Contrato |
+| --- | --- |
+| `GET /cards` | Lista cartões com compras, faturas e limites total, em uso e disponível. |
+| `POST /cards` | `{ name, limit, closingDay, dueDay, annualFee }`; cadastra cartão. |
+| `GET /cards/:id` | Detalha cartão, compras e faturas por competência. |
+| `POST /cards/:id/purchases` | `{ description, amount, date, category, installments }`; cria compra e parcelas, sem criar transação realizada. |
+| `POST /cards/:id/invoices/:cycle/pay` | `{ date }`; quita integralmente fatura fechada e cria as transações de despesa correspondentes. Repetição não duplica o pagamento. |
+
+`date` usa `YYYY-MM-DD`, `cycle` usa `YYYY-MM`; a categoria da compra aceita categorias de despesa ativas. A compra compromete o limite total imediatamente. Faturas pendentes entram como previsão no calendário; após o pagamento, as despesas entram no saldo pela data efetiva. [Regras, limites e implantação](credit-cards.md).

@@ -10,6 +10,7 @@ export type TransactionSensitiveData = {
 
 export type EncryptedTransactionRecord = {
   id: string;
+  encryptedImportIdentity?: string | null;
   encryptedData: Record<keyof TransactionSensitiveData, string>;
   dateIndex: number;
   type: TransactionType;
