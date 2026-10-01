@@ -13,6 +13,7 @@ import { CategoriesService } from '../categories/categories.service';
 import { CategoriesRepository } from '../categories/categories.repository';
 import { WishlistService } from '../wishlist/wishlist.service';
 import { CalendarService } from './calendar.service';
+import { CardsService } from '../cards/cards.service';
 import { CalendarController } from './calendar.controller';
 import { todayKey } from './calendar-calculation';
 import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
@@ -72,6 +73,7 @@ import { FixedExpensesRepository } from '../fixed-expenses/repositories/fixed-ex
         controllers: [CalendarController],
         providers: [
           CalendarService,
+          { provide: CardsService, useValue: { listCards: async () => [] } },
           CategoriesService,
           CategoriesRepository,
           FinancialDataEncryptionService,

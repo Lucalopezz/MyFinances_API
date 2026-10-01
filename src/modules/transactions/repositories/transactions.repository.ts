@@ -105,6 +105,13 @@ export class TransactionsRepository {
   }
 
   private async assertUnlinked(id: string, userId: string) {
+    const cardPayment = await this.prisma.cardPayment.findFirst({
+      where: { userId, transactionIds: { has: id } },
+    });
+    if (cardPayment)
+      throw new BadRequestException(
+        'Transação vinculada a uma fatura. Corrija o pagamento pelo cartão.',
+      );
     const purchase = await this.prisma.wishlistItem.findFirst({
       where: { userId, purchaseTransactionId: id },
     });

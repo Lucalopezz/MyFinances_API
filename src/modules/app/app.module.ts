@@ -14,10 +14,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ExportsModule } from '../exports/exports.module';
 import { BudgetsModule } from '../budgets/budgets.module';
 import { ImportsModule } from '../imports/imports.module';
+import { CardsModule } from '../cards/cards.module';
 
 @Module({
   imports: [
     CalendarModule,
+    CardsModule,
     ImportsModule,
     CategoriesModule,
     ConfigModule.forRoot({ isGlobal: true }),

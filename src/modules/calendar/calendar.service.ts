@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CardsService } from '../cards/cards.service';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { CategoriesService } from '../categories/categories.service';
 import {
@@ -35,6 +36,7 @@ export class CalendarService {
     private readonly prisma: PrismaService,
     private readonly encryption: FinancialDataEncryptionService,
     private readonly categories: CategoriesService,
+    private readonly cards: CardsService,
   ) {}
   private revisions(encrypted: string) {
     return this.encryption.decrypt<IncomeRevision[]>(encrypted);
@@ -215,13 +217,14 @@ export class CalendarService {
       );
     const start = `${month}-01`;
     const end = dayKey(new Date(Date.UTC(year, m, 0)));
-    const [incomes, expenses, receipts, records] = await Promise.all([
+    const [incomes, expenses, receipts, records, cards] = await Promise.all([
       this.prisma.recurringIncome.findMany({ where: { userId } }),
       this.prisma.fixedExpense.findMany({ where: { userId } }),
       this.prisma.calendarReceipt.findMany({ where: { userId } }),
       this.prisma.transaction.findMany({
         where: { userId, dateIndex: { lte: Number(end.replaceAll('-', '')) } },
       }),
+      this.cards.listCards(userId),
     ]);
     const events = new Map<string, CalendarEvent>();
     for (const income of incomes)
@@ -287,6 +290,30 @@ export class CalendarService {
           events.delete(key);
       if (event.dueDate <= end) events.set(event.id, event);
     }
+    for (const card of cards)
+      for (const invoice of card.invoices) {
+        if (invoice.dueDate > end) continue;
+        events.set(`card:${card.id}:${invoice.cycle}`, {
+          id: `card:${card.id}:${invoice.cycle}`,
+          sourceId: card.id,
+          dueDate: invoice.dueDate,
+          description: `Fatura ${card.name}`,
+          amount: invoice.total,
+          category: 'OTHER',
+          type: 'EXPENSE',
+          status: invoice.paid
+            ? 'SETTLED'
+            : invoice.dueDate < today
+              ? 'OVERDUE'
+              : 'PENDING',
+          ...(invoice.paid
+            ? {
+                actualDate: invoice.paymentDate ?? undefined,
+                actualAmount: invoice.total,
+              }
+            : {}),
+        });
+      }
     const all = [...events.values()].sort(
       (a, b) => a.dueDate.localeCompare(b.dueDate) || a.id.localeCompare(b.id),
     );

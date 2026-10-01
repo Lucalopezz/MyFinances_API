@@ -32,6 +32,51 @@ model Transaction {
   @@index([userId, dateIndex, id])
 }
 
+model CreditCard {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  encryptedData String
+  closingDay    Int
+  dueDay        Int
+  revision      Int      @default(0)
+  createdAt     DateTime @default(now())
+  @@index([userId])
+}
+
+model CardPurchase {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  cardId        String   @db.ObjectId
+  encryptedData String
+  purchaseDate  String
+  createdAt     DateTime @default(now())
+  @@index([userId, cardId])
+}
+
+model CardInstallment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @db.ObjectId
+  cardId          String   @db.ObjectId
+  purchaseId      String   @db.ObjectId
+  number          Int
+  cycle           String
+  dueDate         String
+  encryptedAmount String
+  @@unique([userId, purchaseId, number])
+  @@index([userId, cardId, cycle])
+}
+
+model CardPayment {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  cardId        String   @db.ObjectId
+  cycle         String
+  transactionIds String[] @db.ObjectId
+  encryptedData String
+  createdAt     DateTime @default(now())
+  @@unique([userId, cardId, cycle])
+}
+
 // Raw files are never stored. The encrypted preview is cleared after expiresAt.
 model TransactionImport {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
