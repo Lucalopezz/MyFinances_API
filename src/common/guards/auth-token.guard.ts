@@ -28,15 +28,19 @@ export class AuthTokenGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync(
-        token,
-        this.jwtConfiguration,
-      );
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.jwtConfiguration.secret,
+        audience: this.jwtConfiguration.audience,
+        issuer: this.jwtConfiguration.issuer,
+      });
+
+      if (typeof payload?.sub !== 'string' || !payload.sub) {
+        throw new UnauthorizedException('Token inválido');
+      }
 
       request[REQUEST_TOKEN_PAYLOAD_KEY] = payload;
-      //console.log(payload);
-    } catch (error) {
-      throw new UnauthorizedException('Falha ao logar', error);
+    } catch {
+      throw new UnauthorizedException('Falha ao logar');
     }
 
     return true;
@@ -49,6 +53,7 @@ export class AuthTokenGuard implements CanActivate {
       return;
     }
 
-    return authorization.split(' ')[1];
+    const match = /^Bearer ([^\s]+)$/.exec(authorization);
+    return match?.[1];
   }
 }

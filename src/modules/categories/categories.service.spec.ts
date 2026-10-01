@@ -314,6 +314,8 @@ describe('custom categories and automatic rules', () => {
   it('uses custom categories in encrypted transactions, search by name and budgets; preserves archived edits', async () => {
     let stored;
     const transactionRepository = new TransactionsRepository({
+      cardPayment: { findFirst: jest.fn(async () => null) },
+      wishlistItem: { findFirst: jest.fn(async () => null) },
       calendarReceipt: { findFirst: jest.fn(async () => null) },
       transaction: {
         create: jest.fn(async ({ data }) => {
@@ -336,7 +338,6 @@ describe('custom categories and automatic rules', () => {
     const transactions = new TransactionsService(
       service,
       transactionRepository,
-      { updateWishlistItemsSavings: jest.fn() } as never,
       encryption,
     );
     const dto = {

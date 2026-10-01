@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, WishlistItem, WishlistMovement } from '@prisma/client';
+import { Prisma, WishlistItem } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { CategoriesService } from '../categories/categories.service';
@@ -20,10 +20,7 @@ import {
   UpdateWishlistItemDto,
   WishlistMovementDto,
 } from './dtos/wishlist.dto';
-
-type MovementKind = 'DEPOSIT' | 'WITHDRAWAL' | 'CONSUMPTION' | 'RELEASE';
-const cents = (value: number) => Math.round(value * 100);
-const amount = (value: number) => value / 100;
+import { amount, cents, itemView, movementView } from './wishlist-view.mapper';
 
 @Injectable()
 export class WishlistService {
@@ -33,82 +30,11 @@ export class WishlistService {
     private readonly categories: CategoriesService,
   ) {}
 
-  // Deprecated compatibility hook for older callers; production flows do not invoke it.
-  async updateWishlistItemsSavings(_userId: string): Promise<void> {}
-
-  private movementView(movement: WishlistMovement) {
-    const data = movement.encryptedData as {
-      value: string;
-      date: string;
-      note: string;
-    };
-    return {
-      id: movement.id,
-      kind: movement.kind as MovementKind,
-      value: this.encryption.decrypt<number>(data.value),
-      date: this.encryption.decrypt<string>(data.date),
-      note: this.encryption.decrypt<string | null>(data.note),
-      createdAt: movement.createdAt,
-    };
-  }
-
   private movementData(value: number, date: string, note?: string | null) {
     return {
       value: this.encryption.encrypt(value),
       date: this.encryption.encrypt(date),
       note: this.encryption.encrypt(note ?? null),
-    };
-  }
-
-  private itemView(item: WishlistItem, movements: WishlistMovement[]) {
-    const history = movements.map((movement) => this.movementView(movement));
-    const reservedCents = history.reduce(
-      (total, movement) =>
-        total +
-        (movement.kind === 'DEPOSIT'
-          ? cents(movement.value)
-          : -cents(movement.value)),
-      0,
-    );
-    const reserved = amount(reservedCents);
-    const remainingCents = Math.max(
-      0,
-      cents(item.desiredValue) - reservedCents,
-    );
-    const target = item.targetDate?.toISOString().slice(0, 10) ?? null;
-    const today = new Date().toISOString().slice(0, 10);
-    let monthlySuggestion: number | null = null;
-    let deadlineState: 'NONE' | 'ON_TRACK' | 'OVERDUE' | 'REACHED' = 'NONE';
-    if (remainingCents === 0) deadlineState = 'REACHED';
-    else if (target && target < today) deadlineState = 'OVERDUE';
-    else if (target) {
-      const [year, month] = target.split('-').map(Number);
-      const [currentYear, currentMonth] = today.split('-').map(Number);
-      const months = (year - currentYear) * 12 + month - currentMonth + 1;
-      monthlySuggestion = amount(Math.ceil(remainingCents / months));
-      deadlineState = 'ON_TRACK';
-    }
-    return {
-      id: item.id,
-      name: item.name,
-      desiredValue: item.desiredValue,
-      targetDate: target,
-      reservedAmount: reserved,
-      remainingAmount: amount(remainingCents),
-      progressPercent: Math.min(
-        100,
-        Math.round((reservedCents / cents(item.desiredValue)) * 100),
-      ),
-      monthlySuggestion,
-      deadlineState,
-      legacySavedAmount: item.savedAmount,
-      reservationMigrationState: item.reservationMigrationState ?? 'PENDING',
-      status: item.status ?? 'ACTIVE',
-      completedAt: item.completedAt,
-      purchaseTransactionId: item.purchaseTransactionId,
-      movements: history,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
     };
   }
 
@@ -130,7 +56,7 @@ export class WishlistService {
       where: { userId: item.userId, wishlistItemId: item.id },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
-    return this.itemView(item, movements);
+    return itemView(item, movements, this.encryption);
   }
 
   private async summaryFor(
@@ -161,7 +87,7 @@ export class WishlistService {
     const reservedCents = movements
       .filter((movement) => activeIds.has(movement.wishlistItemId))
       .reduce((sum, movement) => {
-        const value = cents(this.movementView(movement).value);
+        const value = cents(movementView(movement, this.encryption).value);
         return sum + (movement.kind === 'DEPOSIT' ? value : -value);
       }, 0);
     return {
@@ -203,9 +129,10 @@ export class WishlistService {
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
     return items.map((item) =>
-      this.itemView(
+      itemView(
         item,
         movements.filter((movement) => movement.wishlistItemId === item.id),
+        this.encryption,
       ),
     );
   }

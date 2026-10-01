@@ -40,29 +40,33 @@ export type TransactionSearchDto = z.infer<typeof TransactionSearchSchema>;
 
 export const TransactionTypeEnum = z.enum(['INCOME', 'EXPENSE']);
 
-const IncomeTransactionSchema = z.object({
-  type: z.literal('INCOME'),
-  value: z.number(),
-  date: z.string().transform((v) => new Date(v)),
+const transactionDate = z
+  .string()
+  .refine((value) => !Number.isNaN(new Date(value).getTime()), 'Data inválida.')
+  .transform((value) => new Date(value));
+
+const transactionFields = {
+  value: z.number().finite(),
+  date: transactionDate,
   category: CategoryReferenceSchema,
   description: z.string().optional(),
+};
+
+const IncomeTransactionSchema = z.object({
+  type: z.literal('INCOME'),
+  ...transactionFields,
 });
 const ExpenseTransactionSchema = z.object({
   type: z.literal('EXPENSE'),
-  value: z.number(),
-  date: z.string().transform((v) => new Date(v)),
-  category: CategoryReferenceSchema,
-  description: z.string().optional(),
+  ...transactionFields,
 });
 
-// Merge the two schemas into a discriminated union based on the 'type' field
 export const CreateTransactionSchema = z.discriminatedUnion('type', [
   IncomeTransactionSchema,
   ExpenseTransactionSchema,
 ]);
 export type CreateTransactionDto = z.infer<typeof CreateTransactionSchema>;
 
-// For updates, all fields are optional, but we still want to enforce the type-specific category constraints
 const IncomeUpdateSchema = IncomeTransactionSchema.partial().extend({
   type: z.literal('INCOME'),
 });
@@ -71,7 +75,6 @@ const ExpenseUpdateSchema = ExpenseTransactionSchema.partial().extend({
   type: z.literal('EXPENSE'),
 });
 
-// Merge the two update schemas into a discriminated union based on the 'type' field
 export const UpdateTransactionSchema = z.discriminatedUnion('type', [
   IncomeUpdateSchema,
   ExpenseUpdateSchema,

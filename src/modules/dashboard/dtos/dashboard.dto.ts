@@ -1,27 +1,24 @@
 import { z } from 'zod';
 
-export const DashboardQuerySchema = z.object({
-  startDate: z
-    .string({
-      required_error: 'A data inicial é obrigatória',
-      invalid_type_error: 'A data inicial deve ser uma string',
-    })
-    .refine(
-      (val) => !isNaN(Date.parse(val)),
-      'A data inicial deve estar no formato YYYY-MM-DD',
-    )
-    .transform((val) => new Date(val)),
+const dashboardDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'A data deve estar no formato YYYY-MM-DD')
+  .refine((value) => {
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return (
+      !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+    );
+  }, 'Data inválida')
+  .transform((value) => new Date(`${value}T00:00:00.000Z`));
 
-  endDate: z
-    .string({
-      required_error: 'A data final é obrigatória',
-      invalid_type_error: 'A data final deve ser uma string',
-    })
-    .refine(
-      (val) => !isNaN(Date.parse(val)),
-      'A data final deve estar no formato YYYY-MM-DD',
-    )
-    .transform((val) => new Date(val)),
-});
+export const DashboardQuerySchema = z
+  .object({
+    startDate: dashboardDate,
+    endDate: dashboardDate,
+  })
+  .refine(({ startDate, endDate }) => startDate <= endDate, {
+    message: 'A data inicial deve ser anterior ou igual à data final.',
+    path: ['endDate'],
+  });
 
 export type DashboardQueryDto = z.infer<typeof DashboardQuerySchema>;

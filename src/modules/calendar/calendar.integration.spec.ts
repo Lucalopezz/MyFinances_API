@@ -11,7 +11,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { CategoriesService } from '../categories/categories.service';
 import { CategoriesRepository } from '../categories/categories.repository';
-import { WishlistService } from '../wishlist/wishlist.service';
 import { CalendarService } from './calendar.service';
 import { CardsService } from '../cards/cards.service';
 import { CalendarController } from './calendar.controller';
@@ -78,10 +77,6 @@ import { FixedExpensesRepository } from '../fixed-expenses/repositories/fixed-ex
           CategoriesRepository,
           FinancialDataEncryptionService,
           { provide: PrismaService, useValue: db },
-          {
-            provide: WishlistService,
-            useValue: { updateWishlistItemsSavings: async () => undefined },
-          },
           { provide: JwtService, useValue: jwt },
           {
             provide: jwtConfig.KEY,

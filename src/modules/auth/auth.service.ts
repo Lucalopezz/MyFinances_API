@@ -45,20 +45,11 @@ export class AuthService {
   }
 
   async login(loginDto: LoginType) {
-    let passwordIsValid = false;
-    let throwError = true;
-
     const user = await this.repository.findByEmail(loginDto.email);
-    if (user) {
-      passwordIsValid = await this.hashingService.compare(
-        loginDto.password,
-        user.password,
-      );
-    }
-    if (passwordIsValid) {
-      throwError = false;
-    }
-    if (throwError) {
+    if (
+      !user ||
+      !(await this.hashingService.compare(loginDto.password, user.password))
+    ) {
       throw new UnauthorizedException('Usuário ou senha inválidos');
     }
     return this.createTokens(user);

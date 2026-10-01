@@ -16,7 +16,6 @@ import {
   decryptTransaction,
   EncryptedTransactionRecord,
 } from '../transactions/transaction-encryption.mapper';
-import { WishlistService } from '../wishlist/wishlist.service';
 import { ImportsRepository } from './imports.repository';
 import { ImportsService } from './imports.service';
 import { ImportsController } from './imports.controller';
@@ -37,9 +36,6 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
     let token: string;
     const owner = '64f000000000000000000001';
     const other = '64f000000000000000000002';
-    const wishlist = {
-      updateWishlistItemsSavings: jest.fn().mockResolvedValue(undefined),
-    };
     const options: ImportOptions = {
       format: 'CSV',
       encoding: 'utf-8',
@@ -103,7 +99,6 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
           CategoriesRepository,
           FinancialDataEncryptionService,
           { provide: PrismaService, useValue: db },
-          { provide: WishlistService, useValue: wishlist },
           { provide: JwtService, useValue: jwt },
           { provide: jwtConfig.KEY, useValue: { secret: 'imports-test-jwt' } },
         ],
@@ -129,9 +124,6 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
     });
     beforeEach(async () => {
       jest.restoreAllMocks();
-      wishlist.updateWishlistItemsSavings
-        .mockReset()
-        .mockResolvedValue(undefined);
       await db.transactionImportResult.deleteMany();
       await db.transactionImport.deleteMany();
       await db.transaction.deleteMany();
@@ -226,7 +218,6 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
           'cafe',
         );
       }
-      expect(wishlist.updateWishlistItemsSavings).toHaveBeenCalledWith(owner);
     });
 
     it('revalidates archived categories, rejects foreign categories and supports correction on retry', async () => {
@@ -444,22 +435,6 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
         (await service.confirm(batch.batchId, selection(), owner)).summary
           .imported,
       ).toBe(1);
-    });
-
-    it('can retry savings recalculation without reimporting', async () => {
-      const batch = await preview();
-      wishlist.updateWishlistItemsSavings.mockRejectedValueOnce(
-        new Error('retry'),
-      );
-      expect(
-        (await service.confirm(batch.batchId, selection(), owner))
-          .recalculationPending,
-      ).toBe(true);
-      expect(
-        (await service.confirm(batch.batchId, selection(), owner))
-          .recalculationPending,
-      ).toBe(false);
-      expect(await db.transaction.count()).toBe(1);
     });
 
     it('does not expose or mutate another owner batch and rejects unknown rows', async () => {
