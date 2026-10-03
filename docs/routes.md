@@ -12,6 +12,12 @@ Datas devem ser enviadas como string válida, preferencialmente `YYYY-MM-DD`.
 
 ---
 
+## Health
+
+`GET /health` é público e retorna `{ "status": "ok" }`. Não recebe body nem
+credenciais e não consulta dados financeiros. É um sinal de disponibilidade
+do processo, usado pela landing para iniciar o backend antes do login.
+
 ## Auth
 
 ### `POST /auth`
@@ -204,6 +210,14 @@ Resposta:
 ```
 
 Na última página, `nextCursor` é `null` e `hasMore` é `false`. Não há total exato. A ordenação é estável para registros sem alterações; mudanças nas transações entre requisições podem alterar o conjunto percorrido.
+
+### `GET /transactions/summary`
+
+Protegida e isolada pelo usuário. Exige `startDate` e `endDate` válidos e
+inclusivos (`YYYY-MM-DD`); aceita `type`, `category` e `search`, com a mesma
+semântica da busca. Retorna `{ totalIncome, totalExpense, balance, count }` para
+todos os resultados do período. Percorre lotes de até 100 registros por cursor
+indexado, soma em centavos e não transfere o histórico completo ao frontend.
 
 ### `GET /transactions/:id`
 
@@ -799,6 +813,7 @@ Todas as rotas exigem Bearer JWT e isolam dados pelo usuário autenticado.
 | `GET /cards` | Lista cartões com compras, faturas e limites total, em uso e disponível. |
 | `POST /cards` | `{ name, limit, closingDay, dueDay, annualFee }`; cadastra cartão. |
 | `GET /cards/:id` | Detalha cartão, compras e faturas por competência. |
+| `DELETE /cards/:id` | Arquiva o cartão do usuário e retorna `{ message }`. Parcelas ou anuidades fechadas não quitadas retornam `400`; cartão ausente/de outro usuário retorna `404`. |
 | `POST /cards/:id/purchases` | `{ description, amount, date, category, installments }`; cria compra e parcelas, sem criar transação realizada. |
 | `POST /cards/:id/invoices/:cycle/pay` | `{ date }`; quita integralmente fatura fechada e cria as transações de despesa correspondentes. Repetição não duplica o pagamento. |
 

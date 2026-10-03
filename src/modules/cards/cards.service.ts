@@ -73,7 +73,10 @@ export class CardsService {
 
   async listCards(userId: string) {
     const cards = await this.prisma.creditCard.findMany({
-      where: { userId },
+      where: {
+        userId,
+        OR: [{ archivedAt: null }, { archivedAt: { isSet: false } }],
+      },
       orderBy: { createdAt: 'desc' },
     });
     return Promise.all(cards.map((card) => this.detail(userId, card.id)));
@@ -84,7 +87,8 @@ export class CardsService {
     const card = await this.prisma.creditCard.findFirst({
       where: { id, userId },
     });
-    if (!card) throw new NotFoundException('Cartão não encontrado.');
+    if (!card || card.archivedAt)
+      throw new NotFoundException('Cartão não encontrado.');
     const secret = this.encryption.decrypt<CardSecret>(card.encryptedData);
     const [purchases, installments, payments] = await Promise.all([
       this.prisma.cardPurchase.findMany({
@@ -200,6 +204,60 @@ export class CardsService {
     };
   }
 
+  async removeCard(userId: string, id: string) {
+    this.checkId(id);
+    return this.prisma.$transaction(async (tx) => {
+      const card = await tx.creditCard.findFirst({ where: { id, userId } });
+      if (!card || card.archivedAt)
+        throw new NotFoundException('Cartão não encontrado.');
+      const claim = await tx.creditCard.updateMany({
+        where: { id, userId, revision: card.revision },
+        data: { revision: { increment: 1 } },
+      });
+      if (!claim.count)
+        throw new ConflictException('O cartão mudou. Atualize a página.');
+      const [installments, payments] = await Promise.all([
+        tx.cardInstallment.findMany({ where: { userId, cardId: id } }),
+        tx.cardPayment.findMany({ where: { userId, cardId: id } }),
+      ]);
+      const paidCycles = new Set(payments.map((payment) => payment.cycle));
+      if (installments.some((entry) => !paidCycles.has(entry.cycle))) {
+        throw new BadRequestException(
+          'Quite todas as compras parceladas antes de remover o cartão.',
+        );
+      }
+      const secret = this.encryption.decrypt<CardSecret>(card.encryptedData);
+      const today = todayKey();
+      for (
+        let year = Number(secret.feeFirstCycle.slice(0, 4));
+        year <= Number(today.slice(0, 4));
+        year++
+      ) {
+        const cycle = `${year}-${secret.feeFirstCycle.slice(5)}`;
+        if (
+          annualFeeForCycle(
+            cycle,
+            secret.feeFirstCycle,
+            secret.annualFeeCents,
+          ) > 0 &&
+          closingDateForCycle(cycle, card.closingDay, card.dueDay) <= today &&
+          !paidCycles.has(cycle)
+        ) {
+          throw new BadRequestException(
+            'Quite as faturas de anuidade fechadas antes de remover o cartão.',
+          );
+        }
+      }
+      // Archive under the same revision lock as purchases and payments.
+      // Keep receipts and ledger entries intact, including their protections.
+      await tx.creditCard.update({
+        where: { id, userId },
+        data: { archivedAt: new Date() },
+      });
+      return { message: 'Cartão removido com sucesso.' };
+    });
+  }
+
   async createPurchase(userId: string, id: string, input: PurchaseInput) {
     this.checkId(id);
     if (input.date > todayKey())
@@ -211,7 +269,8 @@ export class CardsService {
     await this.categories.resolveReference(input.category, userId, 'EXPENSE');
     return this.prisma.$transaction(async (tx) => {
       const card = await tx.creditCard.findFirst({ where: { id, userId } });
-      if (!card) throw new NotFoundException('Cartão não encontrado.');
+      if (!card || card.archivedAt)
+        throw new NotFoundException('Cartão não encontrado.');
       // The card revision serializes concurrent purchases and payments.
       const claim = await tx.creditCard.updateMany({
         where: { id, userId, revision: card.revision },
@@ -301,7 +360,8 @@ export class CardsService {
     const card = await this.prisma.creditCard.findFirst({
       where: { id, userId },
     });
-    if (!card) throw new NotFoundException('Cartão não encontrado.');
+    if (!card || card.archivedAt)
+      throw new NotFoundException('Cartão não encontrado.');
     const invoice = (await this.detail(userId, id)).invoices.find(
       (item) => item.cycle === cycle,
     );

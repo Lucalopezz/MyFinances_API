@@ -38,6 +38,15 @@ export const TransactionSearchSchema = z
 
 export type TransactionSearchDto = z.infer<typeof TransactionSearchSchema>;
 
+export const TransactionSummarySchema = TransactionSearchSchema.innerType()
+  .omit({ cursor: true, limit: true })
+  .extend({ startDate: calendarDate, endDate: calendarDate })
+  .refine(({ startDate, endDate }) => startDate <= endDate, {
+    message: 'A data inicial deve ser anterior ou igual à data final.',
+    path: ['endDate'],
+  });
+export type TransactionSummaryDto = z.infer<typeof TransactionSummarySchema>;
+
 export const TransactionTypeEnum = z.enum(['INCOME', 'EXPENSE']);
 
 const transactionDate = z

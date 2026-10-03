@@ -60,6 +60,79 @@ describe('TransactionsService.searchTransactions', () => {
   });
 });
 
+describe('TransactionsService monthly totals', () => {
+  it('sums more than 50 records, isolates the period and user, and shares search filters', async () => {
+    const extra = {
+      ...records[0],
+      id: '64f000000000000000000099',
+      type: 'INCOME',
+      encryptedData: {
+        ...records[0].encryptedData,
+        value: JSON.stringify(200.01),
+        category: JSON.stringify('SALARY'),
+      },
+    };
+    const fixtures = [
+      extra,
+      ...records,
+      { ...extra, id: '64f000000000000000000098', userId: 'other' },
+      { ...extra, id: '64f000000000000000000097', dateIndex: 20260801 },
+    ];
+    const findMany = jest.fn(async ({ where, take }) =>
+      fixtures
+        .filter(
+          (row) =>
+            row.userId === where.userId &&
+            row.dateIndex >= where.dateIndex.gte &&
+            row.dateIndex <= where.dateIndex.lte &&
+            (!where.type || row.type === where.type) &&
+            (!where.OR || row.id < where.OR[1].id.lt),
+        )
+        .slice(0, take),
+    );
+    const service = new TransactionsService(
+      {
+        resolveReference: jest.fn(),
+        list: jest.fn(async () => [{ id: 'FOOD', name: 'Alimentação' }]),
+      } as never,
+      new TransactionsRepository({ transaction: { findMany } } as never),
+      { decrypt: (value: string) => JSON.parse(value) } as never,
+    );
+    const period = { startDate: '2026-07-01', endDate: '2026-07-31' };
+    expect(await service.summarizeTransactions(period, userId)).toEqual({
+      totalIncome: 200.01,
+      totalExpense: 5565,
+      balance: -5364.99,
+      count: 106,
+    });
+    expect(findMany.mock.calls.every(([query]) => query.take === 100)).toBe(
+      true,
+    );
+    expect(
+      await service.summarizeTransactions(
+        { ...period, category: 'FOOD', search: 'alimentação', type: 'EXPENSE' },
+        userId,
+      ),
+    ).toEqual({
+      totalIncome: 0,
+      totalExpense: 6,
+      balance: -6,
+      count: 3,
+    });
+    expect(
+      await service.summarizeTransactions(
+        { startDate: '2026-09-01', endDate: '2026-09-30' },
+        userId,
+      ),
+    ).toEqual({
+      totalIncome: 0,
+      totalExpense: 0,
+      balance: 0,
+      count: 0,
+    });
+  });
+});
+
 describe('TransactionsService legacy contract', () => {
   it('preserves the page-number response and database ordering', async () => {
     const findMany = jest.fn(async () => [records[0]]);

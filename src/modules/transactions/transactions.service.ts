@@ -9,6 +9,7 @@ import {
   CreateTransactionDto,
   TransactionsQueryDto,
   TransactionSearchDto,
+  TransactionSummaryDto,
   UpdateTransactionDto,
 } from './dtos/transaction.dto';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
@@ -156,6 +157,32 @@ export class TransactionsService {
     }
 
     return { data, nextCursor: null, hasMore: false };
+  }
+
+  async summarizeTransactions(query: TransactionSummaryDto, userId: string) {
+    let incomeCents = 0;
+    let expenseCents = 0;
+    let count = 0;
+    let cursor: string | undefined;
+    // Reuse search filters and indexed cursors, retaining only one batch.
+    do {
+      const page = await this.searchTransactions(
+        { ...query, limit: 100, cursor },
+        userId,
+      );
+      for (const item of page.data) {
+        if (item.type === 'INCOME') incomeCents += Math.round(item.value * 100);
+        else expenseCents += Math.round(item.value * 100);
+        count++;
+      }
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+    return {
+      totalIncome: incomeCents / 100,
+      totalExpense: expenseCents / 100,
+      balance: (incomeCents - expenseCents) / 100,
+      count,
+    };
   }
 
   private parseSearchCursor(value: string, fingerprint: string): SearchCursor {

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { z } from 'zod';
 import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';
@@ -26,6 +34,9 @@ export class CardsController {
   }
   @Get(':id') detail(@User('sub') userId: string, @Param('id') id: string) {
     return this.service.detail(userId, id);
+  }
+  @Delete(':id') remove(@User('sub') userId: string, @Param('id') id: string) {
+    return this.service.removeCard(userId, id);
   }
   @Post(':id/purchases') purchase(
     @User('sub') userId: string,

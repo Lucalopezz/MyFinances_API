@@ -113,6 +113,7 @@ Categorias de despesa:
 - `POST /transactions`: cria uma transação do usuário autenticado.
 - `GET /transactions`: lista as transações paginadas do usuário, ordenadas por `dateIndex` decrescente.
 - `GET /transactions/search`: busca global com filtros, cursor e ordenação por `dateIndex` e `id` decrescentes; a resposta contém `data`, `nextCursor` e `hasMore`.
+- `GET /transactions/summary`: soma entradas, saídas, saldo e quantidade de todos os resultados do período/filtros, em lotes e centavos.
 - `GET /transactions/:id`: busca uma transação específica do usuário.
 - `PATCH /transactions/:id`: atualiza uma transação existente.
 - `DELETE /transactions/:id`: remove uma transação.
@@ -357,6 +358,11 @@ Nesta entrega, `db push` é executado pelos testes apenas em banco local descart
 `FixedExpense.recurrenceDay` é opcional e mantém a âncora do dia de vencimento. Recibos de pagamento preservam ciclos realizados após o avanço. Histórico já sobrescrito pela versão anterior não é inferido. Transações novas mantêm o esquema de criptografia existente. Veja [calendário financeiro](financial-calendar.md) para implantação e recuperação.
 
 ## Cartões de crédito — v2.2.0
+
+`CreditCard.archivedAt` é opcional. `DELETE /cards/:id` arquiva cartões quitados,
+preservando todos os registros financeiros. Leituras ativas incluem `null` e
+campo ausente para compatibilidade com cartões anteriores. Novas compras e
+pagamentos rejeitam cartões arquivados.
 
 `CreditCard` guarda `userId`, dias de fechamento/vencimento, revisão para concorrência e payload criptografado com nome, limite e anuidade. `CardPurchase` guarda cartão, data civil e payload criptografado com descrição, valor, categoria e número de parcelas. `CardInstallment` vincula compra e cartão à parcela, competência e vencimento, com valor criptografado; o índice único por usuário/compra/número impede parcela repetida.
 

@@ -13,6 +13,7 @@ Funcionalidade da v2.2.0. A interface fica em `/cards` e no formulário de nova 
 - Faturas são agregadas por competência a partir de parcelas e anuidade. Leituras não criam transações nem faturas persistidas.
 - Somente fatura fechada pode ser paga. Nesta versão, o pagamento é integral. Uma operação MongoDB cria uma transação de despesa por parcela (preservando sua categoria), uma transação de anuidade quando aplicável e um recibo único por usuário/cartão/ciclo. Repetir o pagamento devolve a fatura paga; chamadas simultâneas não podem duplicar o recibo.
 - Transações do pagamento não podem ser editadas nem excluídas pela rota genérica.
+- Remover um cartão grava `archivedAt` e o oculta da listagem, de novas compras e do calendário. Compras, parcelas, recibos e transações realizadas permanecem no banco. É necessário quitar todas as parcelas e anuidades já fechadas; anuidades futuras deixam de ser previstas. A operação usa a revisão do cartão em uma transação MongoDB, como compras e pagamentos, para evitar remover um cartão que recebeu uma compra simultaneamente. Cartões antigos sem `archivedAt` continuam ativos.
 - Faturas pendentes entram no calendário como uma única previsão por fatura. Ao pagar, a previsão é removida do saldo projetado; as transações realizadas entram na data do pagamento.
 
 ## Rotas
@@ -24,6 +25,7 @@ Todas exigem Bearer JWT.
 | GET | `/cards` | — | Cartões com limite e faturas |
 | POST | `/cards` | `name`, `limit`, `closingDay`, `dueDay`, `annualFee` | Cartão criado |
 | GET | `/cards/:id` | — | Cartão, compras, parcelas agrupadas por fatura, limite disponível |
+| DELETE | `/cards/:id` | — | Cartão arquivado; `{ message }`; `400` se houver parcelas ou anuidades fechadas pendentes |
 | POST | `/cards/:id/purchases` | `description`, `amount`, `date`, `category`, `installments` | Compra e parcelas previstas |
 | POST | `/cards/:id/invoices/:cycle/pay` | `date` | Fatura quitada e transações realizadas |
 

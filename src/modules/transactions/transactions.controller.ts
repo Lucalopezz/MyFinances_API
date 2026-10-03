@@ -18,6 +18,8 @@ import {
   TransactionsQuerySchema,
   TransactionSearchDto,
   TransactionSearchSchema,
+  TransactionSummaryDto,
+  TransactionSummarySchema,
   UpdateTransactionDto,
   UpdateTransactionSchema,
 } from './dtos/transaction.dto';
@@ -54,6 +56,15 @@ export class TransactionsController {
     @User('sub') userId: string,
   ) {
     return this.transactionsService.searchTransactions(query, userId);
+  }
+
+  @Get('summary')
+  summary(
+    @Query(new ZodValidationPipe(TransactionSummarySchema))
+    query: TransactionSummaryDto,
+    @User('sub') userId: string,
+  ) {
+    return this.transactionsService.summarizeTransactions(query, userId);
   }
 
   @Get(':id')

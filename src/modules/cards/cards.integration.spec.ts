@@ -213,5 +213,131 @@ import { CalendarService } from '../calendar/calendar.service';
         )?.paid,
       ).toBe(true);
     });
+    it('removes an unused legacy card only for its owner and prevents later purchases', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Sem compras',
+        limit: 500,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 0,
+      });
+      expect(
+        (await service.listCards(owner)).map((entry) => entry.id),
+      ).toContain(card.id);
+      await expect(service.removeCard(other, card.id)).rejects.toThrow(
+        'não encontrado',
+      );
+      await expect(service.removeCard(owner, 'invalid')).rejects.toThrow(
+        'inválido',
+      );
+      await service.removeCard(owner, card.id);
+      expect(await service.listCards(owner)).toEqual([]);
+      expect(
+        (await db.creditCard.findUniqueOrThrow({ where: { id: card.id } }))
+          .archivedAt,
+      ).toBeInstanceOf(Date);
+      await expect(service.detail(owner, card.id)).rejects.toThrow(
+        'não encontrado',
+      );
+      await expect(
+        service.createPurchase(owner, card.id, {
+          description: 'Bloqueada',
+          amount: 10,
+          date: todayKey(),
+          category: 'SHOPPING',
+          installments: 1,
+        }),
+      ).rejects.toThrow('não encontrado');
+    });
+    it('requires settled installments and preserves payments and protected ledger entries after removal', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Histórico preservado',
+        limit: 500,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 0,
+      });
+      await service.createPurchase(owner, card.id, {
+        description: 'Livros',
+        amount: 100.01,
+        date: '2025-01-01',
+        category: 'SHOPPING',
+        installments: 2,
+      });
+      await expect(service.removeCard(owner, card.id)).rejects.toThrow('Quite');
+      for (const invoice of (await service.detail(owner, card.id)).invoices) {
+        await service.payInvoice(owner, card.id, invoice.cycle, todayKey());
+      }
+      await service.removeCard(owner, card.id);
+      expect(await db.transaction.count({ where: { userId: owner } })).toBe(2);
+      expect(await db.cardPayment.count({ where: { cardId: card.id } })).toBe(
+        2,
+      );
+      const payment = await db.cardPayment.findFirstOrThrow({
+        where: { cardId: card.id },
+      });
+      const repo = new TransactionsRepository(db as unknown as PrismaService);
+      await expect(
+        repo.deleteOwned(payment.transactionIds[0], owner),
+      ).rejects.toThrow('vinculada');
+    });
+    it('blocks removal with a closed unpaid annual fee', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Anuidade pendente',
+        limit: 500,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 50,
+      });
+      const row = await db.creditCard.findUniqueOrThrow({
+        where: { id: card.id },
+      });
+      await db.creditCard.update({
+        where: { id: card.id },
+        data: {
+          encryptedData: encryption.encrypt({
+            ...encryption.decrypt<object>(row.encryptedData),
+            feeFirstCycle: '2025-01',
+          }),
+        },
+      });
+      await expect(service.removeCard(owner, card.id)).rejects.toThrow(
+        'anuidade',
+      );
+      expect((await service.detail(owner, card.id)).id).toBe(card.id);
+    });
+    it('serializes removal and a concurrent purchase without orphaning debt', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Concorrência',
+        limit: 500,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 0,
+      });
+      const [removal, purchase] = await Promise.allSettled([
+        service.removeCard(owner, card.id),
+        service.createPurchase(owner, card.id, {
+          description: 'Concorrente',
+          amount: 100,
+          date: todayKey(),
+          category: 'SHOPPING',
+          installments: 1,
+        }),
+      ]);
+      expect(
+        [removal, purchase].some((result) => result.status === 'fulfilled'),
+      ).toBe(true);
+      expect(
+        removal.status === 'fulfilled' && purchase.status === 'fulfilled',
+      ).toBe(false);
+      const row = await db.creditCard.findUniqueOrThrow({
+        where: { id: card.id },
+      });
+      if (row.archivedAt)
+        expect(
+          await db.cardInstallment.count({ where: { cardId: card.id } }),
+        ).toBe(0);
+      else expect((await service.detail(owner, card.id)).used).toBe(100);
+    });
   },
 );

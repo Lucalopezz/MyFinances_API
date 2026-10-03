@@ -1,6 +1,7 @@
 import {
   CreateTransactionSchema,
   UpdateTransactionSchema,
+  TransactionSummarySchema,
 } from './transaction.dto';
 
 describe('transaction dates', () => {
@@ -25,5 +26,29 @@ describe('transaction dates', () => {
     });
 
     expect(result.date).toEqual(new Date('2026-10-01T00:00:00.000Z'));
+  });
+});
+
+describe('transaction summary period', () => {
+  it('requires real calendar dates and an ordered period', () => {
+    expect(TransactionSummarySchema.safeParse({}).success).toBe(false);
+    expect(
+      TransactionSummarySchema.safeParse({
+        startDate: '2026-02-30',
+        endDate: '2026-03-01',
+      }).success,
+    ).toBe(false);
+    expect(
+      TransactionSummarySchema.safeParse({
+        startDate: '2026-03-01',
+        endDate: '2026-02-28',
+      }).success,
+    ).toBe(false);
+    expect(
+      TransactionSummarySchema.parse({
+        startDate: '2024-02-01',
+        endDate: '2024-02-29',
+      }),
+    ).toEqual({ startDate: '2024-02-01', endDate: '2024-02-29' });
   });
 });

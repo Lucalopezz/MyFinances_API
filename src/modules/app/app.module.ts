@@ -15,6 +15,7 @@ import { ExportsModule } from '../exports/exports.module';
 import { BudgetsModule } from '../budgets/budgets.module';
 import { ImportsModule } from '../imports/imports.module';
 import { CardsModule } from '../cards/cards.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { CardsModule } from '../cards/cards.module';
     ExportsModule,
     BudgetsModule,
   ],
+  controllers: [HealthController],
   providers: [PrismaService],
   exports: [PrismaService],
 })
