@@ -1,6 +1,6 @@
 # Modelos e Banco de Dados
 
-Este documento descreve os modelos principais da aplicação, a estrutura do banco de dados e as funções mais importantes ligadas a cada domínio.
+Este documento descreve os modelos principais da aplicação, a estrutura do banco de dados e as funções mais importantes ligadas a cada domínio. Consulte o [índice da documentação](README.md) para os guias de domínio.
 
 A aplicação usa **MongoDB** como banco de dados e **Prisma** como ORM. Todos os modelos usam `String` com `@db.ObjectId` como identificador, mapeado para `_id` no MongoDB.
 
@@ -12,13 +12,18 @@ A aplicação usa **MongoDB** como banco de dados e **Prisma** como ORM. Todos o
 | -------------- | -------------- | ----------------------------------------------------------------- |
 | `User`         | `User`         | Armazena dados de cadastro e autenticação do usuário.             |
 | `Transaction`  | `Transaction`  | Registra receitas e despesas do usuário.                          |
-| `WishlistItem` | `WishlistItem` | Controla objetivos financeiros e progresso de economia.           |
+| `WishlistItem` | `WishlistItem` | Controla metas, reservas individuais e compras concluídas.           |
 | `FixedExpense` | `FixedExpense` | Controla despesas recorrentes, vencimentos e status de pagamento. |
 | `Notification` | `Notification` | Armazena alertas, lembretes e informações exibidas ao usuário.    |
 | `MonthlyBudget` | `MonthlyBudget` | Guarda limites mensais por categoria de despesa. |
 | `TransactionExport` | `TransactionExport` | Guarda estado, filtros e formato de exportações assíncronas. |
 | `TransactionImport` | `TransactionImport` | Guarda prévia criptografada de extrato com expiração. |
 | `TransactionImportResult` | `TransactionImportResult` | Guarda recibos por linha para confirmação idempotente. |
+| `WishlistMovement` | `WishlistMovement` | Guarda aportes, retiradas e consumo/liberação de reservas. |
+| `Category` | `Category` | Guarda categorias personalizadas do usuário. |
+| `CategoryRule` | `CategoryRule` | Guarda regras de classificação por descrição. |
+| `RecurringIncome` | `RecurringIncome` | Guarda receitas recorrentes e suas revisões. |
+| `CalendarReceipt` | `CalendarReceipt` | Guarda ocorrências realizadas e transações vinculadas. |
 | `CreditCard` | `CreditCard` | Guarda configuração e limite do cartão, com dados financeiros criptografados. |
 | `CardPurchase` | `CardPurchase` | Guarda compras no crédito, sem criar transações no ato. |
 | `CardInstallment` | `CardInstallment` | Guarda parcelas por ciclo e vencimento. |
@@ -316,7 +321,7 @@ User
 - A wishlist usa transações realizadas para calcular saldo financeiro e movimentos próprios para calcular reservas.
 - O pagamento de despesas fixas cria transações vinculadas; pagamentos de faturas criam transações próprias e protegidas contra edição/exclusão genérica.
 
-## Category e CategoryRule — entrega A
+## Category e CategoryRule
 
 `Category` guarda `id`, `userId`, `type`, `encryptedName`, `color`, `icon`, `archived`, `createdAt` e `updatedAt`, com índice `[userId, type]`. Apenas categorias personalizadas são persistidas. O catálogo padrão é estático na API e mantém os códigos legados. Tipo é imutável e arquivamento é reversível.
 
@@ -333,7 +338,7 @@ Nomes de categorias e trechos de regras usam o mesmo AES-256-GCM de `FinancialDa
 
 A implementação local não executa `db push` nem modifica dados de produção automaticamente.
 
-## TransactionImport e TransactionImportResult — entrega B (backend)
+## TransactionImport e TransactionImportResult
 
 `TransactionImport` contém `id`, `userId`, `encryptedData` opcional, `expiresAt`, `rowCount`, `revision`, `createdAt` e `updatedAt`. Índices: `[userId, id]` e `[expiresAt]`. O payload é um único envelope AES-256-GCM com origem e registros normalizados; o arquivo bruto nunca é persistido. A prévia dura 24 horas. Descarte manual ou limpeza de expirados tornam `encryptedData` nulo; o cabeçalho operacional permanece. `revision` é incrementado na transação de cada resultado para serializar gravações com cancelamento e expiração.
 
@@ -341,23 +346,23 @@ A implementação local não executa `db push` nem modifica dados de produção 
 
 `Transaction.encryptedImportIdentity` é opcional, não retornado pelo mapper público. Contém `{ source, externalId }`, criptografado com a chave financeira, permitindo buscar correspondências após a prévia expirar. Transações antigas e manuais não precisam desse campo. Edição genérica preserva-o.
 
-### Atualização e recuperação da entrega B
+### Atualização e recuperação da importação
 
 1. Preservar backup e chave financeira. Revisar `schema.prisma`; mudanças são aditivas, sem conversão de registros existentes.
 2. Executar `npx prisma generate` e, no destino correto, `npx prisma db push`. MongoDB precisa de replica set (Atlas é compatível). Confirmar o índice único dos recibos antes de atender confirmações.
 3. Publicar a API e verificar prévia sem gravação, confirmação repetida, consulta de resultado e limpeza de expirados; publicar frontend depois da API.
 4. Em rollback, desativar rotas de importação e preservar as duas coleções, recibos, transações e chave. Não apagar recibos para repetir lotes. Clientes anteriores continuam lendo transações pelo mapper existente. Se a versão anterior da API não executa limpeza, o descarte de payloads expirados precisa ser mantido operacionalmente.
 
-Nesta entrega, `db push` é executado pelos testes apenas em banco local descartável, com nome aleatório. Nenhum schema de desenvolvimento existente ou produção é sincronizado automaticamente. Detalhes de retenção, limitações e retomada em [Importação de extratos](transaction-imports.md).
+Nas suítes de importação, `db push` é executado apenas em banco local descartável, com nome aleatório. Nenhum schema de desenvolvimento existente ou produção é sincronizado automaticamente. Detalhes de retenção, limitações e retomada em [Importação de extratos](transaction-imports.md).
 
 
-## Entrega C — RecurringIncome e CalendarReceipt
+## RecurringIncome e CalendarReceipt
 
 `RecurringIncome`: ObjectId, userId, encryptedData (revisões de descrição/valor/categoria/data inicial/periodicidade/pausa/vigência), revision e timestamps. `CalendarReceipt`: ObjectId, userId, sourceId, dueDate civil, periodKey (`MONTHLY:YYYY-MM` ou `YEARLY:YYYY`), type, transactionId e snapshot encryptedData. Unicidade por usuário/origem/período e por usuário/origem/data; índice por usuário/transação.
 
 `FixedExpense.recurrenceDay` é opcional e mantém a âncora do dia de vencimento. Recibos de pagamento preservam ciclos realizados após o avanço. Histórico já sobrescrito pela versão anterior não é inferido. Transações novas mantêm o esquema de criptografia existente. Veja [calendário financeiro](financial-calendar.md) para implantação e recuperação.
 
-## Cartões de crédito — v2.2.0
+## Cartões de crédito
 
 `CreditCard.archivedAt` é opcional. `DELETE /cards/:id` arquiva cartões quitados,
 preservando todos os registros financeiros. Leituras ativas incluem `null` e

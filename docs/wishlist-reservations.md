@@ -1,6 +1,6 @@
 # Reservas da wishlist: implantação e recuperação
 
-A entrega D/E exige MongoDB configurado como replica set para transações atômicas. Publique a API e sincronize o schema (`npx prisma db push`) antes de publicar o frontend. Faça backup de `User`, `WishlistItem`, `Transaction` e `WishlistMovement` antes da sincronização. O código preserva o campo legado `savedAmount` e não o altera, o que permite auditar o progresso antigo após a publicação.
+O domínio de metas e conclusão de compras exige MongoDB configurado como replica set para transações atômicas. Publique a API e sincronize o schema (`npx prisma db push`) antes de publicar o frontend. Faça backup de `User`, `WishlistItem`, `Transaction` e `WishlistMovement` antes da sincronização. O código preserva o campo legado `savedAmount` e não o altera, o que permite auditar o progresso antigo após a publicação.
 
 Não é necessário executar uma migração que atribua valores às metas. Documentos antigos sem `status` e `reservationMigrationState` são lidos como `ACTIVE` e `PENDING`. Eles começam com reserva real zero e mostram `savedAmount` como `legacySavedAmount`. O usuário distribui reservas por aportes dentro do saldo livre e marca a distribuição como concluída. Itens novos já nascem `SETTLED`.
 

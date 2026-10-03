@@ -1,5 +1,7 @@
 # Validação da entrega B — importação CSV/OFX
 
+> Relatório histórico: testes, contagens e limitações refletem a data da entrega. Consulte o [escopo atual](features.md) e o [changelog](../CHANGELOG.md) para o estado vigente.
+
 Implementação e validação local em 29/09/2026, abrangendo API e frontend. Publicar API/schema antes da interface.
 
 ## Verificações executadas

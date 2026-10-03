@@ -1,5 +1,7 @@
 # Rotas da API
 
+Contrato HTTP vigente. Consulte o [índice da documentação](README.md) para os guias de domínio e o [changelog](../CHANGELOG.md) para o histórico de versões.
+
 Base local: `http://localhost:3001`
 
 Rotas protegidas exigem:
@@ -289,7 +291,7 @@ Resposta:
 
 ---
 
-## Wishlist — metas e compras (entregas D e E)
+## Wishlist — metas e compras
 
 Implantação, migração e recuperação: [wishlist-reservations.md](wishlist-reservations.md).
 
@@ -733,7 +735,7 @@ Resposta:
 }
 ```
 
-## Categorias personalizadas e regras (entrega A)
+## Categorias personalizadas e regras
 
 Todas as rotas abaixo exigem Bearer JWT e usam exclusivamente o usuário autenticado.
 
@@ -757,14 +759,14 @@ Os códigos padrão (`FOOD`, `SALARY` etc.) permanecem válidos. Categorias pers
 
 Arquivamento impede novos lançamentos, novas associações de orçamento/despesa fixa e novos pagamentos com essa categoria. Edições de transações e despesas fixas podem manter a mesma categoria arquivada; em orçamento, também é necessário manter o mês. Para pagar uma despesa fixa arquivada, selecione uma categoria ativa ou restaure a anterior. Busca, relatórios e leituras preservam categorias arquivadas. Regras com destinos arquivados são ignoradas; é possível desativá-las, mas ativação requer destino ativo.
 
-Uma categoria explícita em `/categories/resolve` prevalece sobre todas as regras e também é validada. `POST /transactions` continua exigindo categoria explícita: o formulário oferece a sugestão com “Usar sugestão”. Nenhuma regra altera histórico ou edições automaticamente. O mesmo resolvedor é usado na prévia e na confirmação da importação da entrega B.
+Uma categoria explícita em `/categories/resolve` prevalece sobre todas as regras e também é validada. `POST /transactions` continua exigindo categoria explícita: o formulário oferece a sugestão com “Usar sugestão”. Nenhuma regra altera histórico ou edições automaticamente. O mesmo resolvedor é usado na prévia e na confirmação da importação de extratos.
 
 Transações, busca por código/nome, despesas fixas, orçamentos, dashboard e comparativos aceitam as referências personalizadas. Exportações filtram pelo mesmo identificador em `categoryId`; PDF mostra o nome atual, CSV preserva a coluna `category` com código/ID estável e o cabeçalho existente.
 
 Erros: `400` para categoria inexistente, de outro usuário, incompatível ou arquivada em novo uso; `404` para edição de categoria/regra não pertencente ao usuário; `401` sem autenticação. Respostas nunca incluem campos criptografados.
 
 
-## Importação de extratos — entrega B
+## Importação de extratos
 
 Rotas implementadas, protegidas por Bearer e isoladas por usuário:
 
@@ -796,7 +798,7 @@ Erros globais: `400` opções/layout/linhas inválidos; `401` sessão inválida;
 Formatos, exemplos, segurança e publicação: [Importação de extratos](transaction-imports.md).
 
 
-## Calendário financeiro e receitas recorrentes (entrega C)
+## Calendário financeiro e receitas recorrentes
 
 Implementado: `GET /calendar?month=YYYY-MM`, `GET /calendar/incomes`, `POST /calendar/incomes`, `PATCH /calendar/incomes/:id` e `POST /calendar/incomes/:id/occurrences/:date/confirm`. Todas as rotas exigem autenticação e isolamento por usuário. Não é criado lançamento por cadastrar ou consultar uma previsão.
 
@@ -804,7 +806,7 @@ Consulte [contrato completo, exemplos de campos, datas, projeção e implantaç�
 
 O endpoint legado `/dashboard/forecast` é mantido; o novo dashboard do frontend usa `/calendar`. Transações vinculadas a recibos não podem ser editadas/excluídas pelas rotas genéricas; pagamento de despesa pode ser desmarcado pelo fluxo específico.
 
-## Cartões de crédito — v2.2.0
+## Cartões de crédito
 
 Todas as rotas exigem Bearer JWT e isolam dados pelo usuário autenticado.
 

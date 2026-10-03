@@ -1,5 +1,7 @@
 # Entrega C — validação local
 
+> Relatório histórico: testes, contagens e limitações refletem a data da entrega. Consulte o [escopo atual](features.md) e o [changelog](../CHANGELOG.md) para o estado vigente.
+
 Data: 30/09/2026. Implementação no frontend e backend; não representa homologação ou publicação em produção.
 
 ## Evidências

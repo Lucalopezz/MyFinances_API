@@ -1,5 +1,7 @@
 # Validação da entrega A
 
+> Relatório histórico: testes, contagens e limitações refletem a data da entrega. Consulte o [escopo atual](features.md) e o [changelog](../CHANGELOG.md) para o estado vigente.
+
 Implementação concluída em 28/09/2026. API e frontend devem ser publicados nessa ordem.
 
 ## Verificações executadas

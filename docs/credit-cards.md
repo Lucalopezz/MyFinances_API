@@ -1,6 +1,6 @@
 # Cartões de crédito
 
-Funcionalidade da v2.2.0. A interface fica em `/cards` e no formulário de nova despesa do frontend. O simulador de compras do plano anterior não integra esta versão.
+Guia atual de limite, compras, parcelas e faturas. A interface fica em `/cards` e no formulário de nova despesa do frontend. Consulte também o [contrato HTTP](routes.md#cartões-de-crédito).
 
 ## Modelo e regras
 
@@ -35,9 +35,9 @@ Datas civis usam `YYYY-MM-DD` e o dia atual usa `America/Sao_Paulo`. `cycle` usa
 
 Gerar o Prisma Client e sincronizar o schema MongoDB no ambiente de destino após backup: `npx prisma generate` e `npx prisma db push`. Novas coleções: `CreditCard`, `CardPurchase`, `CardInstallment`, `CardPayment`. O índice único de `CardPayment` por usuário/cartão/ciclo é necessário antes de expor a rota de pagamento. Publicar a API antes do front. Não há migração automática de transações antigas ou extratos de cartão.
 
-## Limites desta entrega
+## Limites do escopo atual
 
-Pagamento parcial, estorno, edição de cartão/compra, juros, conciliação de extrato e vínculo a conta bancária ficam para evolução posterior. O saldo do aplicativo continua derivado das transações realizadas; categorias de compras aparecem no dashboard quando a fatura é paga. O endpoint legado `/dashboard/forecast` não incorpora faturas; a projeção diária de `/calendar` incorpora.
+Pagamento parcial, estorno, edição de cartão/compra, juros, conciliação de extrato e vínculo a conta bancária não estão disponíveis no escopo atual. O saldo do aplicativo continua derivado das transações realizadas; categorias de compras aparecem no dashboard quando a fatura é paga. O endpoint legado `/dashboard/forecast` não incorpora faturas; a projeção diária de `/calendar` incorpora.
 
 ## Validação
 

@@ -1,12 +1,10 @@
-# Plano de implementação — rodada anterior
+# Plano de implementação — histórico
 
-> Atualização em 01/10/2026: o [escopo da v2.2.0](next-steps.md) registra as entregas A–E, cartões de crédito e a retirada do simulador. Este documento preserva o desenho da rodada anterior; sua ordem, checklist e exclusões de escopo são históricos.
+> Referência histórica da rodada anterior à v2.2.0. O escopo aprovado está implementado e descrito em [Escopo atual](features.md). Consulte o [changelog](../CHANGELOG.md) para as mudanças por versão.
 
-## Situação após a rodada anterior
+Esta rodada introduziu duplicação pelo formulário, busca global com cursor, projeção de despesas fixas, orçamento mensal por categoria, leitura de notificações em lote e exportação CSV/PDF. A rodada seguinte está preservada no [registro de evolução da v2.2.0](next-steps.md).
 
-O código atual contém duplicação de transação pelo formulário, busca global com cursor, projeção de despesas fixas, orçamento mensal por categoria, marcação de notificações em lote e exportação CSV/PDF. A presença no código não equivale a uma verificação do deploy ou de todos os critérios de aceite.
-
-A próxima rodada inclui categorias personalizadas e regras automáticas, importação CSV/OFX com prévia, calendário e receitas recorrentes, metas com aportes individuais, conclusão da wishlist com geração de despesa e simulador de compras. A importação e a evolução das metas passam a fazer parte do escopo, conforme [o novo plano](next-steps.md).
+A ordem, os critérios e as exclusões abaixo refletem o planejamento original. Para os contratos vigentes, consulte o [índice da documentação](README.md).
 
 ## Registro do planejamento original
 

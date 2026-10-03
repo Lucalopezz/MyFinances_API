@@ -1,6 +1,6 @@
-# Importação de extratos — entrega B
+# Importação de extratos CSV/OFX
 
-API e interface implementadas em 29/09/2026. O botão “Importar” fica ao lado da exportação na tela de transações e abre o modal de revisão e confirmação. Todas as rotas `/transaction-imports` exigem `Authorization: Bearer <accessToken>` e usam exclusivamente o usuário do token.
+Guia atual de formatos, prévia e confirmação. Consulte o [relatório histórico de validação](delivery-b-validation.md) para as evidências da implementação original. O botão “Importar” fica ao lado da exportação na tela de transações e abre o modal de revisão e confirmação. Todas as rotas `/transaction-imports` exigem `Authorization: Bearer <accessToken>` e usam exclusivamente o usuário do token.
 
 ## Limites e armazenamento
 

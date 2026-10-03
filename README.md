@@ -1,95 +1,108 @@
-# SaaS Controle de Gastos
+# MyFinances API
 
-API do MyFinances para gerenciamento financeiro pessoal. A v2.2.0 inclui as entregas A–E do plano de evolução e cartões de crédito. O simulador de compras (item F) ficou fora desta versão.
+API de gerenciamento financeiro pessoal do MyFinances, construída com NestJS, Prisma e MongoDB. Centraliza os dados, as regras financeiras e a autenticação consumidos pelo [frontend](https://github.com/Lucalopezz/MyFinances_Front).
 
----
+Versão de referência: **v2.2.1**. Consulte o [histórico de versões](CHANGELOG.md) para conhecer as mudanças de cada release.
 
 ## Funcionalidades
 
-- **Categorias e regras:** categorias personalizadas, arquivamento e classificação sugerida por descrição.
-- **Importação CSV/OFX:** prévia, categorias automáticas, revisão de duplicatas e confirmação idempotente. [Contrato e formatos](docs/transaction-imports.md).
+- **Autenticação e usuário:** cadastro, login com JWT, atualização de perfil e senha.
+- **Transações:** receitas e despesas, edição, remoção, busca com cursor e totais por filtros.
+- **Categorias e regras:** catálogo personalizado, arquivamento e sugestões de classificação por descrição.
+- **Importação e exportação:** CSV/OFX com prévia e revisão de duplicatas; exportação assíncrona em PDF/CSV.
+- **Dashboard e comparativos:** resumo mensal, indicadores e análise de receitas, despesas e saldo.
+- **Orçamentos:** limites mensais e acompanhamento de gastos por categoria.
+- **Calendário financeiro:** receitas recorrentes, compromissos previstos e projeção diária de saldo.
+- **Wishlist:** metas com aportes e retiradas individuais, histórico e conclusão de compras com uma única despesa.
+- **Cartões de crédito:** limite, compras parceladas, faturas, pagamento integral e arquivamento de cartões quitados.
+- **Despesas fixas e notificações:** recorrências, pagamentos vinculados a transações e lembretes de vencimento.
 
-- **Transações:** Criação, atualização, listagem e remoção de transações (entradas/saídas).
-- **Dashboard:** Resumo financeiro com indicadores, gráficos interativos e comparativo mensal.
-- **Calendário financeiro:** receitas recorrentes, despesas previstas e projeção diária. [Regras](docs/financial-calendar.md).
-- **Wishlist:** metas com aportes e retiradas individuais; concluir uma compra gera uma única despesa e preserva o histórico. [Regras](docs/wishlist-reservations.md).
-- **Cartões de crédito:** cadastro, limite disponível, compras parceladas, faturas por ciclo e pagamento integral. [Regras e implantação](docs/credit-cards.md).
-- **Despesas Fixas:** Cadastro e controle de despesas recorrentes (ex.: aluguel), com:
-  - Marcação de pagamento.
-  - Notificações automáticas dias antes do vencimento.
-  - Reset automático para o próximo ciclo após a data de vencimento.
-- **Notificações:** Alertas automáticos para despesas pendentes e vencimentos próximos.
-
----
+O [escopo atual](docs/features.md) reúne os comportamentos disponíveis e seus limites.
 
 ## Documentação
 
-- [Escopo e validação da v2.2.0](docs/next-steps.md)
-- [Rotas da API](docs/routes.md)
-- [Plano de implementação — rodada anterior](docs/implementation-plan.md)
-- [Documentação dos Models](docs/models.md)
-- [Organização da API](docs/architecture.md)
-- [Criptografia de Transações](docs/transaction-encryption.md)
-- [Exportação assíncrona de transações](docs/transaction-exports.md)
-- [V2](docs/v2.md)
+Comece pelo [índice da documentação](docs/README.md). As referências principais são:
 
----
+| Referência | Conteúdo |
+| --- | --- |
+| [Escopo atual](docs/features.md) | Funcionalidades implementadas e regras gerais |
+| [Rotas da API](docs/routes.md) | Endpoints, entradas e respostas |
+| [Modelos e banco](docs/models.md) | Persistência, relacionamentos e índices |
+| [Arquitetura](docs/architecture.md) | Organização dos módulos e regras de integração |
+| [Histórico de versões](CHANGELOG.md) | Mudanças por release |
 
-## Tecnologias Utilizadas
+Os guias de domínio, implantação e os registros históricos estão organizados no índice.
 
-### Back-end
+## Tecnologias
 
-- **NestJS** – Framework para Node.js.
-- **Prisma** – ORM para o MongoDB.
-- **Zod** – Validação de dados.
-- **@nestjs/schedule** – Tarefas agendadas (para resetar despesas fixas e disparar notificações).
+- NestJS e TypeScript.
+- Prisma e MongoDB com replica set.
+- Zod para validação e JWT para autenticação.
+- AES-256-GCM para proteção dos dados financeiros sensíveis.
+- BullMQ e Redis para processamento de exportações.
+- PDFKit para relatórios PDF; Jest para testes.
 
-### Front-end
+## Instalação e execução
 
-- **Next.js** (App Router)
-- **TanStack Query** – Gerenciamento de dados e cache.
-- **React Hook Form** – Manipulação de formulários.
-- **Zod** – Validação de formulários.
-- **Tailwind CSS & Shadcn/UI** – Estilização e componentes UI.
-- **Recharts** – Visualização de gráficos.
+Pré-requisitos: Node.js com npm, MongoDB com replica set e Redis. O replica set é necessário para as operações financeiras atômicas.
 
----
+1. Clone o repositório e instale as dependências:
 
-## Estrutura do Projeto
-
-```plaintext
-├── src/
-│   ├── common/       # Guards, validação e infraestrutura compartilhada
-│   ├── modules/      # Auth, transações, categorias, importação, calendário,
-│   │                 # wishlist, cartões e demais domínios
-│   ├── prisma/       # Acesso ao MongoDB via Prisma
-│   └── main.ts       # Entrada da API NestJS
-├── prisma/           # Schema do banco
-├── docs/             # Contratos, modelos e implantação
-├── scripts/          # Utilitários de desenvolvimento
-└── package.json
-```
-
-O frontend Next.js fica no repositório `MyFinances_Front`.
-
-## Instalação
-
-1. Clone o repositório:
    ```bash
    git clone https://github.com/Lucalopezz/MyFinances_API.git
    cd MyFinances_API
-   ```
-2. Instalar dependencias:
-   ```bash
    npm install
    ```
-3. Copie `.env.example` para `.env` e configure MongoDB, JWT, chave de criptografia financeira e Redis. Os fluxos de pagamento e reserva usam transações MongoDB e exigem replica set.
-4. Gere o Prisma Client:
+
+2. Copie o exemplo de configuração:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Configure `DATABASE_URL`, as variáveis JWT, `FINANCIAL_DATA_ENCRYPTION_KEY` e `REDIS_URL`. O exemplo também contém a porta e as opções de exportação. A [documentação de criptografia](docs/transaction-encryption.md) explica a geração e a preservação da chave financeira.
+
+3. Gere o Prisma Client e sincronize o schema no banco configurado:
+
    ```bash
    npx prisma generate
+   npx prisma db push
    ```
-   Antes de publicar a v2.2.0, faça backup e sincronize o schema no ambiente de destino com `npx prisma db push`; siga os guias de implantação em `docs/`.
-5. Inicie o servidor:
+
+   Para bancos existentes, faça backup e siga os [guias de implantação por domínio](docs/README.md#guias-de-domínio) antes de sincronizar coleções e índices. O MongoDB não usa Prisma Migrate.
+
+4. Inicie a API:
+
    ```bash
    npm run start:dev
    ```
+
+   A URL local padrão é `http://localhost:3001`. `GET /health` é público e informa a disponibilidade do processo.
+
+## Comandos
+
+| Comando | Uso |
+| --- | --- |
+| `npm run start:dev` | Desenvolvimento com recarga |
+| `npm run build` | Build de produção |
+| `npm run start:prod` | Execução da build |
+| `npm test -- --runInBand` | Suítes de testes; integrações dependem de configuração própria |
+| `npm run test:calendar:integration` | Integração do calendário em banco descartável |
+| `npm run test:imports:integration` | Integração da importação em banco descartável |
+
+As variáveis e os limites dos testes de integração estão nos respectivos guias de domínio.
+
+## Estrutura
+
+```text
+├── src/
+│   ├── common/       # Autorização, validação e infraestrutura compartilhada
+│   ├── modules/      # Módulos de domínio e composição da aplicação
+│   ├── prisma/       # Acesso ao MongoDB via Prisma
+│   └── main.ts       # Entrada da API NestJS
+├── prisma/           # Schema do banco
+├── docs/             # Referências técnicas, guias e histórico
+├── scripts/          # Utilitários de desenvolvimento
+├── test/             # Configuração e testes E2E
+└── package.json
+```

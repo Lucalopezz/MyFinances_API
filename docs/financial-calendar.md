@@ -1,6 +1,6 @@
-# Calendário financeiro — entrega C
+# Calendário financeiro
 
-Implementado em 30/09/2026. A publicação e sincronização do schema do ambiente de destino não fazem parte da execução local.
+Guia atual de recorrências, confirmações e projeção diária. O [relatório histórico de validação](delivery-c-validation.md) preserva as evidências da implementação original.
 
 ## Contrato e datas
 
@@ -26,7 +26,7 @@ Uma ocorrência traz `id`, `sourceId`, `dueDate`, `periodKey`, `description`, `a
 - Alterações e pausas de receitas valem a partir de amanhã. Revisões com vigência ficam criptografadas; datas passadas e recibos realizados são preservados. Retomar não recria previsões dos períodos pausados.
 - A ocorrência prevista é derivada, não persistida por uma leitura. O recibo realizado é persistido com snapshot criptografado. O índice único por usuário/origem/período garante um recebimento por competência mensal ou anual, mesmo após mudança do dia de vencimento. Também há unicidade por usuário/origem/data.
 - A confirmação usa transação MongoDB para atualizar a revisão da recorrência, criar a receita criptografada e gravar o recibo. Conflitos concorrentes são repetidos até quatro tentativas. Qualquer falha dentro dessa operação desfaz tudo. O recálculo legado de wishlist ocorre depois; se falhar, repetir a confirmação reexecuta o recálculo sem criar receita adicional.
-- Edição/exclusão genérica de transações vinculadas a recibos é bloqueada para preservar os totais e o vínculo. Despesas podem ser desmarcadas pelo fluxo específico enquanto o ciclo está acessível. Recebimentos realizados não possuem fluxo de estorno nesta entrega.
+- Edição/exclusão genérica de transações vinculadas a recibos é bloqueada para preservar os totais e o vínculo. Despesas podem ser desmarcadas pelo fluxo específico enquanto o ciclo está acessível. Recebimentos realizados não possuem fluxo de estorno específico.
 - Pagamentos de despesas fixas passam a salvar recibos na mesma transação. O ciclo pago avança somente uma competência, preservando meses não pagos. `recurrenceDay` mantém o dia original nos novos cadastros. Leitura de calendário não avança ciclos nem grava dados.
 
 ## Projeção diária

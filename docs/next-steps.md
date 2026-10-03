@@ -1,10 +1,12 @@
-# Próximos passos do MyFinances
+# Registro de evolução — v2.2.0
 
-Atualizado em 01/10/2026 para o escopo da v2.2.0.
+> Documento histórico da rodada de evolução, registrado até 01/10/2026. O escopo aprovado está implementado; consulte o [escopo atual](features.md) e o [histórico de versões](../CHANGELOG.md). Os checklists e limites abaixo preservam as evidências disponíveis naquela data e não representam uma lista atual de funcionalidades por implementar.
+
+Este registro foi mantido nos repositórios da API e do frontend durante a rodada. O [plano anterior](implementation-plan.md) e o [planejamento original da V2](v2.md) também são referências históricas.
+
+## Situação registrada em 01/10/2026
 
 Status da v2.2.0: entregas A e B implementadas e validadas localmente; C implementada e validada funcionalmente, com revisão visual pendente; D e E implementadas, com validação funcional em banco pendente. A funcionalidade de cartões de crédito também foi implementada. O item F (simulador de compras) foi retirado do escopo da v2.2.0 por decisão de produto. Publicação e sincronização do schema no ambiente de destino não foram verificadas nesta documentação; consulte os guias de implantação de cada domínio.
-
-Este registro de escopo é mantido em `docs/next-steps.md` nos repositórios da API e do frontend. Atualizações devem ser replicadas nas duas cópias. O [plano anterior](implementation-plan.md) e o [planejamento V2](v2.md) permanecem como referências históricas.
 
 ## Objetivo
 
