@@ -22,6 +22,7 @@ Atualizado em 03/10/2026. As funcionalidades previstas no escopo aprovado estão
 ## Regras gerais
 
 - O saldo registrado é calculado a partir das transações realizadas no aplicativo. A projeção considera os compromissos cadastrados e explicita suas premissas.
+- `GET /transactions/balance` entrega o saldo acumulado de todo o histórico para a dashboard e a listagem mensal. Filtros e períodos não alteram esse total; reservas não o reduzem.
 - Uma previsão de receita ou despesa não cria uma transação por si só. Confirmar recebimentos e pagamentos substitui a previsão pelo realizado.
 - Aportes reservam dinheiro para uma meta e retiradas liberam essa reserva. A conclusão de uma compra cria uma única despesa e preserva o histórico.
 - Compras no cartão comprometem limite; as despesas realizadas são criadas no pagamento da fatura.

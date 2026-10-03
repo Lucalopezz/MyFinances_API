@@ -67,6 +67,11 @@ export class TransactionsController {
     return this.transactionsService.summarizeTransactions(query, userId);
   }
 
+  @Get('balance')
+  totalBalance(@User('sub') userId: string) {
+    return this.transactionsService.getTotalBalance(userId);
+  }
+
   @Get(':id')
   async getTransaction(@Param('id') id: string, @User('sub') userId: string) {
     return this.transactionsService.getTransaction(id, userId);

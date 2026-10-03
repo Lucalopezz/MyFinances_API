@@ -2,12 +2,12 @@
 
 API de gerenciamento financeiro pessoal do MyFinances, construída com NestJS, Prisma e MongoDB. Centraliza os dados, as regras financeiras e a autenticação consumidos pelo [frontend](https://github.com/Lucalopezz/MyFinances_Front).
 
-Versão de referência: **v2.2.1**. Consulte o [histórico de versões](CHANGELOG.md) para conhecer as mudanças de cada release.
+Versão de referência: **v2.2.2**. Consulte o [histórico de versões](CHANGELOG.md) para conhecer as mudanças de cada release.
 
 ## Funcionalidades
 
 - **Autenticação e usuário:** cadastro, login com JWT, atualização de perfil e senha.
-- **Transações:** receitas e despesas, edição, remoção, busca com cursor e totais por filtros.
+- **Transações:** receitas e despesas, edição, remoção, busca com cursor, totais por filtros e saldo acumulado.
 - **Categorias e regras:** catálogo personalizado, arquivamento e sugestões de classificação por descrição.
 - **Importação e exportação:** CSV/OFX com prévia e revisão de duplicatas; exportação assíncrona em PDF/CSV.
 - **Dashboard e comparativos:** resumo mensal, indicadores e análise de receitas, despesas e saldo.

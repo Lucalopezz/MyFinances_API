@@ -2,6 +2,12 @@
 
 Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.md) e o [índice da documentação](docs/README.md) descrevem a aplicação e seus contratos.
 
+## [v2.2.2](https://github.com/Lucalopezz/MyFinances_API/tree/v2.2.2) — 03/10/2026
+
+- Novo endpoint autenticado `GET /transactions/balance` para o saldo acumulado de todo o histórico do usuário, independente do mês, filtros e paginação.
+- Reutilização do cálculo em centavos e da leitura em lotes do resumo mensal, mantendo seu contrato.
+- Testes para histórico com múltiplos meses e mais de 100 registros, isolamento entre usuários, precisão monetária, saldo negativo e histórico vazio.
+
 ## [v2.2.1](https://github.com/Lucalopezz/MyFinances_API/tree/v2.2.1) — 03/10/2026
 
 ### Documentação

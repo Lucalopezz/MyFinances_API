@@ -160,6 +160,17 @@ export class TransactionsService {
   }
 
   async summarizeTransactions(query: TransactionSummaryDto, userId: string) {
+    return this.calculateSummary(query, userId);
+  }
+
+  async getTotalBalance(userId: string) {
+    return this.calculateSummary({}, userId);
+  }
+
+  private async calculateSummary(
+    query: Omit<TransactionSearchDto, 'limit' | 'cursor'>,
+    userId: string,
+  ) {
     let incomeCents = 0;
     let expenseCents = 0;
     let count = 0;

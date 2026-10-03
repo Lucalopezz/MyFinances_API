@@ -133,6 +133,92 @@ describe('TransactionsService monthly totals', () => {
   });
 });
 
+describe('TransactionsService total balance', () => {
+  it('sums the full history across batches in cents and isolates the user', async () => {
+    const fixture = (
+      id: number,
+      dateIndex: number,
+      type: string,
+      value: number,
+      owner = userId,
+    ) => ({
+      ...records[0],
+      id: id.toString(16).padStart(24, '0'),
+      userId: owner,
+      dateIndex,
+      type,
+      encryptedData: {
+        ...records[0].encryptedData,
+        value: JSON.stringify(value),
+      },
+    });
+    const fixtures = [
+      fixture(200, 20261001, 'INCOME', 1000.01),
+      ...records,
+      fixture(199, 20260601, 'INCOME', 6000.02),
+      fixture(198, 20260501, 'EXPENSE', 0.03),
+      fixture(197, 20261001, 'INCOME', 99999, 'other-user'),
+    ].sort((a, b) => b.dateIndex - a.dateIndex || b.id.localeCompare(a.id));
+    const findMany = jest.fn(async ({ where, take }) =>
+      fixtures
+        .filter(
+          (row) =>
+            row.userId === where.userId &&
+            (!where.OR ||
+              row.dateIndex < where.OR[0].dateIndex.lt ||
+              (row.dateIndex === where.OR[1].dateIndex &&
+                row.id < where.OR[1].id.lt)),
+        )
+        .slice(0, take),
+    );
+    const service = new TransactionsService(
+      {} as never,
+      new TransactionsRepository({ transaction: { findMany } } as never),
+      { decrypt: (value: string) => JSON.parse(value) } as never,
+    );
+
+    expect(await service.getTotalBalance(userId)).toEqual({
+      totalIncome: 7000.03,
+      totalExpense: 5565.03,
+      balance: 1435,
+      count: 108,
+    });
+    expect(findMany.mock.calls.length).toBeGreaterThan(1);
+    expect(
+      findMany.mock.calls.every(
+        ([query]) =>
+          query.where.userId === userId &&
+          query.where.dateIndex === undefined &&
+          query.where.type === undefined &&
+          query.take === 100,
+      ),
+    ).toBe(true);
+  });
+
+  it('returns zero for an empty history and preserves a negative balance', async () => {
+    const findMany = jest.fn(async ({ where }) =>
+      where.userId === userId ? [records[0]] : [],
+    );
+    const service = new TransactionsService(
+      {} as never,
+      new TransactionsRepository({ transaction: { findMany } } as never),
+      { decrypt: (value: string) => JSON.parse(value) } as never,
+    );
+    expect(await service.getTotalBalance('empty-user')).toEqual({
+      totalIncome: 0,
+      totalExpense: 0,
+      balance: 0,
+      count: 0,
+    });
+    expect(await service.getTotalBalance(userId)).toEqual({
+      totalIncome: 0,
+      totalExpense: 105,
+      balance: -105,
+      count: 1,
+    });
+  });
+});
+
 describe('TransactionsService legacy contract', () => {
   it('preserves the page-number response and database ordering', async () => {
     const findMany = jest.fn(async () => [records[0]]);

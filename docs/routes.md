@@ -221,6 +221,20 @@ semântica da busca. Retorna `{ totalIncome, totalExpense, balance, count }` par
 todos os resultados do período. Percorre lotes de até 100 registros por cursor
 indexado, soma em centavos e não transfere o histórico completo ao frontend.
 
+### `GET /transactions/balance`
+
+Protegida e isolada pelo usuário autenticado. Não recebe filtros. Retorna
+`{ totalIncome, totalExpense, balance, count }` para todo o histórico registrado,
+incluindo transações cadastradas com datas futuras. `balance` é a soma das
+receitas menos as despesas, calculada em centavos e em lotes de até 100 registros.
+Não depende do mês selecionado, da busca ou da paginação no frontend.
+
+Reservas da wishlist e compromissos previstos não são descontados. Compras no
+cartão passam a compor as despesas após o pagamento da fatura. O saldo representa
+os lançamentos no aplicativo; não há sincronização com contas bancárias.
+O endpoint apenas lê dados e não exige alteração de schema. Publique a API antes
+do frontend v2.2.2.
+
 ### `GET /transactions/:id`
 
 Busca uma transação pelo id.
