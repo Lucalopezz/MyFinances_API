@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { TransactionType } from '@prisma/client';
-import * as PDFDocument from 'pdfkit';
+import PDFDocument = require('pdfkit');
 import { DecryptedTransaction } from '../transactions/transaction-encryption.mapper';
 import { CreateTransactionExportDto } from './dtos/create-transaction-export.dto';
 
