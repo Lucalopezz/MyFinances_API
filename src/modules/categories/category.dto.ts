@@ -33,7 +33,7 @@ export const CreateCategorySchema = z.object({
   color: z.string().regex(/^#[a-f\d]{6}$/i),
   icon: z.enum(CATEGORY_ICONS),
 });
-// Type is immutable: changing it would invalidate historical references.
+// O tipo é imutável: alterá-lo invalidaria as referências do histórico.
 export const UpdateCategorySchema = CreateCategorySchema.omit({ type: true })
   .partial()
   .extend({ archived: z.boolean().optional() })

@@ -32,7 +32,7 @@ export function parseStatement(
     : parseOfx(content, options.source);
 }
 
-// Strict decimal grammar: grouping must be in groups of three; never guess locale.
+// A gramática decimal exige agrupamentos de três dígitos, sem adivinhar a configuração regional.
 export function parseMoney(raw: string, decimal: ',' | '.'): number {
   const text = raw.trim();
   const pattern =
@@ -301,7 +301,7 @@ function parseOfx(content: string, source: string): ImportPayload {
   } catch (error) {
     invalid(error.message);
   }
-  // Preserve statement order (the iterative traversal above is only for scalar lookup).
+  // Preserva a ordem do extrato; o percurso iterativo acima serve apenas para localizar valores escalares.
   const lists = all.filter((n) => n.name === 'BANKTRANLIST');
   if (lists.length !== 1) invalid('Lista de movimentações OFX inválida.');
   const transactions = lists[0].children.filter((n) => n.name === 'STMTTRN');

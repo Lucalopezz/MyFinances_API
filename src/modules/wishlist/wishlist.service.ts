@@ -176,7 +176,7 @@ export class WishlistService {
       try {
         return await this.prisma.$transaction(
           async (tx) => {
-            // One write per user serializes competing reservation and completion requests.
+            // Uma gravação por usuário serializa solicitações concorrentes de reserva e conclusão.
             await tx.user.update({
               where: { id: userId },
               data: { reservationRevision: { increment: 1 } },

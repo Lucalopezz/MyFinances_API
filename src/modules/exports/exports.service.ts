@@ -51,7 +51,8 @@ export class ExportsService {
         true,
       );
     const { format, ...transactionFilters } = filters;
-    // Creates a new transaction export record in the database with status PENDING.
+    // O registro começa como PENDING antes de entrar na fila, permitindo
+    // consultar seu status enquanto ele aguarda a execução pelo worker.
     const transactionExport = await this.repository.create(
       userId,
       format as TransactionExportFormat,
@@ -59,20 +60,26 @@ export class ExportsService {
     );
 
     try {
-      // Schedules a job in the export queue to process the transaction export asynchronously.
+      // A fila recebe somente IDs. Os dados financeiros são buscados pelo
+      // worker no escopo do usuário, sem serem copiados para o payload do job.
       await this.exportQueue.add(
-        TRANSACTION_EXPORT_JOB, // name
-        { exportId: transactionExport.id, userId }, // data
+        TRANSACTION_EXPORT_JOB,
+        { exportId: transactionExport.id, userId },
         {
-          // options
-          jobId: transactionExport.id, // jobId is set to the export ID to ensure uniqueness and prevent duplicate jobs for the same export.
-          attempts: 2, // The job will be retried up to 2 times in case of failure.
-          removeOnComplete: true, // The job will be automatically removed from the queue when it completes successfully.
-          removeOnFail: 100, // The job will be automatically removed from the queue after 100 failed attempts.
+          // Usar o ID da exportação identifica o mesmo trabalho na fila e
+          // evita duplicá-lo enquanto esse job estiver registrado no BullMQ.
+          jobId: transactionExport.id,
+          // Limita a execução a duas tentativas em caso de falha.
+          attempts: 2,
+          // Libera os jobs concluídos e mantém os 100 últimos com falha para
+          // diagnóstico, sem deixar o histórico da fila crescer sem limite.
+          removeOnComplete: true,
+          removeOnFail: 100,
         },
       );
     } catch (error) {
-      // if scheduling the job fails, the export record is updated to FAILED status and an error message is stored in the database.
+      // Se a fila rejeitar o agendamento, o registro precisa sair de PENDING:
+      // não haverá worker responsável por atualizar seu status depois.
       await this.repository.markSchedulingFailed(transactionExport.id, userId);
       throw error;
     }
@@ -108,7 +115,8 @@ export class ExportsService {
   async getDownload(id: string, userId: string) {
     const transactionExport = await this.findOwnedExport(id, userId);
 
-    // Verifies that the export is completed before allowing the download. If the export is not completed, a ConflictException is thrown.
+    // Somente COMPLETED permite download. O worker grava esse status depois
+    // de confirmar a escrita completa, evitando arquivos ainda em produção.
     if (transactionExport.status !== TransactionExportStatus.COMPLETED) {
       throw new ConflictException(
         'A exportação ainda não está concluída para download.',
@@ -127,8 +135,8 @@ export class ExportsService {
       throw new NotFoundException('Arquivo de exportação inválido.');
     }
 
-    // Constructs the full file path for the export file
-    // based on the storage path and the file name stored in the database.
+    // O nome precisa corresponder exatamente ao ID e ao formato acima antes
+    // de montar o caminho, impedindo referências a outros arquivos do disco.
     const filePath = join(this.storagePath, transactionExport.fileName);
 
     try {

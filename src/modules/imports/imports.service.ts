@@ -183,7 +183,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
           else if (duplicates.length && !choice.allowDuplicate)
             result = { ...result, reason: 'DUPLICATE_REQUIRES_APPROVAL' };
           else {
-            // Resolve against the current catalog again at the point of writing.
+            // Resolve a categoria novamente pelo catálogo atual no momento da gravação.
             try {
               await this.categories.resolveReference(
                 evaluated.category,
@@ -237,7 +237,7 @@ export class ImportsService implements OnModuleInit, OnModuleDestroy {
         if (saved.status === 'IMPORTED')
           addImportHistory(history, row, payload.source, saved.transactionId);
       } catch (error) {
-        // No payload or database error is exposed; the receipt is authoritative on retry.
+        // Não expõe dados enviados nem erros do banco; em uma nova tentativa, o comprovante é a referência.
         results.push({
           rowId: row.rowId,
           status: 'PENDING',

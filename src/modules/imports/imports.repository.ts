@@ -43,8 +43,8 @@ export class ImportsRepository {
     });
   }
 
-  // A receipt and its encrypted transaction commit together. The compound unique
-  // index plus MongoDB transaction retries make simultaneous confirmations safe.
+  // O comprovante e a transação criptografada são confirmados juntos. O índice
+  // único composto e as novas tentativas do MongoDB protegem confirmações simultâneas.
   async saveResult(
     batchId: string,
     userId: string,
@@ -64,7 +64,7 @@ export class ImportsRepository {
           });
           if (!batch?.encryptedData || batch.expiresAt <= new Date())
             throw new GoneException('Prévia expirada ou cancelada.');
-          // Serializes cancellation/expiry with writes, including across API instances.
+          // Serializa cancelamento e expiração com as gravações, inclusive entre instâncias da API.
           await tx.transactionImport.update({
             where: { id: batchId, userId },
             data: { revision: { increment: 1 } },

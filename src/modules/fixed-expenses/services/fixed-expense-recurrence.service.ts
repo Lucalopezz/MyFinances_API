@@ -21,7 +21,7 @@ export class FixedExpenseRecurrenceService {
         ),
       );
     } catch (error) {
-      // Never silently serve or mutate a stale paid cycle.
+      // Não retorna nem altera silenciosamente um ciclo pago desatualizado.
       throw error;
     }
   }
@@ -45,7 +45,7 @@ export class FixedExpenseRecurrenceService {
     recurrence: RecurrenceType,
     anchorDay: number,
   ) {
-    // Advance one cycle only, retaining unpaid months and the original day 29/30/31.
+    // Avança apenas um ciclo, preservando meses não pagos e o dia original 29/30/31.
     const month =
       dueDate.getUTCMonth() + (recurrence === RecurrenceType.MONTHLY ? 1 : 12);
     const first = new Date(Date.UTC(dueDate.getUTCFullYear(), month, 1));

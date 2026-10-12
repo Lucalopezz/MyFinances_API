@@ -248,8 +248,8 @@ export class CardsService {
           );
         }
       }
-      // Archive under the same revision lock as purchases and payments.
-      // Keep receipts and ledger entries intact, including their protections.
+      // O arquivamento usa a mesma trava de revisão das compras e dos pagamentos.
+      // Comprovantes e lançamentos permanecem intactos, incluindo suas proteções.
       await tx.creditCard.update({
         where: { id, userId },
         data: { archivedAt: new Date() },
@@ -271,7 +271,7 @@ export class CardsService {
       const card = await tx.creditCard.findFirst({ where: { id, userId } });
       if (!card || card.archivedAt)
         throw new NotFoundException('Cartão não encontrado.');
-      // The card revision serializes concurrent purchases and payments.
+      // A revisão do cartão serializa compras e pagamentos concorrentes.
       const claim = await tx.creditCard.updateMany({
         where: { id, userId, revision: card.revision },
         data: { revision: { increment: 1 } },
@@ -451,7 +451,7 @@ export class CardsService {
       });
     } catch (error) {
       if (error instanceof ConflictException) throw error;
-      // A unique index also prevents duplicate settlement across concurrent requests.
+      // O índice único também impede liquidações duplicadas entre solicitações concorrentes.
       if ((error as { code?: string }).code === 'P2002')
         throw new ConflictException('Fatura já paga. Atualize a página.');
       throw error;

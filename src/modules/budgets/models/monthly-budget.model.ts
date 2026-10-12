@@ -1,4 +1,4 @@
-// Domain shape returned by the API. Spending is computed separately on each read.
+// Estrutura de domínio retornada pela API. Os gastos são calculados separadamente a cada leitura.
 export interface MonthlyBudgetModel {
   id: string;
   userId: string;

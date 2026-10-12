@@ -21,8 +21,8 @@ import { ImportsService } from './imports.service';
 import { ImportsController } from './imports.controller';
 import { ConfirmImport, IMPORT_MAX_BYTES, ImportOptions } from './import.dto';
 
-// Opt in with a localhost replica set. Always uses a new random database, never
-// DATABASE_URL, and drops only that generated database when the suite finishes.
+// Ative com um replica set local. Usa sempre um banco novo de nome aleatório,
+// nunca DATABASE_URL, e remove somente esse banco ao finalizar a suíte.
 const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
 (enabled ? describe : describe.skip)(
   'statement imports with real MongoDB',
@@ -367,7 +367,7 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
           where: { status: 'IMPORTED' },
         }),
       ).toBe(2);
-      // Deleting an imported transaction never makes its receipt reusable.
+      // Excluir uma transação importada não torna seu comprovante reutilizável.
       await db.transaction.deleteMany();
       expect(
         (await service.confirm(batch.batchId, choices, owner)).summary.imported,

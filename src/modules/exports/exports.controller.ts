@@ -25,7 +25,9 @@ export class ExportsController {
   constructor(private readonly exportsService: ExportsService) {}
 
   @Post('transactions')
-  @HttpCode(HttpStatus.ACCEPTED) // Forces the response to be 202 Accepted instead of 201 Created
+  // O arquivo será gerado pelo worker; 202 indica que a solicitação entrou
+  // em processamento, sem afirmar que o download já está disponível.
+  @HttpCode(HttpStatus.ACCEPTED)
   async createTransactionExport(
     @Body(new ZodValidationPipe(CreateTransactionExportSchema))
     filters: CreateTransactionExportDto,

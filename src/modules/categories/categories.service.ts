@@ -99,7 +99,7 @@ export class CategoriesService {
   }
   async updateRule(id: string, dto: UpdateRuleDto, userId: string) {
     const current = await this.ownedRule(id, userId);
-    // Disabling a rule must remain possible even after its category was archived.
+    // Deve ser possível desativar uma regra mesmo depois de sua categoria ser arquivada.
     const merged = { ...current, ...dto };
     await this.resolveReference(
       merged.category,
@@ -133,7 +133,7 @@ export class CategoriesService {
     );
     return { matches, category: matches ? category.id : null };
   }
-  // Shared by manual suggestions and import preview. Never writes history.
+  // Compartilhado pelas sugestões manuais e pela prévia de importação, sem gravar no histórico.
   async resolve(dto: ResolveCategoryDto, userId: string) {
     if (dto.category) {
       await this.resolveReference(dto.category, userId, dto.type);
@@ -145,7 +145,7 @@ export class CategoriesService {
     }
     return (await this.createResolver(userId))(dto);
   }
-  // Load/decrypt once per import request rather than querying for every row.
+  // Carrega e descriptografa uma vez por solicitação de importação, evitando consultas por linha.
   async createResolver(userId: string) {
     const catalog = await this.list(userId);
     const rules = (await this.repository.rules(userId)).map((rule) => ({

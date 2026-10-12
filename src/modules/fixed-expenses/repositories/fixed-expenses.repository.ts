@@ -134,7 +134,7 @@ export class FixedExpensesRepository {
         expense.dueDate.getTime() !== expectedDueDate.getTime()
       )
         return;
-      // Preserve the last legacy paid cycle before advancing it, using its real transaction.
+      // Preserva o último ciclo pago do formato antigo antes de avançar, usando sua transação real.
       if (expense.paidTransactionId) {
         const dueDate = expense.dueDate.toISOString().slice(0, 10);
         const periodKey = `${expense.recurrence}:${dueDate.slice(0, expense.recurrence === 'MONTHLY' ? 7 : 4)}`;

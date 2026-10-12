@@ -175,7 +175,7 @@ export class TransactionsService {
     let expenseCents = 0;
     let count = 0;
     let cursor: string | undefined;
-    // Reuse search filters and indexed cursors, retaining only one batch.
+    // Reutiliza filtros de busca e cursores indexados, mantendo apenas um lote na memória.
     do {
       const page = await this.searchTransactions(
         { ...query, limit: 100, cursor },

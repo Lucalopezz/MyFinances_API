@@ -88,7 +88,7 @@ import { CalendarService } from '../calendar/calendar.service';
       ).toBe(3);
       const cardDetail = await service.detail(owner, card.id);
       const invoice = cardDetail.invoices[0];
-      // An open statement cannot be paid before its closing date.
+      // Uma fatura aberta não pode ser paga antes da data de fechamento.
       if (invoice.closingDate > date)
         await expect(
           service.payInvoice(owner, card.id, invoice.cycle, date),

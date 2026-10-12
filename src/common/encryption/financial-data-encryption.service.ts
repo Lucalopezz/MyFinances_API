@@ -15,7 +15,7 @@ type EncryptedField = string;
 @Injectable()
 export class FinancialDataEncryptionService {
   private readonly logger = new Logger(FinancialDataEncryptionService.name);
-  // A 32-byte key is required for AES-256-GCM encryption
+  // A criptografia AES-256-GCM exige uma chave de 32 bytes.
   private readonly key: Buffer;
 
   constructor() {
@@ -32,7 +32,7 @@ export class FinancialDataEncryptionService {
     ]);
     const authTag = cipher.getAuthTag();
 
-    // The encrypted value is returned in the format: version:iv:authTag:encrypted
+    // O valor criptografado usa o formato version:iv:authTag:encrypted.
     return [
       'v1',
       iv.toString('base64'),

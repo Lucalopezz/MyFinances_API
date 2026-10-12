@@ -19,7 +19,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
     forwardRef(() => AppModule),
     AuthModule,
     TransactionsModule,
-    // Configure the Bull queue for transaction exports
+    // Registra a fila compartilhada pelo serviço que agenda os jobs e pelo worker que os executa.
     BullModule.registerQueue({
       name: TRANSACTION_EXPORT_QUEUE,
     }),

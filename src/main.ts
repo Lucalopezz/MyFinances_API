@@ -5,7 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  // Allows category overrides for all 1000 import rows within a bounded body.
+  // Permite ajustar categorias das 1000 linhas de importação mantendo um limite para o corpo da requisição.
   app.useBodyParser('json', { limit: '256kb' });
   app.use(
     helmet({

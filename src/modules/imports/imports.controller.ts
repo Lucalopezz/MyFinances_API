@@ -35,8 +35,8 @@ export class ImportsController {
         files: 1,
         fields: 1,
         fieldSize: 8192,
-        // Busboy emits partsLimit when the counter reaches the limit; allow
-        // the two expected parts to finish. files/fields still enforce 1 each.
+        // Busboy emite partsLimit quando o contador atinge o limite; permite
+        // concluir as duas partes esperadas. files/fields ainda limitam cada tipo a 1.
         parts: 3,
       },
     }),

@@ -21,11 +21,10 @@ import { TransactionPdfService } from './transaction-pdf.service';
 import { TransactionCsvService } from './transaction-csv.service';
 import { TransactionExportsRepository } from './repositories/transaction-exports.repository';
 
-// Register the processor for the transaction export queue with a concurrency of 1
+// Cada worker processa uma exportação por vez para limitar a disputa por CPU
+// na geração de PDFs. A API segue atendendo requisições enquanto o job roda.
 @Processor(TRANSACTION_EXPORT_QUEUE, { concurrency: 1 })
 @Injectable()
-// Extends WorkerHost to handle job processing for transaction exports
-// Need to implement the process method to handle the job logic
 export class TransactionExportProcessor extends WorkerHost {
   private readonly logger = new Logger(TransactionExportProcessor.name);
   private readonly storagePath: string;
@@ -50,6 +49,11 @@ export class TransactionExportProcessor extends WorkerHost {
     );
   }
 
+  /**
+   * Lê os dados do usuário em lotes, descriptografa os campos necessários e
+   * escreve PDF ou CSV em disco. O download só fica disponível depois que
+   * o stream confirma a gravação completa do arquivo.
+   */
   async process(job: Job<TransactionExportJob>): Promise<void> {
     if (job.name !== TRANSACTION_EXPORT_JOB) {
       throw new Error(`Job de exportação desconhecido: ${job.name}`);
@@ -62,7 +66,8 @@ export class TransactionExportProcessor extends WorkerHost {
     let document: PDFKit.PDFDocument | undefined;
 
     try {
-      // Fetch the transaction export record from the database
+      // Mesmo contendo um ID válido, o job só pode acessar a exportação do
+      // usuário informado. As consultas dos lançamentos repetem esse escopo.
       const transactionExport = await this.repository.findOwned(
         exportId,
         userId,
@@ -72,34 +77,44 @@ export class TransactionExportProcessor extends WorkerHost {
         throw new Error('Exportação não encontrada para o job informado.');
       }
 
+      // Carregamos o catálogo uma vez por exportação, incluindo categorias
+      // arquivadas ainda usadas no histórico. O PDF traduz os IDs com esses
+      // nomes sem alterar as referências persistidas ou exportadas no CSV.
       const catalog = await this.categories.list(userId);
+      // Exportações antigas podem não ter formato; PDF preserva o padrão
+      // original e determina a extensão que será validada no download.
       const format = transactionExport.format ?? TransactionExportFormat.PDF;
       const fileName = `${exportId}.${format === TransactionExportFormat.CSV ? 'csv' : 'pdf'}`;
       filePath = join(this.storagePath, fileName);
 
       const filters = transactionExport.filters as
-        | CreateTransactionExportDto
-        | undefined;
+        CreateTransactionExportDto | undefined;
 
-      // Update the export record to indicate processing has started
+      // O status sai de PENDING assim que o worker assume o job, permitindo
+      // que o frontend diferencie espera na fila de processamento em curso.
       await this.repository.markProcessing(exportId, userId);
 
-      // Ensure the storage directory exists before creating the output file.
+      // O diretório pode desaparecer entre reinicializações em ambientes com
+      // armazenamento efêmero, por isso sua criação é idempotente a cada job.
       await mkdir(this.storagePath, { recursive: true });
-      // Create a write stream for the PDF file and set up a promise to track when the stream finishes
+      // Escrevemos diretamente no arquivo para não montar a exportação toda
+      // em um Buffer. finished() permite aguardar também falhas de gravação.
       output = createWriteStream(filePath);
-      // create a promise that resolves when the output stream finishes writing
       outputFinished = finished(output);
-      // Ensure that if the output stream finishes with an error, we catch it to prevent unhandled promise rejections
+      // O stream pode falhar enquanto ainda buscamos um lote. Este handler
+      // evita uma rejeição não tratada nesse intervalo; o await mais abaixo
+      // continua recebendo a falha e aciona a limpeza do arquivo parcial.
       outputFinished.catch(() => undefined);
       if (format === TransactionExportFormat.CSV) {
         await this.csvService.writeHeader(output);
       } else {
-        document = this.pdfService.createDocument(filters);
+        document = this.pdfService.createDocument(filters, catalog);
         document.pipe(output);
       }
 
-      // Filter and process transactions in batches, decrypting them and adding them to the PDF document
+      // Período e tipo têm campos consultáveis no banco. A categoria usa
+      // criptografia com IV aleatório: seu ciphertext não pode ser comparado
+      // diretamente, então o filtro dela ocorre após a descriptografia.
       const candidates = {
         userId,
         startDate: filters?.startDate,
@@ -109,12 +124,14 @@ export class TransactionExportProcessor extends WorkerHost {
       const total =
         await this.transactionsRepository.countExportCandidates(candidates);
 
-      // Initialize variables to track the number of processed transactions and the cursor for pagination
+      // O progresso considera os candidatos examinados, inclusive os que o
+      // filtro de categoria descarta. Já o PDF conta somente os exportados.
       let processed = 0;
       let cursorId: string | undefined;
 
       while (true) {
-        // Fetch a batch of transactions from the database based on the filters and cursor for pagination
+        // O cursor pelo último ID permite percorrer o histórico em lotes sem
+        // carregar todas as transações nem usar offsets crescentes no banco.
         const transactions = await this.transactionsRepository.findExportBatch(
           candidates,
           cursorId,
@@ -124,7 +141,9 @@ export class TransactionExportProcessor extends WorkerHost {
         if (transactions.length === 0) {
           break;
         }
-        // Decrypt each transaction and add it to the PDF document if it matches the specified filters
+        // Somente o registro corrente precisa estar em formato legível.
+        // Aplicar o filtro antes de enviar ao gerador também garante que o
+        // resumo financeiro some exclusivamente as linhas do arquivo final.
         for (const transaction of transactions) {
           const decrypted = decryptTransaction(
             transaction,
@@ -138,41 +157,47 @@ export class TransactionExportProcessor extends WorkerHost {
             if (format === TransactionExportFormat.CSV) {
               await this.csvService.addTransaction(output, decrypted);
             } else {
-              this.pdfService.addTransaction(document, {
-                ...decrypted,
-                category:
-                  catalog.find((item) => item.id === decrypted.category)
-                    ?.name ?? decrypted.category,
-              });
+              this.pdfService.addTransaction(document, decrypted);
             }
           }
 
           processed++;
         }
 
+        // Avançamos pelo último candidato lido, mesmo se nenhum lançamento
+        // do lote passar pelo filtro, para não consultar o mesmo lote de novo.
         cursorId = transactions[transactions.length - 1].id;
+        // Reservamos 100% para depois da gravação. Ler todos os registros
+        // ainda não significa que o arquivo esteja pronto para download.
         const progress = total
           ? Math.min(99, Math.floor((processed / total) * 100))
           : 99;
-        // Update the export record with the current progress and update the job's progress
+        // O banco fornece o progresso ao frontend; o job mantém a mesma
+        // informação para acompanhamento do processamento pelo BullMQ.
         await this.repository.updateProgress(exportId, userId, progress);
-        // Update the job's progress to reflect the current state of processing
         await job.updateProgress(progress);
       }
 
-      if (document) document.end();
+      // O PDF ainda precisa acrescentar resumo e rodapé antes de encerrar;
+      // o CSV já escreveu todo o conteúdo e pode finalizar o stream direto.
+      if (document) this.pdfService.finalizeDocument(document);
       else output.end();
-      // Wait for the output stream to finish writing the PDF file before proceeding
+      // end() encerra a produção, mas a escrita em disco é assíncrona.
+      // Aguardar finished() evita anunciar um arquivo ainda incompleto.
       await outputFinished;
-      // Update the export record to indicate that processing has completed successfully
       await this.repository.markCompleted(exportId, userId, fileName);
       await job.updateProgress(100);
     } catch (error) {
+      // Interrompemos a geração e aguardamos o stream parar antes de remover
+      // o arquivo parcial. Uma falha não pode deixar um download incompleto
+      // nem um arquivo antigo quando o BullMQ tentar executar o job novamente.
       document?.destroy();
       output?.destroy();
       await outputFinished?.catch(() => undefined);
       if (filePath) await unlink(filePath).catch(() => undefined);
 
+      // Uma falha secundária ao gravar FAILED é registrada separadamente,
+      // preservando a exceção original que deve ser devolvida ao BullMQ.
       await this.repository
         .markFailed(exportId, userId)
         .catch((updateError) => {
@@ -188,6 +213,8 @@ export class TransactionExportProcessor extends WorkerHost {
   }
 
   private resolveBatchSize(value: string): number {
+    // A configuração vem como texto. Um tamanho inválido poderia impedir o
+    // avanço da paginação; 500 mantém o limite padrão de memória por lote.
     const batchSize = Number(value);
     return Number.isInteger(batchSize) && batchSize > 0 ? batchSize : 500;
   }

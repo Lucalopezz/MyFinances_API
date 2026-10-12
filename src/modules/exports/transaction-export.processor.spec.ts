@@ -43,9 +43,23 @@ describe('TransactionExportProcessor', () => {
             description: JSON.stringify('Café, mercado'),
           },
         };
+        // O segundo lote contém apenas um registro fora da categoria pedida.
+        // Ele deve fazer o cursor avançar sem aparecer no arquivo nem alterar
+        // os totais, protegendo a combinação de paginação e filtro local.
+        const skippedRecord = {
+          ...record,
+          id: '64f000000000000000000011',
+          encryptedData: {
+            ...record.encryptedData,
+            category: JSON.stringify('HOUSING'),
+            description: JSON.stringify('Transação fora do filtro'),
+            value: JSON.stringify(999),
+          },
+        };
         const findExportBatch = jest
           .fn()
           .mockResolvedValueOnce([record])
+          .mockResolvedValueOnce([skippedRecord])
           .mockResolvedValueOnce([]);
         const repository = {
           findOwned: jest.fn(async () => ({
@@ -60,11 +74,13 @@ describe('TransactionExportProcessor', () => {
           markFailed: jest.fn(async () => undefined),
         };
         const transactionsRepository = {
-          countExportCandidates: jest.fn(async () => 1),
+          countExportCandidates: jest.fn(async () => 2),
           findExportBatch,
         };
         const pdfService = new TransactionPdfService();
         const addPdfTransaction = jest.spyOn(pdfService, 'addTransaction');
+        const createPdfDocument = jest.spyOn(pdfService, 'createDocument');
+        const finalizePdfDocument = jest.spyOn(pdfService, 'finalizeDocument');
         const processor = new TransactionExportProcessor(
           {
             resolveReference: jest.fn(async () => ({})),
@@ -92,13 +108,34 @@ describe('TransactionExportProcessor', () => {
         if (format === 'CSV') {
           expect(content.toString('utf8')).toContain('"Café, mercado",12.5');
           expect(content.toString('utf8')).toContain(`"${category}"`);
+          expect(content.toString('utf8')).not.toContain(
+            'Transação fora do filtro',
+          );
         } else {
           expect(content.subarray(0, 4).toString()).toBe('%PDF');
           expect(addPdfTransaction).toHaveBeenCalledWith(
             expect.anything(),
-            expect.objectContaining({ category: label }),
+            expect.objectContaining({ category }),
           );
+          expect(createPdfDocument).toHaveBeenCalledWith(
+            { categoryId: category },
+            [{ id: category, name: label }],
+          );
+          expect(finalizePdfDocument).toHaveBeenCalledWith(expect.anything());
+          expect(addPdfTransaction).toHaveBeenCalledTimes(1);
         }
+        expect(findExportBatch).toHaveBeenNthCalledWith(
+          2,
+          expect.objectContaining({ userId }),
+          record.id,
+          500,
+        );
+        expect(findExportBatch).toHaveBeenNthCalledWith(
+          3,
+          expect.objectContaining({ userId }),
+          skippedRecord.id,
+          500,
+        );
         expect(repository.findOwned).toHaveBeenCalledWith(exportId, userId);
         expect(
           transactionsRepository.countExportCandidates,

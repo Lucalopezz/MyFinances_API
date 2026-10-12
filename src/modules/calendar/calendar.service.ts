@@ -88,7 +88,7 @@ export class CalendarService {
       'INCOME',
       next.category === current.category,
     );
-    // Changes affect tomorrow onward. Keep past schedules and receipts intact.
+    // As alterações valem a partir de amanhã. Agendamentos passados e comprovantes permanecem intactos.
     const updated = [
       ...revisions.filter((v) => v.effectiveFrom < next.effectiveFrom),
       next,
@@ -157,7 +157,7 @@ export class CalendarService {
             userId,
             'INCOME',
           );
-          // Serialize schedule edits and confirmations on the same recurrence.
+          // Serializa edições do agendamento e confirmações na mesma recorrência.
           await tx.recurringIncome.update({
             where: { id, userId },
             data: { revision: { increment: 1 } },
@@ -281,7 +281,7 @@ export class CalendarService {
       const event = this.encryption.decrypt<CalendarEvent>(
         receipt.encryptedData,
       );
-      // A changed due day must not create another forecast for an already settled period.
+      // Alterar o dia de vencimento não pode criar outra previsão para um período já liquidado.
       for (const [key, pending] of events)
         if (
           pending.sourceId === receipt.sourceId &&
