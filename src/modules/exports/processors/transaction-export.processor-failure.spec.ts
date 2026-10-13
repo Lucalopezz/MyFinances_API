@@ -3,7 +3,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { TransactionExportProcessor } from './transaction-export.processor';
 import { TransactionCsvService } from '../generators/csv/transaction-csv.service';
-import { TransactionPdfService } from '../transaction-pdf.service';
+import { TransactionPdfService } from '../generators/pdf/transaction-pdf.service';
 import { TransactionXlsxService } from '../generators/xlsx/transaction-xlsx.service';
 import { TRANSACTION_EXPORT_JOB } from '../constants/exports.constants';
 import { TransactionExportReaderService } from '../services/transaction-export-reader.service';

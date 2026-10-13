@@ -3,7 +3,7 @@ import { TransactionExportFormat } from '@prisma/client';
 import { WriteStream } from 'fs';
 import { CreateTransactionExportDto } from '../dtos/create-transaction-export.dto';
 import { TransactionCsvService } from '../generators/csv/transaction-csv.service';
-import { TransactionPdfService } from '../transaction-pdf.service';
+import { TransactionPdfService } from '../generators/pdf/transaction-pdf.service';
 import { TransactionXlsxService } from '../generators/xlsx/transaction-xlsx.service';
 import { ExportCategoryCatalog } from '../helpers/transaction-export-formatting.helper';
 import { TransactionExportWriter } from '../types/transaction-export-writer.types';

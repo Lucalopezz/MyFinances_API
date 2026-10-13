@@ -4,6 +4,7 @@ Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.
 
 ## Não lançado
 
+- Módulo de exportações reorganizado por responsabilidade, com geradores PDF/CSV/XLSX separados, leitura em lotes e fábrica de escritores; layout e tabela do PDF extraídos do serviço principal.
 - Exportação nativa em XLSX pela mesma fila de PDF/CSV, com datas e valores tipados, categorias em português, filtros nas colunas e cabeçalho fixo.
 - Validação do novo formato, download com extensão e tipo correspondentes e geração em fluxo para históricos extensos.
 - Ambiente local com MongoDB em replica set, Redis, geração de `.env` e guia para usar a conta de teste com 200 transações.

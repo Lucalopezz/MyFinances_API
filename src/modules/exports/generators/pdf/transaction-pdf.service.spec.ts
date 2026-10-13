@@ -1,6 +1,6 @@
 import { once } from 'events';
-import { DEFAULT_CATEGORIES } from '../categories/default-categories';
-import { DecryptedTransaction } from '../transactions/transaction-encryption.mapper';
+import { DEFAULT_CATEGORIES } from '../../../categories/default-categories';
+import { DecryptedTransaction } from '../../../transactions/transaction-encryption.mapper';
 import { TransactionPdfService } from './transaction-pdf.service';
 
 const transaction = (

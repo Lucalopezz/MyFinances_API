@@ -8,7 +8,7 @@ import { TRANSACTION_EXPORT_QUEUE } from './constants/exports.constants';
 import { ExportsController } from './exports.controller';
 import { ExportsService } from './services/exports.service';
 import { TransactionExportProcessor } from './processors/transaction-export.processor';
-import { TransactionPdfService } from './transaction-pdf.service';
+import { TransactionPdfService } from './generators/pdf/transaction-pdf.service';
 import { TransactionCsvService } from './generators/csv/transaction-csv.service';
 import { TransactionXlsxService } from './generators/xlsx/transaction-xlsx.service';
 import { TransactionExportsRepository } from './repositories/transaction-exports.repository';

@@ -21,6 +21,31 @@ npx prisma generate
 
 O armazenamento é local e efêmero. Na Render gratuita, os arquivos podem desaparecer quando a instância reiniciar ou quando ocorrer um novo deploy. Nesse caso, o download retorna uma mensagem informando que o arquivo não está mais disponível e uma nova exportação deve ser solicitada.
 
+## Organização do módulo
+
+`src/modules/exports` separa as responsabilidades do fluxo:
+
+```text
+exports/
+├── exports.controller.ts          # Contrato HTTP e autenticação
+├── exports.module.ts              # Composição das dependências do Nest
+├── constants/                     # Fila, nomes de jobs e metadados dos formatos
+├── dtos/                          # Validação dos filtros e do formato
+├── types/                         # Payload do job e contrato do escritor
+├── repositories/                  # Persistência de status, progresso e arquivos
+├── processors/                    # Coordenação do job, gravação e limpeza de falhas
+├── services/                      # Agendamento/download, leitura em lotes e fábrica de escritores
+├── helpers/                       # Categorias e formatação compartilhada
+└── generators/
+    ├── csv/                       # Serialização CSV e contrapressão do stream
+    ├── pdf/                       # Documento, tabela paginada, layout e estado do relatório
+    └── xlsx/                      # Documento, configuração de abas e tipos do writer
+```
+
+O processador controla as transições de status e só anuncia `COMPLETED` depois de confirmar a gravação. `TransactionExportReaderService` concentra paginação, descriptografia e filtro de categoria. `TransactionExportWriterFactory` escolhe o gerador e oferece as operações de adicionar lançamento, finalizar e cancelar; o leitor não precisa conhecer o documento específico de cada formato.
+
+No PDF, o serviço mantém os totais e o ciclo do documento; a tabela mede e divide as células; o layout desenha identificação, resumo e rodapé. No XLSX, a configuração de abas e os tipos ficam separados da escrita das linhas. Os testes permanecem junto à implementação que verificam; casos de falha do processador têm arquivo próprio.
+
 ## Rotas
 
 Todas as rotas exigem o mesmo Bearer token usado nas demais áreas da API.
