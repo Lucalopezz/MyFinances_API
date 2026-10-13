@@ -1,0 +1,48 @@
+# Ambiente exclusivo de desenvolvimento: portas e volumes próprios evitam
+# misturar os dados de teste com os serviços do docker-compose.yml original.
+name: myfinances-local
+
+services:
+  mongodb:
+    image: mongo:7
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '127.0.0.1:27028:27017'
+    volumes:
+      - mongodb-local:/data/db
+    healthcheck:
+      # Prisma precisa de replica set para transações. A primeira checagem
+      # inicializa o conjunto; as seguintes aguardam a eleição do PRIMARY.
+      # directConnection na URL do host permite usar a porta publicada 27028.
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - >-
+          try { rs.status(); }
+          catch (error) {
+            rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'localhost:27017'}]});
+          }
+          quit(db.hello().isWritablePrimary ? 0 : 1);
+      interval: 3s
+      timeout: 10s
+      retries: 30
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '127.0.0.1:6380:6379'
+    volumes:
+      - redis-local:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mongodb-local:
+  redis-local:

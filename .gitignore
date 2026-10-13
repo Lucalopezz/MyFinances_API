@@ -3,6 +3,7 @@
 /node_modules
 /build
 /storage/exports
+/storage/exports-local
 
 # Logs
 logs

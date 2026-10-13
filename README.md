@@ -81,6 +81,8 @@ Pré-requisitos: Node.js com npm, MongoDB com replica set e Redis. O replica set
 
 ## Comandos
 
+Para testar os dois projetos com banco Docker e uma conta populada, siga o [guia de ambiente local](docs/local-development.md).
+
 | Comando | Uso |
 | --- | --- |
 | `npm run start:dev` | Desenvolvimento com recarga |

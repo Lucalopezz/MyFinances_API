@@ -4,6 +4,7 @@ Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.
 
 ## Não lançado
 
+- Ambiente local com MongoDB em replica set, Redis, geração de `.env` e guia para usar a conta de teste com 200 transações.
 - Preparo assíncrono dos bancos das suítes de integração, mantendo MongoDB real e os guardas de isolamento local.
 - Atualização de `jwa` para 1.4.2 no lockfile, corrigindo a inicialização da autenticação no Node atual com comparação nativa de assinaturas.
 
