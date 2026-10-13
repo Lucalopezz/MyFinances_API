@@ -83,3 +83,7 @@ A aba **Transações** contém as colunas **Data, Descrição, Categoria, Tipo e
 O arquivo tem cabeçalho fixo, filtros nas colunas, linhas alternadas e configuração de impressão em A4 horizontal. Exportações vazias mantêm uma aba válida com as colunas. O ExcelJS escreve e libera cada linha em fluxo, sem carregar o histórico inteiro na memória. Ao atingir o limite de 1.048.576 linhas por aba, incluindo o cabeçalho, o arquivo continua em **Transações 2**, **Transações 3** etc. Descrições que excedem 32.767 caracteres fazem a exportação falhar, sem truncar os dados ou oferecer um arquivo parcial.
 
 Na implantação, instale as dependências e regenere o Prisma Client com o schema atualizado, que inclui `XLSX` no enum `TransactionExportFormat`. Disponibilize o backend com suporte aos três formatos antes de publicar a nova opção no frontend.
+
+## Nome do download
+
+O arquivo baixado usa o mês e a data de geração, por exemplo `transacoes-outubro-2026-gerado-em-13-10-2026.pdf`. Com filtros de período, o nome usa o mês consultado ou os meses inicial e final; sem filtros, usa o mês de geração. CSV e XLSX seguem a mesma convenção. `GET /exports/status` retorna `downloadName`. O armazenamento interno mantém o ID por segurança; o conteúdo e o processamento em lotes permanecem iguais.

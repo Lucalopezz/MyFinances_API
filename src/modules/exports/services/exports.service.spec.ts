@@ -42,6 +42,7 @@ describe('ExportsService', () => {
           status: 'COMPLETED',
           format,
           fileName,
+          createdAt: new Date('2026-10-13T15:00:00Z'),
         }));
         const service = new ExportsService(
           {} as never,
@@ -51,7 +52,7 @@ describe('ExportsService', () => {
         );
         expect(await service.getDownload(id, userId)).toEqual({
           filePath: join(directory, fileName),
-          fileName,
+          fileName: `transacoes-outubro-2026-gerado-em-13-10-2026.${extension}`,
           contentType,
         });
         expect(findOwned).toHaveBeenCalledWith(id, userId);
@@ -61,6 +62,7 @@ describe('ExportsService', () => {
           status: 'COMPLETED',
           format,
           fileName: `${id}.invalid`,
+          createdAt: new Date('2026-10-13T15:00:00Z'),
         });
         await expect(service.getDownload(id, userId)).rejects.toThrow(
           'Arquivo de exportação inválido.',

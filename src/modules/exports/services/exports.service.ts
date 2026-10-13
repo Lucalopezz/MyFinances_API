@@ -1,3 +1,4 @@
+import { transactionExportFilename } from '../helpers/transaction-export-filename.helper';
 import { CategoriesService } from '../../categories/categories.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
@@ -110,6 +111,13 @@ export class ExportsService {
       errorMessage: transactionExport.errorMessage,
       createdAt: transactionExport.createdAt,
       completedAt: transactionExport.completedAt,
+      downloadName: transactionExportFilename(
+        TRANSACTION_EXPORT_FILE_TYPES[
+          transactionExport.format ?? TransactionExportFormat.PDF
+        ].extension,
+        transactionExport.completedAt ?? transactionExport.createdAt,
+        transactionExport.filters,
+      ),
     };
   }
 
@@ -150,7 +158,11 @@ export class ExportsService {
 
     return {
       filePath,
-      fileName: transactionExport.fileName,
+      fileName: transactionExportFilename(
+        extension,
+        transactionExport.completedAt ?? transactionExport.createdAt,
+        transactionExport.filters,
+      ),
       contentType,
     };
   }
