@@ -50,6 +50,8 @@ model CardPurchase {
   cardId        String   @db.ObjectId
   encryptedData String
   purchaseDate  String
+  refundedAt    DateTime?
+  refundTransactionId String? @db.ObjectId
   createdAt     DateTime @default(now())
   @@index([userId, cardId])
 }

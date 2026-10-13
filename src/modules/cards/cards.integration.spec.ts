@@ -194,6 +194,44 @@ const execFileAsync = promisify(execFile);
         }),
       ).rejects.toThrow('paga');
     });
+    it('refunds paid installments once, cancels pending debt and isolates ownership', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Estorno',
+        limit: 500,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 0,
+      });
+      const purchase = await service.createPurchase(owner, card.id, {
+        description: 'Curso',
+        amount: 300,
+        date: '2025-01-01',
+        category: 'OTHER',
+        installments: 3,
+      });
+      await service.payInvoice(owner, card.id, '2025-01', todayKey());
+      await expect(
+        service.refundPurchase(other, card.id, purchase.id),
+      ).rejects.toThrow('não encontrado');
+      await service.refundPurchase(owner, card.id, purchase.id);
+      await service.refundPurchase(owner, card.id, purchase.id);
+      expect((await service.detail(owner, card.id)).used).toBe(0);
+      expect(
+        await db.cardInstallment.count({ where: { purchaseId: purchase.id } }),
+      ).toBe(1);
+      expect(
+        await db.transaction.count({
+          where: { userId: owner, type: 'INCOME' },
+        }),
+      ).toBe(1);
+      const row = await db.cardPurchase.findUniqueOrThrow({
+        where: { id: purchase.id },
+      });
+      const repo = new TransactionsRepository(db as unknown as PrismaService);
+      await expect(
+        repo.deleteOwned(row.refundTransactionId!, owner),
+      ).rejects.toThrow('estorno');
+    });
     it('charges the annual fee once and never settles a statement twice under concurrent calls', async () => {
       const card = await service.createCard(owner, {
         name: 'Com anuidade',

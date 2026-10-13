@@ -46,6 +46,13 @@ export class CardsController {
   ) {
     return this.service.createPurchase(userId, id, input);
   }
+  @Post(':id/purchases/:purchaseId/refund') refund(
+    @User('sub') userId: string,
+    @Param('id') id: string,
+    @Param('purchaseId') purchaseId: string,
+  ) {
+    return this.service.refundPurchase(userId, id, purchaseId);
+  }
   @Post(':id/invoices/:cycle/pay') pay(
     @User('sub') userId: string,
     @Param('id') id: string,

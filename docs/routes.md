@@ -853,3 +853,8 @@ Todas as rotas exigem Bearer JWT e isolam dados pelo usuário autenticado.
 | `POST /cards/:id/invoices/:cycle/pay` | `{ date }`; quita integralmente fatura fechada e cria as transações de despesa correspondentes. Repetição não duplica o pagamento. |
 
 `date` usa `YYYY-MM-DD`, `cycle` usa `YYYY-MM`; a categoria da compra aceita categorias de despesa ativas. Cada parcela compromete somente o limite da sua fatura, junto às demais compras e à anuidade daquele ciclo. Faturas pendentes entram como previsão no calendário; após o pagamento, as despesas entram no saldo pela data efetiva. [Regras, limites e implantação](credit-cards.md).
+
+### Estorno de cartão
+
+`POST /cards/:id/purchases/:purchaseId/refund` estorna a compra integralmente e é idempotente. Cancela parcelas pendentes; valores de parcelas pagas geram uma receita de estorno na data atual, com vínculo protegido. O histórico da compra inclui `refundedAt`. Aceita cartões arquivados e isola os dados por usuário.
+

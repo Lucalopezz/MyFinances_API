@@ -50,3 +50,5 @@ O limite é validado por ciclo: parcelas, compras à vista e anuidade no mesmo m
 ## Arquivamento com pendências
 
 Remover arquiva o cartão e bloqueia novas compras. Compras e faturas continuam acessíveis com `archived: true`, inclusive para pagamento e calendário. A anuidade deixa de gerar novos ciclos após o arquivamento; faturas já fechadas são preservadas.
+
+O estorno integral remove parcelas pendentes das faturas e registra receita apenas pelo valor já pago. Compras estornadas permanecem no histórico com a data do estorno.

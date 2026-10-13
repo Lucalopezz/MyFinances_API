@@ -320,6 +320,7 @@ describe('TransactionsService legacy contract', () => {
       } as never,
       new TransactionsRepository({
         transaction: { findFirst, update, delete: remove },
+        cardPurchase: { findFirst: jest.fn(async () => null) },
         cardPayment: { findFirst: jest.fn(async () => null) },
         wishlistItem: { findFirst: jest.fn(async () => null) },
         calendarReceipt: { findFirst: jest.fn(async () => null) },

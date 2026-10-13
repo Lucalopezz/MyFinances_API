@@ -195,6 +195,7 @@ export class CardsService {
       purchases: purchases.map((row) => ({
         id: row.id,
         date: row.purchaseDate,
+        refundedAt: row.refundedAt,
         ...this.publicPurchase(purchaseMap.get(row.id)!),
       })),
       invoices,
@@ -333,6 +334,82 @@ export class CardsService {
         })),
       });
       return { id: purchase.id, date: input.date, ...input };
+    });
+  }
+
+  /** Estorna integralmente uma compra, liberando parcelas e devolvendo apenas o que já saiu do saldo. */
+  async refundPurchase(userId: string, id: string, purchaseId: string) {
+    this.checkId(id);
+    this.checkId(purchaseId);
+    return this.prisma.$transaction(async (tx) => {
+      const card = await tx.creditCard.findFirst({ where: { id, userId } });
+      if (!card) throw new NotFoundException('Cartão não encontrado.');
+      const purchase = await tx.cardPurchase.findFirst({
+        where: { id: purchaseId, cardId: id, userId },
+      });
+      if (!purchase) throw new NotFoundException('Compra não encontrada.');
+      // Repetir o estorno não gera outra receita nem altera comprovantes pagos.
+      if (purchase.refundedAt) return { id: purchaseId, refunded: true };
+      const claim = await tx.creditCard.updateMany({
+        where: {
+          id,
+          userId,
+          OR: [
+            { revision: card.revision ?? 0 },
+            { revision: { isSet: false } },
+          ],
+        },
+        data: { revision: (card.revision ?? 0) + 1 },
+      });
+      if (!claim.count)
+        throw new ConflictException('O cartão mudou. Atualize a página.');
+      const [rows, payments] = await Promise.all([
+        tx.cardInstallment.findMany({
+          where: { userId, cardId: id, purchaseId },
+        }),
+        tx.cardPayment.findMany({ where: { userId, cardId: id } }),
+      ]);
+      const paid = new Set(payments.map((payment) => payment.cycle));
+      const returnedCents = rows
+        .filter((row) => paid.has(row.cycle))
+        .reduce(
+          (sum, row) =>
+            sum + this.encryption.decrypt<number>(row.encryptedAmount),
+          0,
+        );
+      let refundTransactionId: string | null = null;
+      if (returnedCents) {
+        const secret = this.encryption.decrypt<PurchaseSecret>(
+          purchase.encryptedData,
+        );
+        const transaction = await tx.transaction.create({
+          data: buildEncryptedTransactionData(
+            {
+              userId,
+              type: TransactionType.INCOME,
+              value: money(returnedCents),
+              date: new Date(`${todayKey()}T12:00:00Z`),
+              category: 'OTHER',
+              description: `Estorno: ${secret.description}`,
+            },
+            this.encryption,
+          ) as Prisma.TransactionUncheckedCreateInput,
+        });
+        refundTransactionId = transaction.id;
+      }
+      // Parcelas pagas permanecem no histórico; só pendências deixam as faturas.
+      await tx.cardInstallment.deleteMany({
+        where: { userId, cardId: id, purchaseId, cycle: { notIn: [...paid] } },
+      });
+      await tx.cardPurchase.update({
+        where: { id: purchaseId },
+        data: { refundedAt: new Date(), refundTransactionId },
+      });
+      return {
+        id: purchaseId,
+        refunded: true,
+        returnedAmount: money(returnedCents),
+      };
     });
   }
 

@@ -105,6 +105,13 @@ export class TransactionsRepository {
   }
 
   private async assertUnlinked(id: string, userId: string) {
+    const refund = await this.prisma.cardPurchase.findFirst({
+      where: { userId, refundTransactionId: id },
+    });
+    if (refund)
+      throw new BadRequestException(
+        'Este lançamento registra um estorno de cartão e deve permanecer no histórico.',
+      );
     const cardPayment = await this.prisma.cardPayment.findFirst({
       where: { userId, transactionIds: { has: id } },
     });
