@@ -87,7 +87,7 @@ const execFileAsync = promisify(execFile);
         installments: 3,
       });
       expect(await db.transaction.count()).toBe(0);
-      expect((await service.detail(owner, card.id)).used).toBe(300);
+      expect((await service.detail(owner, card.id)).used).toBe(100);
       expect(
         await db.cardInstallment.count({ where: { purchaseId: purchase.id } }),
       ).toBe(3);
@@ -104,12 +104,38 @@ const execFileAsync = promisify(execFile);
       await expect(
         service.createPurchase(owner, card.id, {
           description: 'Excede',
-          amount: 201,
+          amount: 401,
           date,
           category: 'SHOPPING',
           installments: 1,
         }),
       ).rejects.toThrow('Limite');
+    });
+    it('validates the installment in every cycle rather than the purchase total', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Parcelado',
+        limit: 100,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 0,
+      });
+      await service.createPurchase(owner, card.id, {
+        description: 'Plano anual',
+        amount: 1200,
+        date: todayKey(),
+        category: 'OTHER',
+        installments: 12,
+      });
+      expect((await service.detail(owner, card.id)).used).toBe(100);
+      await expect(
+        service.createPurchase(owner, card.id, {
+          description: 'Excede parcela',
+          amount: 0.01,
+          date: todayKey(),
+          category: 'OTHER',
+          installments: 1,
+        }),
+      ).rejects.toThrow('Limite insuficiente');
     });
     it('settles a closed historical statement atomically and protects linked transactions', async () => {
       const card = await service.createCard(owner, {
@@ -138,7 +164,7 @@ const execFileAsync = promisify(execFile);
       expect(await db.transaction.count()).toBe(1);
       await service.payInvoice(owner, card.id, invoice.cycle, todayKey());
       expect(await db.transaction.count()).toBe(1);
-      expect((await service.detail(owner, card.id)).used).toBe(66.67);
+      expect((await service.detail(owner, card.id)).used).toBe(33.34);
       const payment = await db.cardPayment.findFirstOrThrow({
         where: { cardId: card.id },
       });

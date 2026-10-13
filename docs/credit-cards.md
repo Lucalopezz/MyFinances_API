@@ -42,3 +42,7 @@ Pagamento parcial, estorno, edição de cartão/compra, juros, conciliação de 
 ## Validação
 
 `npm test -- --runInBand --runTestsByPath src/modules/cards/card-calculation.spec.ts` verifica datas e centavos. A suíte `cards.integration.spec.ts` usa `CARDS_TEST_DATABASE_URL` apontando para MongoDB local com replica set; cria e remove somente um banco de teste aleatório.
+
+## Limite por fatura
+
+O limite é validado por ciclo: parcelas, compras à vista e anuidade no mesmo mês não podem ultrapassá-lo. Uma compra de R$ 1.200 em 12 parcelas de R$ 100 cabe num limite de R$ 100 se não houver outros valores nesses ciclos. O limite em uso é a maior fatura pendente, sem somar meses diferentes. Essa é a regra de acompanhamento do aplicativo.

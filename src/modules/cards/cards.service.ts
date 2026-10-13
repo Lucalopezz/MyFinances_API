@@ -160,23 +160,14 @@ export class CardsService {
         };
       })
       .filter((invoice) => invoice.total > 0);
-    const currentCycle = invoiceForPurchase(
-      todayKey(),
-      card.closingDay,
-      card.dueDay,
+    // O limite representa a maior fatura pendente: cada parcela compromete
+    // somente seu ciclo, sem somar novamente todas as parcelas futuras.
+    const usedCents = Math.max(
       0,
-    ).cycle;
-    const usedCents = invoices
-      .filter((invoice) => !invoice.paid)
-      .reduce(
-        (sum, invoice) =>
-          sum +
-          cents(
-            invoice.total -
-              (invoice.cycle > currentCycle ? invoice.annualFee : 0),
-          ),
-        0,
-      );
+      ...invoices
+        .filter((invoice) => !invoice.paid)
+        .map((invoice) => cents(invoice.total)),
+    );
     return {
       id: card.id,
       name: secret.name,
@@ -296,35 +287,28 @@ export class CardsService {
         throw new BadRequestException(
           'A compra pertence a uma fatura já paga. Escolha uma data válida.',
         );
-      const used = existing
-        .filter((row) => !paidCycles.has(row.cycle))
-        .reduce(
-          (sum, row) =>
-            sum + this.encryption.decrypt<number>(row.encryptedAmount),
-          0,
+      // Conferimos todos os meses da compra, inclusive aqueles que já têm
+      // outras parcelas e anuidade. O rateio em centavos preserva o total.
+      for (const entry of schedule) {
+        const committed = existing
+          .filter(
+            (row) => row.cycle === entry.cycle && !paidCycles.has(row.cycle),
+          )
+          .reduce(
+            (sum, row) =>
+              sum + this.encryption.decrypt<number>(row.encryptedAmount),
+            0,
+          );
+        const fee = annualFeeForCycle(
+          entry.cycle,
+          secret.feeFirstCycle,
+          secret.annualFeeCents,
         );
-      const currentCycle = invoiceForPurchase(
-        todayKey(),
-        card.closingDay,
-        card.dueDay,
-        0,
-      ).cycle;
-      let feeUsed = 0;
-      for (
-        let year = Number(secret.feeFirstCycle.slice(0, 4));
-        year <= Number(currentCycle.slice(0, 4));
-        year++
-      ) {
-        const feeCycle = `${year}-${secret.feeFirstCycle.slice(5)}`;
-        if (feeCycle <= currentCycle && !paidCycles.has(feeCycle))
-          feeUsed += annualFeeForCycle(
-            feeCycle,
-            secret.feeFirstCycle,
-            secret.annualFeeCents,
+        if (committed + fee + entry.amount > secret.limitCents)
+          throw new BadRequestException(
+            `Limite insuficiente na fatura de ${entry.cycle.slice(5)}/${entry.cycle.slice(0, 4)}. Reduza o valor ou ajuste as parcelas.`,
           );
       }
-      if (used + feeUsed + cents(input.amount) > secret.limitCents)
-        throw new BadRequestException('Limite disponível insuficiente.');
       const purchase = await tx.cardPurchase.create({
         data: {
           userId,
