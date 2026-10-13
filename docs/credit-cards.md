@@ -13,7 +13,7 @@ Guia atual de limite, compras, parcelas e faturas. A interface fica em `/cards` 
 - Faturas são agregadas por competência a partir de parcelas e anuidade. Leituras não criam transações nem faturas persistidas.
 - Somente fatura fechada pode ser paga. Nesta versão, o pagamento é integral. Uma operação MongoDB cria uma transação de despesa por parcela (preservando sua categoria), uma transação de anuidade quando aplicável e um recibo único por usuário/cartão/ciclo. Repetir o pagamento devolve a fatura paga; chamadas simultâneas não podem duplicar o recibo.
 - Transações do pagamento não podem ser editadas nem excluídas pela rota genérica.
-- Remover um cartão grava `archivedAt` e o oculta da listagem, de novas compras e do calendário. Compras, parcelas, recibos e transações realizadas permanecem no banco. É necessário quitar todas as parcelas e anuidades já fechadas; anuidades futuras deixam de ser previstas. A operação usa a revisão do cartão em uma transação MongoDB, como compras e pagamentos, para evitar remover um cartão que recebeu uma compra simultaneamente. Cartões antigos sem `archivedAt` continuam ativos.
+- Remover um cartão grava `archivedAt` e bloqueia novas compras. Cartão, parcelas, recibos e transações permanecem disponíveis; faturas pendentes continuam no calendário e podem ser pagas. Novas anuidades após o arquivamento deixam de ser previstas. A revisão serializa o arquivamento com compras e pagamentos concorrentes. Cartões antigos sem `archivedAt` continuam ativos.
 - Faturas pendentes entram no calendário como uma única previsão por fatura. Ao pagar, a previsão é removida do saldo projetado; as transações realizadas entram na data do pagamento.
 
 ## Rotas
@@ -46,3 +46,7 @@ Pagamento parcial, estorno, edição de cartão/compra, juros, conciliação de 
 ## Limite por fatura
 
 O limite é validado por ciclo: parcelas, compras à vista e anuidade no mesmo mês não podem ultrapassá-lo. Uma compra de R$ 1.200 em 12 parcelas de R$ 100 cabe num limite de R$ 100 se não houver outros valores nesses ciclos. O limite em uso é a maior fatura pendente, sem somar meses diferentes. Essa é a regra de acompanhamento do aplicativo.
+
+## Arquivamento com pendências
+
+Remover arquiva o cartão e bloqueia novas compras. Compras e faturas continuam acessíveis com `archived: true`, inclusive para pagamento e calendário. A anuidade deixa de gerar novos ciclos após o arquivamento; faturas já fechadas são preservadas.

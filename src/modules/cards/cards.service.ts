@@ -75,7 +75,6 @@ export class CardsService {
     const cards = await this.prisma.creditCard.findMany({
       where: {
         userId,
-        OR: [{ archivedAt: null }, { archivedAt: { isSet: false } }],
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -87,8 +86,7 @@ export class CardsService {
     const card = await this.prisma.creditCard.findFirst({
       where: { id, userId },
     });
-    if (!card || card.archivedAt)
-      throw new NotFoundException('Cartão não encontrado.');
+    if (!card) throw new NotFoundException('Cartão não encontrado.');
     const secret = this.encryption.decrypt<CardSecret>(card.encryptedData);
     const [purchases, installments, payments] = await Promise.all([
       this.prisma.cardPurchase.findMany({
@@ -113,7 +111,15 @@ export class CardsService {
     const firstYear = Number(secret.feeFirstCycle.slice(0, 4));
     if (secret.annualFeeCents) {
       for (let year = firstYear; year <= currentYear + 1; year++)
-        cycles.add(`${year}-${secret.feeFirstCycle.slice(5)}`);
+        if (
+          !card.archivedAt ||
+          closingDateForCycle(
+            `${year}-${secret.feeFirstCycle.slice(5)}`,
+            card.closingDay,
+            card.dueDay,
+          ) <= card.archivedAt.toISOString().slice(0, 10)
+        )
+          cycles.add(`${year}-${secret.feeFirstCycle.slice(5)}`);
     }
     const invoices = [...cycles]
       .sort()
@@ -135,7 +141,15 @@ export class CardsService {
             };
           });
         const annualFee = money(
-          annualFeeForCycle(cycle, secret.feeFirstCycle, secret.annualFeeCents),
+          card.archivedAt &&
+            closingDateForCycle(cycle, card.closingDay, card.dueDay) >
+              card.archivedAt.toISOString().slice(0, 10)
+            ? 0
+            : annualFeeForCycle(
+                cycle,
+                secret.feeFirstCycle,
+                secret.annualFeeCents,
+              ),
         );
         const totalCents =
           lines.reduce((sum, line) => sum + cents(line.amount), 0) +
@@ -170,6 +184,7 @@ export class CardsService {
     );
     return {
       id: card.id,
+      archived: !!card.archivedAt,
       name: secret.name,
       limit: money(secret.limitCents),
       closingDay: card.closingDay,
@@ -199,48 +214,24 @@ export class CardsService {
     this.checkId(id);
     return this.prisma.$transaction(async (tx) => {
       const card = await tx.creditCard.findFirst({ where: { id, userId } });
-      if (!card || card.archivedAt)
-        throw new NotFoundException('Cartão não encontrado.');
+      if (!card) throw new NotFoundException('Cartão não encontrado.');
+      if (card.archivedAt) return { message: 'Cartão já arquivado.' };
       const claim = await tx.creditCard.updateMany({
-        where: { id, userId, revision: card.revision },
-        data: { revision: { increment: 1 } },
+        // Documentos anteriores à trava podem não ter revision no MongoDB.
+        where: {
+          id,
+          userId,
+          OR: [
+            { revision: card.revision ?? 0 },
+            { revision: { isSet: false } },
+          ],
+        },
+        data: { revision: (card.revision ?? 0) + 1 },
       });
       if (!claim.count)
         throw new ConflictException('O cartão mudou. Atualize a página.');
-      const [installments, payments] = await Promise.all([
-        tx.cardInstallment.findMany({ where: { userId, cardId: id } }),
-        tx.cardPayment.findMany({ where: { userId, cardId: id } }),
-      ]);
-      const paidCycles = new Set(payments.map((payment) => payment.cycle));
-      if (installments.some((entry) => !paidCycles.has(entry.cycle))) {
-        throw new BadRequestException(
-          'Quite todas as compras parceladas antes de remover o cartão.',
-        );
-      }
-      const secret = this.encryption.decrypt<CardSecret>(card.encryptedData);
-      const today = todayKey();
-      for (
-        let year = Number(secret.feeFirstCycle.slice(0, 4));
-        year <= Number(today.slice(0, 4));
-        year++
-      ) {
-        const cycle = `${year}-${secret.feeFirstCycle.slice(5)}`;
-        if (
-          annualFeeForCycle(
-            cycle,
-            secret.feeFirstCycle,
-            secret.annualFeeCents,
-          ) > 0 &&
-          closingDateForCycle(cycle, card.closingDay, card.dueDay) <= today &&
-          !paidCycles.has(cycle)
-        ) {
-          throw new BadRequestException(
-            'Quite as faturas de anuidade fechadas antes de remover o cartão.',
-          );
-        }
-      }
-      // O arquivamento usa a mesma trava de revisão das compras e dos pagamentos.
-      // Comprovantes e lançamentos permanecem intactos, incluindo suas proteções.
+      // Arquivar interrompe novas compras, mas mantém as parcelas pendentes
+      // disponíveis para pagamento no calendário e no histórico do cartão.
       await tx.creditCard.update({
         where: { id, userId },
         data: { archivedAt: new Date() },
@@ -264,8 +255,16 @@ export class CardsService {
         throw new NotFoundException('Cartão não encontrado.');
       // A revisão do cartão serializa compras e pagamentos concorrentes.
       const claim = await tx.creditCard.updateMany({
-        where: { id, userId, revision: card.revision },
-        data: { revision: { increment: 1 } },
+        // Documentos anteriores à trava podem não ter revision no MongoDB.
+        where: {
+          id,
+          userId,
+          OR: [
+            { revision: card.revision ?? 0 },
+            { revision: { isSet: false } },
+          ],
+        },
+        data: { revision: (card.revision ?? 0) + 1 },
       });
       if (!claim.count)
         throw new ConflictException('O cartão mudou. Atualize a página.');
@@ -344,8 +343,7 @@ export class CardsService {
     const card = await this.prisma.creditCard.findFirst({
       where: { id, userId },
     });
-    if (!card || card.archivedAt)
-      throw new NotFoundException('Cartão não encontrado.');
+    if (!card) throw new NotFoundException('Cartão não encontrado.');
     const invoice = (await this.detail(userId, id)).invoices.find(
       (item) => item.cycle === cycle,
     );
@@ -366,8 +364,16 @@ export class CardsService {
     try {
       await this.prisma.$transaction(async (tx) => {
         const claim = await tx.creditCard.updateMany({
-          where: { id, userId, revision: card.revision },
-          data: { revision: { increment: 1 } },
+          // Documentos anteriores à trava podem não ter revision no MongoDB.
+          where: {
+            id,
+            userId,
+            OR: [
+              { revision: card.revision ?? 0 },
+              { revision: { isSet: false } },
+            ],
+          },
+          data: { revision: (card.revision ?? 0) + 1 },
         });
         if (!claim.count)
           throw new ConflictException('O cartão mudou. Atualize a página.');

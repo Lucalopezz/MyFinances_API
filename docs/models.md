@@ -371,10 +371,7 @@ Nas suítes de importação, `db push` é executado apenas em banco local descar
 
 ## Cartões de crédito
 
-`CreditCard.archivedAt` é opcional. `DELETE /cards/:id` arquiva cartões quitados,
-preservando todos os registros financeiros. Leituras ativas incluem `null` e
-campo ausente para compatibilidade com cartões anteriores. Novas compras e
-pagamentos rejeitam cartões arquivados.
+`CreditCard.archivedAt` é opcional. `DELETE /cards/:id` arquiva mesmo com faturas pendentes, preservando todos os registros financeiros. Leituras incluem cartões arquivados para consulta e pagamento. Novas compras rejeitam cartões arquivados. A revisão é opcional para compatibilidade com documentos antigos; a primeira mutação inicializa a trava.
 
 `CreditCard` guarda `userId`, dias de fechamento/vencimento, revisão para concorrência e payload criptografado com nome, limite e anuidade. `CardPurchase` guarda cartão, data civil e payload criptografado com descrição, valor, categoria e número de parcelas. `CardInstallment` vincula compra e cartão à parcela, competência e vencimento, com valor criptografado; o índice único por usuário/compra/número impede parcela repetida.
 

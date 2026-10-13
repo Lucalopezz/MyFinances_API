@@ -262,14 +262,12 @@ const execFileAsync = promisify(execFile);
         'inválido',
       );
       await service.removeCard(owner, card.id);
-      expect(await service.listCards(owner)).toEqual([]);
+      expect((await service.listCards(owner))[0].archived).toBe(true);
       expect(
         (await db.creditCard.findUniqueOrThrow({ where: { id: card.id } }))
           .archivedAt,
       ).toBeInstanceOf(Date);
-      await expect(service.detail(owner, card.id)).rejects.toThrow(
-        'não encontrado',
-      );
+      expect((await service.detail(owner, card.id)).archived).toBe(true);
       await expect(
         service.createPurchase(owner, card.id, {
           description: 'Bloqueada',
@@ -295,7 +293,8 @@ const execFileAsync = promisify(execFile);
         category: 'SHOPPING',
         installments: 2,
       });
-      await expect(service.removeCard(owner, card.id)).rejects.toThrow('Quite');
+      await service.removeCard(owner, card.id);
+      expect((await service.detail(owner, card.id)).invoices).toHaveLength(2);
       for (const invoice of (await service.detail(owner, card.id)).invoices) {
         await service.payInvoice(owner, card.id, invoice.cycle, todayKey());
       }
@@ -332,10 +331,12 @@ const execFileAsync = promisify(execFile);
           }),
         },
       });
-      await expect(service.removeCard(owner, card.id)).rejects.toThrow(
-        'anuidade',
-      );
-      expect((await service.detail(owner, card.id)).id).toBe(card.id);
+      await service.removeCard(owner, card.id);
+      expect(
+        (await service.detail(owner, card.id)).invoices.some(
+          (invoice) => invoice.cycle === '2025-01',
+        ),
+      ).toBe(true);
     });
     it('serializes removal and a concurrent purchase without orphaning debt', async () => {
       const card = await service.createCard(owner, {

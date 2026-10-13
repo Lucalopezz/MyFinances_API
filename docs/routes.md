@@ -848,7 +848,7 @@ Todas as rotas exigem Bearer JWT e isolam dados pelo usuário autenticado.
 | `GET /cards` | Lista cartões com compras, faturas e limites total, em uso e disponível. |
 | `POST /cards` | `{ name, limit, closingDay, dueDay, annualFee }`; cadastra cartão. |
 | `GET /cards/:id` | Detalha cartão, compras e faturas por competência. |
-| `DELETE /cards/:id` | Arquiva o cartão do usuário e retorna `{ message }`. Parcelas ou anuidades fechadas não quitadas retornam `400`; cartão ausente/de outro usuário retorna `404`. |
+| `DELETE /cards/:id` | Arquiva o cartão do usuário e retorna `{ message }`. Faturas pendentes continuam disponíveis para pagamento; cartão ausente/de outro usuário retorna `404`. |
 | `POST /cards/:id/purchases` | `{ description, amount, date, category, installments }`; cria compra e parcelas, sem criar transação realizada. |
 | `POST /cards/:id/invoices/:cycle/pay` | `{ date }`; quita integralmente fatura fechada e cria as transações de despesa correspondentes. Repetição não duplica o pagamento. |
 

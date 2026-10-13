@@ -38,7 +38,7 @@ model CreditCard {
   encryptedData String
   closingDay    Int
   dueDay        Int
-  revision      Int      @default(0)
+  revision      Int?     @default(0)
   archivedAt    DateTime?
   createdAt     DateTime @default(now())
   @@index([userId])
