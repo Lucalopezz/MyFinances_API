@@ -587,9 +587,26 @@ Resposta:
 }
 ```
 
+### `POST /notifications/sync`
+
+Sincroniza despesas fixas do usuário autenticado durante a requisição, sem cron. Não recebe body; campos enviados como `userId`/`force` não controlam a operação. Retorna HTTP `201`:
+
+```json
+{
+  "processed": true,
+  "created": 1,
+  "resolved": 0,
+  "checkedAt": "2026-10-13T12:00:00.000Z"
+}
+```
+
+Uma rodada recente retorna `processed: false`, contadores zero e o timestamp da última rodada. O intervalo é cinco minutos por usuário, ignorado na virada do dia de São Paulo; mutações de despesas forçam avaliação na API. `created`/`resolved` contam somente a rodada atual, não o total da lista.
+
+Novos avisos vinculados a despesas incluem os campos opcionais `sourceExpenseId`, `dueDateKey` (`YYYY-MM-DD`), `event` (`UPCOMING` ou `OVERDUE`), `resolvedAt` e `resolution`. Avisos legados podem devolver esses campos como `null`. Resoluções: `PAID`, `EXPENSE_DELETED`, `DUE_DATE_CHANGED`, `SUPERSEDED`. Avisos resolvidos são marcados como lidos e continuam no histórico. A exclusão mantém o recibo de entrega e impede recriar o mesmo evento.
+
 ### `GET /notifications`
 
-Lista as notificações do usuário.
+Lista as notificações já salvas do usuário, incluindo o histórico resolvido. Esta leitura não dispara sincronização.
 
 Entrada: não possui body.
 

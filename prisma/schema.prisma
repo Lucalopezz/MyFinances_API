@@ -192,13 +192,46 @@ model WishlistMovement {
 }
 
 model Notification {
-  id        String           @id @default(auto()) @map("_id") @db.ObjectId
-  title     String
-  message   String
-  type      NotificationType
-  read      Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  userId    String           @db.ObjectId
+  id              String             @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  message         String
+  type            NotificationType
+  read            Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  userId          String             @db.ObjectId
+  sourceExpenseId String?            @db.ObjectId
+  dueDateKey      String?
+  event           NotificationEvent?
+  resolvedAt      DateTime?
+  resolution      String?
+
+  @@index([userId, sourceExpenseId])
+}
+
+// Recibo separado mantém a unicidade sem indexar campos ausentes nas notificações antigas.
+// Excluir uma notificação não apaga este recibo nem recria o mesmo aviso.
+model NotificationDelivery {
+  id             String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String            @db.ObjectId
+  expenseId      String            @db.ObjectId
+  dueDateKey     String
+  event          NotificationEvent
+  notificationId String?           @db.ObjectId
+
+  @@unique([userId, expenseId, dueDateKey, event])
+}
+
+// A atualização deste documento na transação serializa verificações do mesmo usuário.
+model NotificationSyncState {
+  id            String   @id @map("_id") @db.ObjectId
+  lastCheckedAt DateTime
+  dayKey        String
+  revision      Int      @default(0)
+}
+
+enum NotificationEvent {
+  UPCOMING
+  OVERDUE
 }
 
 enum NotificationType {

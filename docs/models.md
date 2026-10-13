@@ -234,7 +234,8 @@ RecurrenceType = MONTHLY | YEARLY;
   - define `isPaid` como `false`;
   - limpa `lastNotificationDueDate`.
 - A aplicação cria notificações de lembrete para despesas não pagas que vencem em até 3 dias.
-- O campo `lastNotificationDueDate` evita repetir lembretes para o mesmo vencimento.
+- `lastNotificationDueDate` preserva a deduplicação de lembretes legados; novas entregas usam recibos únicos por usuário/despesa/vencimento/evento.
+- Despesas vencidas e não pagas geram um alerta de atraso por vencimento, inclusive após dias sem acesso.
 
 ---
 
@@ -254,6 +255,10 @@ Representa uma notificação exibida ao usuário.
 | `createdAt` | `DateTime`            | Sim         | Data de criação.                    |
 | `userId`    | `String @db.ObjectId` | Sim         | Dono da notificação.                |
 
+Os campos opcionais `sourceExpenseId`, `dueDateKey`, `event`, `resolvedAt` e `resolution` vinculam novos avisos à despesa e preservam o motivo de resolução. Avisos anteriores permanecem compatíveis sem esses campos. O índice `[userId, sourceExpenseId]` atende a resolução de avisos do ciclo.
+
+`NotificationDelivery` guarda `userId`, `expenseId`, `dueDateKey`, `event` e `notificationId` opcional; o índice único dos quatro primeiros campos impede entregas duplicadas. O recibo permanece após excluir o aviso. `NotificationSyncState` usa o usuário como `_id` e guarda `lastCheckedAt`, `dayKey` e `revision`, coordenando a frequência entre abas e instâncias.
+
 ### Enums
 
 ```ts
@@ -262,6 +267,7 @@ NotificationType = ALERT | REMINDER | INFO;
 
 ### Principais funções
 
+- `POST /notifications/sync`: atualiza recorrências e sincroniza avisos sob demanda, com intervalo por usuário.
 - `POST /notifications`: cria uma notificação para o usuário autenticado.
 - `GET /notifications`: lista notificações do usuário, ordenadas por `createdAt` decrescente.
 - `PATCH /notifications/:id/mark-as-read`: marca uma notificação como lida.
@@ -273,6 +279,7 @@ NotificationType = ALERT | REMINDER | INFO;
 - Notificações são sempre vinculadas a um usuário.
 - O tipo `REMINDER` é usado automaticamente para avisos de despesas fixas próximas do vencimento.
 - A marcação como lida altera apenas o campo `read`.
+- `OVERDUE` gera `ALERT`; resolução e reabertura preservam a identidade do aviso. Consulte [Notificações sob demanda](notifications.md) para concorrência, compatibilidade e implantação.
 
 ---
 

@@ -17,6 +17,9 @@ describe('FixedExpensePaymentService', () => {
       isPaid: false,
     };
     const tx = {
+      notification: {
+        updateMany: jest.fn(async () => ({ count: 1 })),
+      },
       transaction: {
         create: jest.fn(async () => ({ id: transactionId })),
         findFirst: jest.fn(async () => ({ id: transactionId })),
@@ -68,6 +71,15 @@ describe('FixedExpensePaymentService', () => {
       expect.any(Date),
       transactionId,
     );
+    // O aviso é resolvido no mesmo cliente transacional do pagamento e só neste ciclo/usuário.
+    expect(tx.notification.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        userId,
+        sourceExpenseId: expenseId,
+        dueDateKey: '2026-09-01',
+      }),
+      data: { resolvedAt: expect.any(Date), resolution: 'PAID', read: true },
+    });
 
     const unpaid = await service.unmarkAsPaid(
       { ...expense, isPaid: true } as never,

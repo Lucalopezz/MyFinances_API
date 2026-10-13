@@ -17,7 +17,7 @@ Atualizado em 03/10/2026. As funcionalidades previstas no escopo aprovado estão
 | Wishlist | Reserva individual, aportes, retiradas, sugestão mensal, histórico e conclusão com despesa vinculada | [Reservas](wishlist-reservations.md) e [rotas](routes.md#wishlist--metas-e-compras) |
 | Cartões | Cadastro, limite, parcelas, faturas, pagamento integral e arquivamento de cartões quitados | [Guia](credit-cards.md) |
 | Despesas fixas | Recorrências, pagamentos/desmarcações vinculados e avanço de ciclos | [Rotas](routes.md#fixed-expenses) |
-| Notificações | Alertas de vencimento, consulta, exclusão e leitura individual ou em lote | [Rotas](routes.md#notifications) |
+| Notificações | Sincronização sem cron, lembretes/atrasados, histórico resolvido e leitura individual ou em lote | [Rotas](routes.md#notifications) |
 
 ## Regras gerais
 

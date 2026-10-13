@@ -20,11 +20,21 @@ import {
 } from './dtos/notification.dto';
 import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';
+import { FixedExpenseNotificationService } from '../fixed-expenses/services/fixed-expense-notification.service';
 
 @Controller('notifications')
 @UseGuards(AuthTokenGuard)
 export class NotificationController {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly syncService: FixedExpenseNotificationService,
+  ) {}
+
+  /** Processa vencimentos durante a requisição, sem cron ou worker persistente. */
+  @Post('sync')
+  async synchronize(@User('sub') userId: string) {
+    return this.syncService.synchronize(userId);
+  }
 
   @Post()
   async createNotification(

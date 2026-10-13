@@ -1,6 +1,6 @@
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { RecurrenceType } from '@prisma/client';
+import { Prisma, RecurrenceType } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   CreateFixedExpenseDto,
@@ -98,36 +98,8 @@ export class FixedExpensesRepository {
     });
   }
 
-  findUpcomingExpensesToNotify(today: Date, deadline: Date, userId?: string) {
-    return this.prisma.fixedExpense.findMany({
-      where: {
-        ...(userId ? { userId } : {}),
-        isPaid: false,
-        dueDate: {
-          gte: today,
-          lte: deadline,
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        amount: true,
-        dueDate: true,
-        userId: true,
-        lastNotificationDueDate: true,
-      },
-    });
-  }
-
-  markNotificationSent(id: string, dueDate: Date) {
-    return this.prisma.fixedExpense.update({
-      where: { id },
-      data: { lastNotificationDueDate: dueDate },
-    });
-  }
-
   async refreshCycle(id: string, nextDueDate: Date, expectedDueDate: Date) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.refreshCycleTransaction(async (tx) => {
       const expense = await tx.fixedExpense.findUnique({ where: { id } });
       if (
         !expense?.isPaid ||
@@ -183,5 +155,26 @@ export class FixedExpensesRepository {
         },
       });
     });
+  }
+
+  /** A consulta de despesas e a sincronização podem tentar avançar o mesmo ciclo. */
+  private async refreshCycleTransaction<T>(
+    callback: (tx: Prisma.TransactionClient) => Promise<T>,
+  ) {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await this.prisma.$transaction(callback);
+      } catch (error) {
+        // Após rollback, a nova leitura reconhece o ciclo que a outra aba já avançou.
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034' &&
+          attempt < 3
+        )
+          continue;
+        throw error;
+      }
+    }
+    throw new Error('Não foi possível atualizar a recorrência.');
   }
 }

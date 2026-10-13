@@ -4,6 +4,9 @@ Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.
 
 ## Não lançado
 
+- Notificações sob demanda em qualquer tela privada, com sincronização a cada cinco minutos em uso, alertas de atraso, prevenção transacional de duplicatas e histórico de resolução/reabertura.
+- Janela de vencimento inclui o terceiro dia inteiro e respeita o dia financeiro de São Paulo; mutações de despesas atualizam os avisos imediatamente.
+
 - Módulo de exportações reorganizado por responsabilidade, com geradores PDF/CSV/XLSX separados, leitura em lotes e fábrica de escritores; layout e tabela do PDF extraídos do serviço principal.
 - Exportação nativa em XLSX pela mesma fila de PDF/CSV, com datas e valores tipados, categorias em português, filtros nas colunas e cabeçalho fixo.
 - Validação do novo formato, download com extensão e tipo correspondentes e geração em fluxo para históricos extensos.

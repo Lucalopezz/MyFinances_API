@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { FixedExpense } from '@prisma/client';
+import { FixedExpense, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FixedExpenseRawFieldsService } from '../services/fixed-expense-raw-fields.service';
 
@@ -21,7 +21,7 @@ export class FixedExpensePaymentsRepository {
     encryptedTransactionData: Record<string, unknown>,
     encryptedReceipt: (transactionId: string) => string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.runPaymentTransaction(async (tx) => {
       const claimed = await tx.fixedExpense.updateMany({
         where: {
           id: expenseData.id,
@@ -48,6 +48,17 @@ export class FixedExpensePaymentsRepository {
         paidAt,
         transaction.id,
       );
+      // O pagamento resolve os avisos do ciclo na mesma transação financeira.
+      // O histórico permanece disponível, mas deixa de contar como pendência.
+      await tx.notification.updateMany({
+        where: {
+          userId,
+          sourceExpenseId: expenseData.id,
+          dueDateKey: expenseData.dueDate.toISOString().slice(0, 10),
+          OR: [{ resolvedAt: null }, { resolvedAt: { isSet: false } }],
+        },
+        data: { resolvedAt: new Date(), resolution: 'PAID', read: true },
+      });
       await tx.calendarReceipt.create({
         data: {
           userId,
@@ -68,7 +79,7 @@ export class FixedExpensePaymentsRepository {
     userId: string,
     paidTransactionId: string | null,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.runPaymentTransaction(async (tx) => {
       if (paidTransactionId) {
         const linkedTransaction = await tx.transaction.findFirst({
           where: { id: paidTransactionId, userId },
@@ -93,5 +104,26 @@ export class FixedExpensePaymentsRepository {
       await this.rawFieldsService.clearPaymentFields(tx, expenseData.id);
       return { ...expense, paidAt: null, paidTransactionId: null };
     });
+  }
+
+  /** Reavalia conflitos com a sincronização sem repetir um pagamento já confirmado. */
+  private async runPaymentTransaction<T>(
+    callback: (tx: Prisma.TransactionClient) => Promise<T>,
+  ) {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await this.prisma.$transaction(callback);
+      } catch (error) {
+        // Só o conflito de transação garante rollback; demais erros não são repetidos.
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034' &&
+          attempt < 3
+        )
+          continue;
+        throw error;
+      }
+    }
+    throw new Error('Não foi possível registrar o pagamento.');
   }
 }

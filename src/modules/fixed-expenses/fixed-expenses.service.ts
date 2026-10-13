@@ -27,7 +27,7 @@ export class FixedExpensesService {
     try {
       const expense = await this.repository.create(dto, userId);
 
-      await this.notificationService.processUpcomingDueNotifications(userId);
+      await this.notificationService.processDueNotifications(userId);
 
       return expense;
     } catch (error) {
@@ -78,7 +78,7 @@ export class FixedExpensesService {
       );
       const updatedExpense = await this.repository.update(expense.id, dto);
 
-      await this.notificationService.processUpcomingDueNotifications(userId);
+      await this.notificationService.processDueNotifications(userId);
 
       return updatedExpense;
     } catch (error) {
@@ -104,7 +104,7 @@ export class FixedExpensesService {
         ? await this.paymentService.markAsPaid(expense, userId)
         : await this.paymentService.unmarkAsPaid(expense, userId);
 
-      await this.notificationService.processUpcomingDueNotifications(userId);
+      await this.notificationService.processDueNotifications(userId);
 
       return updatedExpense;
     } catch (error) {
@@ -122,7 +122,10 @@ export class FixedExpensesService {
 
       const expense = await this.repository.findByIdOrThrow(id, userId);
 
-      return this.repository.delete(expense.id);
+      const deleted = await this.repository.delete(expense.id);
+      // A despesa removida encerra seus avisos, mantendo o histórico no sininho.
+      await this.notificationService.processDueNotifications(userId);
+      return deleted;
     } catch (error) {
       this.errorHandler.handleFixedExpenseError(
         error,
@@ -134,6 +137,7 @@ export class FixedExpensesService {
 
   private async prepareFixedExpenses(userId: string) {
     await this.recurrenceService.refreshRecurringExpenses(userId);
-    await this.notificationService.processUpcomingDueNotifications(userId);
+    // Leituras respeitam o intervalo compartilhado; mutações usam force=true.
+    await this.notificationService.processDueNotifications(userId, false);
   }
 }
