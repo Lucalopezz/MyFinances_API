@@ -861,3 +861,5 @@ Todas as rotas exigem Bearer JWT e isolam dados pelo usuário autenticado.
 ### Despesas fixas no cartão
 
 Criação/edição aceitam `cardId` (ID do cartão ou `null` para pagamento direto) e `cardInstallments` (1–60). `amount` é o valor total da contratação; `recurrence` determina quando ela renova, independentemente das parcelas. `PATCH /fixed-expenses/:id/payment` com `isPaid: true` registra uma única compra parcelada, sem lançar saída de caixa. A saída ocorre no pagamento das faturas. Retorna `paidCardPurchaseId`; para desfazer, use o estorno da compra. Renovação exige nova confirmação e mantém as parcelas das contratações anteriores.
+
+A previsão de `/dashboard/forecast` reutiliza a projeção de `/calendar`, inclui faturas pendentes em `pendingCardInvoices` e preserva `pendingFixedExpenses` para as demais despesas. `currentBalance` é o saldo registrado acumulado. Faturas pagas incluem `transactionIds` para abrir os lançamentos correspondentes.

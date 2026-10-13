@@ -6,10 +6,10 @@ Guia atual de limite, compras, parcelas e faturas. A interface fica em `/cards` 
 
 `CreditCard` guarda nome, limite e anuidade criptografados; dias de fechamento e vencimento são índices do ciclo. `CardPurchase` guarda descrição, valor, categoria e número de parcelas criptografados. `CardInstallment` guarda valor criptografado e competência/data de vencimento. `CardPayment` guarda o pagamento da fatura, seus IDs de transações realizadas e valor/data criptografados. Todos os registros pertencem ao usuário do JWT.
 
-- A compra compromete o limite pelo valor total, mas não cria `Transaction`.
+- Cada parcela compromete o limite da sua fatura; a compra não cria `Transaction`.
 - A compra feita no dia de fechamento entra no próximo ciclo. Dias 29 a 31 são ajustados ao último dia válido do mês, mantendo a âncora original nos meses seguintes.
 - O primeiro centavo excedente é distribuído entre as primeiras parcelas. Cada parcela tem pelo menos um centavo.
-- A anuidade é cobrada no primeiro ciclo do cartão e no mesmo mês dos anos seguintes. Ciclos futuros ainda não emitidos não ocupam o limite. A anuidade é configurada no cadastro do cartão.
+- A anuidade é cobrada no primeiro ciclo do cartão e no mesmo mês dos anos seguintes. Cada ciclo inclui sua anuidade na validação do limite. A anuidade é configurada no cadastro do cartão.
 - Faturas são agregadas por competência a partir de parcelas e anuidade. Leituras não criam transações nem faturas persistidas.
 - Somente fatura fechada pode ser paga. Nesta versão, o pagamento é integral. Uma operação MongoDB cria uma transação de despesa por parcela (preservando sua categoria), uma transação de anuidade quando aplicável e um recibo único por usuário/cartão/ciclo. Repetir o pagamento devolve a fatura paga; chamadas simultâneas não podem duplicar o recibo.
 - Transações do pagamento não podem ser editadas nem excluídas pela rota genérica.
@@ -25,7 +25,7 @@ Todas exigem Bearer JWT.
 | GET | `/cards` | — | Cartões com limite e faturas |
 | POST | `/cards` | `name`, `limit`, `closingDay`, `dueDay`, `annualFee` | Cartão criado |
 | GET | `/cards/:id` | — | Cartão, compras, parcelas agrupadas por fatura, limite disponível |
-| DELETE | `/cards/:id` | — | Cartão arquivado; `{ message }`; `400` se houver parcelas ou anuidades fechadas pendentes |
+| DELETE | `/cards/:id` | — | Cartão arquivado; `{ message }`; faturas pendentes permanecem acessíveis |
 | POST | `/cards/:id/purchases` | `description`, `amount`, `date`, `category`, `installments` | Compra e parcelas previstas |
 | POST | `/cards/:id/invoices/:cycle/pay` | `date` | Fatura quitada e transações realizadas |
 
@@ -37,7 +37,7 @@ Gerar o Prisma Client e sincronizar o schema MongoDB no ambiente de destino apó
 
 ## Limites do escopo atual
 
-Pagamento parcial, estorno, edição de cartão/compra, juros, conciliação de extrato e vínculo a conta bancária não estão disponíveis no escopo atual. O saldo do aplicativo continua derivado das transações realizadas; categorias de compras aparecem no dashboard quando a fatura é paga. O endpoint legado `/dashboard/forecast` não incorpora faturas; a projeção diária de `/calendar` incorpora.
+Pagamento parcial, edição de cartão/compra, juros, conciliação de extrato e vínculo a conta bancária não estão disponíveis no escopo atual. O saldo do aplicativo continua derivado das transações realizadas; categorias de compras aparecem no dashboard quando a fatura é paga. As previsões de `/dashboard/forecast` e `/calendar` incorporam as mesmas faturas.
 
 ## Validação
 

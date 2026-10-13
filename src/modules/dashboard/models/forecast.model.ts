@@ -9,6 +9,7 @@ export interface ForecastModel {
   month: string;
   currentBalance: number;
   pendingFixedExpenses: number;
+  pendingCardInvoices: number;
   projectedBalance: number;
   expenses: ForecastExpenseModel[];
 }

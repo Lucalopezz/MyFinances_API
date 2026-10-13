@@ -3,6 +3,9 @@
 Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.md) e o [índice da documentação](docs/README.md) descrevem a aplicação e seus contratos.
 
 ## Não lançado
+- Cartões integrados às despesas fixas, ao calendário e aos lançamentos: limite por fatura, contratação anual parcelada, estorno integral e arquivamento com pendências.
+- Validações e erros públicos em português; downloads com mês e data de geração. URLs locais de integração carregadas do `.env`.
+
 
 - Notificações sob demanda em qualquer tela privada, com sincronização a cada cinco minutos em uso, alertas de atraso, prevenção transacional de duplicatas e histórico de resolução/reabertura.
 - Janela de vencimento inclui o terceiro dia inteiro e respeita o dia financeiro de São Paulo; mutações de despesas atualizam os avisos imediatamente.

@@ -163,6 +163,7 @@ export class CardsService {
           annualFee,
           total: money(totalCents),
           paid: !!payment,
+          transactionIds: payment?.transactionIds ?? [],
           paymentDate: payment
             ? this.encryption.decrypt<PaymentSecret>(payment.encryptedData).date
             : null,
@@ -555,7 +556,7 @@ export class CardsService {
               value: money(item.amountCents),
               date: new Date(`${date}T12:00:00Z`),
               category: item.category,
-              description: item.description,
+              description: `Cartão ${this.encryption.decrypt<CardSecret>(card.encryptedData).name}: ${item.description}`,
               type: TransactionType.EXPENSE,
               userId,
             },

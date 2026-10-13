@@ -149,7 +149,7 @@ Os endpoints recebem:
 
 - `GET /dashboard`: retorna o resumo financeiro do período.
 - `GET /dashboard/monthly-comparison`: retorna o comparativo mensal dentro do período informado.
-- `GET /dashboard/forecast`: retorna saldo real do mês atual, despesas fixas pendentes até o fim do mês e saldo projetado, sem persistir lançamentos previstos.
+- `GET /dashboard/forecast`: retorna saldo registrado acumulado, despesas fixas e faturas pendentes até o fim do mês e saldo projetado, sem persistir lançamentos previstos.
 
 ### Cálculos
 

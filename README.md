@@ -14,7 +14,7 @@ Versão de referência: **v2.2.2**. Consulte o [histórico de versões](CHANGELO
 - **Orçamentos:** limites mensais e acompanhamento de gastos por categoria.
 - **Calendário financeiro:** receitas recorrentes, compromissos previstos e projeção diária de saldo.
 - **Wishlist:** metas com aportes e retiradas individuais, histórico e conclusão de compras com uma única despesa.
-- **Cartões de crédito:** limite, compras parceladas, faturas, pagamento integral e arquivamento de cartões quitados.
+- **Cartões de crédito:** limite por fatura, compras parceladas, despesas fixas no cartão, estorno, pagamento integral e arquivamento com pendências.
 - **Despesas fixas e notificações:** recorrências, pagamentos vinculados a transações e lembretes de vencimento.
 
 O [escopo atual](docs/features.md) reúne os comportamentos disponíveis e seus limites.

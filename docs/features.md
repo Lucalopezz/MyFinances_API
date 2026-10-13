@@ -15,7 +15,7 @@ Atualizado em 03/10/2026. As funcionalidades previstas no escopo aprovado estão
 | Orçamentos | Limites mensais por categoria, gasto realizado e valor restante | [Rotas](routes.md#budgets) |
 | Calendário | Agenda, receitas mensais/anuais, edição/pausa, confirmação de recebimento e projeção diária | [Guia](financial-calendar.md) |
 | Wishlist | Reserva individual, aportes, retiradas, sugestão mensal, histórico e conclusão com despesa vinculada | [Reservas](wishlist-reservations.md) e [rotas](routes.md#wishlist--metas-e-compras) |
-| Cartões | Cadastro, limite, parcelas, faturas, pagamento integral e arquivamento de cartões quitados | [Guia](credit-cards.md) |
+| Cartões | Cadastro, limite por fatura, parcelas, despesas fixas no cartão, estorno e arquivamento com pendências | [Guia](credit-cards.md) |
 | Despesas fixas | Recorrências, pagamentos/desmarcações vinculados e avanço de ciclos | [Rotas](routes.md#fixed-expenses) |
 | Notificações | Sincronização sem cron, lembretes/atrasados, histórico resolvido e leitura individual ou em lote | [Rotas](routes.md#notifications) |
 
@@ -30,6 +30,6 @@ Atualizado em 03/10/2026. As funcionalidades previstas no escopo aprovado estão
 
 ## Limites de escopo
 
-O simulador de compras foi retirado do planejamento anterior. Open Finance, contas bancárias/carteiras, OCR, categorização por IA e compartilhamento familiar não integram o escopo aprovado. Cartões têm pagamento integral; pagamento parcial, estorno, edição de cartão/compra, juros e conciliação de extrato não estão disponíveis. A conclusão de compras da wishlist e recebimentos recorrentes não possuem fluxo específico de estorno.
+O simulador de compras foi retirado do planejamento anterior. Open Finance, contas bancárias/carteiras, OCR, categorização por IA e compartilhamento familiar não integram o escopo aprovado. Cartões têm pagamento integral; pagamento parcial, edição de cartão/compra, juros e conciliação de extrato não estão disponíveis. A conclusão de compras da wishlist e recebimentos recorrentes não possuem fluxo específico de estorno.
 
 Os limites de arquivo, datas, retenção e operação estão nos guias de domínio.

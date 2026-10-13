@@ -1,3 +1,4 @@
+import { CalendarModule } from '../calendar/calendar.module';
 import { forwardRef, Module } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { DashboardController } from './dashboard.controller';
@@ -14,6 +15,11 @@ import { TransactionsModule } from '../transactions/transactions.module';
     DashboardRepository,
     FinancialDataEncryptionService,
   ],
-  imports: [forwardRef(() => AppModule), AuthModule, TransactionsModule],
+  imports: [
+    forwardRef(() => AppModule),
+    AuthModule,
+    TransactionsModule,
+    CalendarModule,
+  ],
 })
 export class DashboardModule {}

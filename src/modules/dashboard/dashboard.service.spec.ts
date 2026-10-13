@@ -1,94 +1,49 @@
 import { DashboardService } from './dashboard.service';
-import { DashboardRepository } from './repositories/dashboard.repository';
-import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
 
 describe('DashboardService.getForecast', () => {
-  it('counts overdue and next-cycle expenses without double-counting paid cycles', async () => {
-    jest.useFakeTimers().setSystemTime(new Date('2026-07-15T12:00:00.000Z'));
-    try {
-      const userId = '64f000000000000000000001';
-      const makeTransaction = (type: 'INCOME' | 'EXPENSE', value: number) => ({
-        id: value.toString(16).padStart(24, '0'),
-        userId,
-        dateIndex: 20260710,
-        type,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        encryptedData: {
-          value: JSON.stringify(value),
-          date: JSON.stringify('2026-07-10T00:00:00.000Z'),
-          category: JSON.stringify(type === 'INCOME' ? 'SALARY' : 'FOOD'),
-          description: JSON.stringify(null),
-        },
-      });
-      const fixedExpenses = [
-        {
-          id: 'unpaid',
-          name: 'Atual',
-          amount: 100,
-          dueDate: new Date('2026-07-20'),
-          isPaid: false,
-          recurrence: 'MONTHLY',
-        },
-        {
-          id: 'overdue',
-          name: 'Vencida',
-          amount: 50,
-          dueDate: new Date('2026-06-20'),
-          isPaid: false,
-          recurrence: 'MONTHLY',
-        },
-        {
-          id: 'next-cycle',
-          name: 'Próximo ciclo',
-          amount: 30,
-          dueDate: new Date('2026-06-20'),
-          isPaid: true,
-          recurrence: 'MONTHLY',
-        },
-        {
-          id: 'paid',
-          name: 'Paga',
-          amount: 40,
-          dueDate: new Date('2026-07-10'),
-          isPaid: true,
-          recurrence: 'MONTHLY',
-        },
-      ];
-      const prisma = {
-        transaction: {
-          findMany: jest.fn(async () => [
-            makeTransaction('INCOME', 500),
-            makeTransaction('EXPENSE', 100),
-          ]),
-        },
-        fixedExpense: {
-          findMany: jest.fn(async (query: { where: { userId: string } }) => {
-            expect(query.where.userId).toBe(userId);
-            return fixedExpenses;
-          }),
-        },
-      };
-      const service = new DashboardService(
-        new DashboardRepository(prisma as never),
-        new TransactionsRepository(prisma as never),
-        { decrypt: (value: string) => JSON.parse(value) } as never,
-      );
-
-      const forecast = await service.getForecast(userId);
-      expect(forecast).toMatchObject({
-        month: '2026-07',
-        currentBalance: 400,
-        pendingFixedExpenses: 180,
-        projectedBalance: 220,
-      });
-      expect(forecast.expenses.map((expense) => expense.id)).toEqual([
-        'overdue',
-        'unpaid',
-        'next-cycle',
-      ]);
-    } finally {
-      jest.useRealTimers();
-    }
+  it('reuses the calendar projection and separates card invoices from fixed expenses', async () => {
+    const userId = '64f000000000000000000001';
+    const event = (id: string, amount: number, status = 'PENDING') => ({
+      id,
+      sourceId: id,
+      description: id,
+      amount,
+      dueDate: '2026-10-20',
+      type: 'EXPENSE',
+      status,
+    });
+    const calendar = {
+      calendar: jest.fn(async () => ({
+        overdue: [event('card:old:2026-09', 50, 'OVERDUE')],
+        events: [
+          event('rent', 100),
+          event('card:new:2026-10', 80),
+          event('paid', 200, 'SETTLED'),
+        ],
+        projection: { baseBalance: 500, projectedBalance: 270 },
+      })),
+    };
+    const service = new DashboardService(
+      {} as never,
+      { findByPeriod: async () => [] } as never,
+      {} as never,
+      calendar as never,
+    );
+    const forecast = await service.getForecast(userId);
+    expect(calendar.calendar).toHaveBeenCalledWith(
+      userId,
+      expect.stringMatching(/^\d{4}-\d{2}$/),
+    );
+    expect(forecast).toMatchObject({
+      currentBalance: 500,
+      pendingFixedExpenses: 100,
+      pendingCardInvoices: 130,
+      projectedBalance: 270,
+    });
+    expect(forecast.expenses.map((expense) => expense.id)).toEqual([
+      'card:old:2026-09',
+      'rent',
+      'card:new:2026-10',
+    ]);
   });
 });
