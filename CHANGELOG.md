@@ -4,6 +4,7 @@ Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.
 
 ## Não lançado
 
+- Preparo assíncrono dos bancos das suítes de integração, mantendo MongoDB real e os guardas de isolamento local.
 - Atualização de `jwa` para 1.4.2 no lockfile, corrigindo a inicialização da autenticação no Node atual com comparação nativa de assinaturas.
 
 ## [v2.2.2](https://github.com/Lucalopezz/MyFinances_API/tree/v2.2.2) — 03/10/2026

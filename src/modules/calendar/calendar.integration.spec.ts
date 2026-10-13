@@ -3,7 +3,8 @@ import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
-import { execFileSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { resolve } from 'path';
 import * as request from 'supertest';
 import jwtConfig from 'src/common/config/jwt.config';
@@ -21,6 +22,8 @@ import { FixedExpensePaymentsRepository } from '../fixed-expenses/repositories/f
 import { FixedExpensePaymentService } from '../fixed-expenses/services/fixed-expense-payment.service';
 import { FixedExpenseRawFieldsService } from '../fixed-expenses/services/fixed-expense-raw-fields.service';
 import { FixedExpensesRepository } from '../fixed-expenses/repositories/fixed-expenses.repository';
+
+const execFileAsync = promisify(execFile);
 
 (process.env.CALENDAR_TEST_DATABASE_URL ? describe : describe.skip)(
   'calendar with real MongoDB',
@@ -52,7 +55,10 @@ import { FixedExpensesRepository } from '../fixed-expenses/repositories/fixed-ex
       )
         throw new Error('Use apenas MongoDB local explícito.');
       url.pathname = `/myfinances_calendar_test_${randomBytes(8).toString('hex')}`;
-      execFileSync(
+      // Sincroniza o banco temporário de verdade antes de abrir as conexões.
+      // A execução assíncrona evita a limitação de spawnSync em ambientes
+      // restritos e preserva a espera pela criação dos índices do Prisma.
+      await execFileAsync(
         process.execPath,
         [
           resolve('node_modules/prisma/build/index.js'),
@@ -62,7 +68,6 @@ import { FixedExpensesRepository } from '../fixed-expenses/repositories/fixed-ex
         ],
         {
           env: { ...process.env, DATABASE_URL: url.toString() },
-          stdio: 'pipe',
         },
       );
       db = new PrismaClient({ datasourceUrl: url.toString() });

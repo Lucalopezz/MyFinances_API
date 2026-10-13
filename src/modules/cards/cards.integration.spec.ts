@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { randomBytes } from 'crypto';
-import { execFileSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { resolve } from 'path';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
@@ -9,6 +10,8 @@ import { TransactionsRepository } from '../transactions/repositories/transaction
 import { todayKey } from '../calendar/calendar-calculation';
 import { CardsService } from './cards.service';
 import { CalendarService } from '../calendar/calendar.service';
+
+const execFileAsync = promisify(execFile);
 
 (process.env.CARDS_TEST_DATABASE_URL ? describe : describe.skip)(
   'credit cards with real MongoDB',
@@ -29,7 +32,10 @@ import { CalendarService } from '../calendar/calendar.service';
       )
         throw new Error('Use somente MongoDB local.');
       url.pathname = `/myfinances_cards_test_${randomBytes(8).toString('hex')}`;
-      execFileSync(
+      // Aguarda o Prisma terminar sem bloquear o processo de testes. A chamada
+      // síncrona falha em ambientes restritos; a configuração real do banco e
+      // os guardas que limitam o destino a localhost continuam obrigatórios.
+      await execFileAsync(
         process.execPath,
         [
           resolve('node_modules/prisma/build/index.js'),
@@ -39,7 +45,6 @@ import { CalendarService } from '../calendar/calendar.service';
         ],
         {
           env: { ...process.env, DATABASE_URL: url.toString() },
-          stdio: 'pipe',
         },
       );
       db = new PrismaClient({ datasourceUrl: url.toString() });

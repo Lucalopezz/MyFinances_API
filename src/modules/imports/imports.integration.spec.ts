@@ -3,7 +3,8 @@ import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaClient } from '@prisma/client';
 import { randomBytes } from 'crypto';
-import { execFileSync } from 'child_process';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { resolve } from 'path';
 import * as request from 'supertest';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -20,6 +21,8 @@ import { ImportsRepository } from './imports.repository';
 import { ImportsService } from './imports.service';
 import { ImportsController } from './imports.controller';
 import { ConfirmImport, IMPORT_MAX_BYTES, ImportOptions } from './import.dto';
+
+const execFileAsync = promisify(execFile);
 
 // Ative com um replica set local. Usa sempre um banco novo de nome aleatório,
 // nunca DATABASE_URL, e remove somente esse banco ao finalizar a suíte.
@@ -73,7 +76,10 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
       url.pathname = `/myfinances_import_test_${randomBytes(8).toString('hex')}`;
       process.env.FINANCIAL_DATA_ENCRYPTION_KEY =
         'imports-integration-test-key-only';
-      execFileSync(
+      // O preparo continua aplicando o schema real ao banco aleatório local.
+      // Await garante a conclusão antes dos testes, sem a chamada síncrona
+      // bloqueada pelo ambiente nem qualquer substituição por banco simulado.
+      await execFileAsync(
         process.execPath,
         [
           resolve('node_modules/prisma/build/index.js'),
@@ -83,7 +89,6 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
         ],
         {
           env: { ...process.env, DATABASE_URL: url.toString() },
-          stdio: 'pipe',
         },
       );
       db = new PrismaClient({ datasourceUrl: url.toString() });
