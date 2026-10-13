@@ -716,13 +716,14 @@ Resposta:
 
 ### `GET /dashboard/forecast`
 
-Projeta o fechamento do mês UTC atual. `currentBalance` é o saldo real das transações do primeiro dia do mês até hoje; `pendingFixedExpenses` soma despesas fixas do usuário ainda não pagas com vencimento anterior ao primeiro dia do mês seguinte, inclusive vencidas de meses anteriores. Despesas pagas não são descontadas novamente. A rota não cria transações.
+Projeta o fechamento do mês financeiro de São Paulo, usando a mesma agenda de `/calendar`. `currentBalance` é o saldo acumulado de todo o histórico anterior a hoje mais as movimentações realizadas hoje; previsões e movimentos futuros não entram nesse saldo. `pendingFixedExpenses` soma despesas fixas previstas e `pendingCardInvoices` soma faturas pendentes, inclusive vencidas. Cada evento entra uma única vez nos totais e em `expenses`, mesmo quando pertence às listas de eventos do mês e de atrasados. Compromissos pagos não são descontados novamente. A consulta não cria transações.
 
 ```json
 {
   "month": "2026-07",
   "currentBalance": 2500,
   "pendingFixedExpenses": 800,
+  "pendingCardInvoices": 0,
   "projectedBalance": 1700,
   "expenses": [{ "id": "64f000000000000000000030", "name": "Aluguel", "amount": 800, "dueDate": "2026-07-10T00:00:00.000Z" }]
 }

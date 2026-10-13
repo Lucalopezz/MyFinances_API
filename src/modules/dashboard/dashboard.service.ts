@@ -43,15 +43,13 @@ export class DashboardService {
   async getForecast(userId: string): Promise<ForecastModel> {
     const today = todayKey();
     const month = today.slice(0, 7);
-    const [agenda, transactions] = await Promise.all([
-      this.calendar.calendar(userId, month),
-      this.findTransactionsByPeriod(
-        userId,
-        new Date(`${month}-01T00:00:00Z`),
-        new Date(`${today}T23:59:59.999Z`),
-      ),
-    ]);
-    const expenses = [...agenda.overdue, ...agenda.events]
+    const agenda = await this.calendar.calendar(userId, month);
+    // Vencimentos deste mês anteriores a hoje aparecem nas duas listas da
+    // agenda. A identidade do evento impede repetir a pendência nos totais.
+    const pendingEvents = new Map(
+      [...agenda.overdue, ...agenda.events].map((event) => [event.id, event]),
+    );
+    const expenses = [...pendingEvents.values()]
       .filter((event) => event.type === 'EXPENSE' && event.status !== 'SETTLED')
       .map((event) => ({
         id: event.id,
@@ -62,13 +60,16 @@ export class DashboardService {
     const sum = (items: typeof expenses) =>
       items.reduce((total, item) => total + Math.round(item.amount * 100), 0) /
       100;
-    const totals = this.calculateTotals(transactions);
+    // O saldo-base já contém todo o realizado antes de hoje. Somamos apenas
+    // as movimentações reais de hoje, em centavos, sem previsões ou dias futuros.
+    const realizedToday =
+      agenda.projection.days.find((day) => day.date === today)?.realized ?? 0;
     return {
       month,
       currentBalance:
-        agenda.projection.baseBalance +
-        totals.totalIncomes -
-        totals.totalExpenses,
+        (Math.round(agenda.projection.baseBalance * 100) +
+          Math.round(realizedToday * 100)) /
+        100,
       pendingFixedExpenses: sum(
         expenses.filter((item) => !item.id.startsWith('card:')),
       ),

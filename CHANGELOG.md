@@ -3,6 +3,7 @@
 Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.md) e o [índice da documentação](docs/README.md) descrevem a aplicação e seus contratos.
 
 ## Não lançado
+- Previsão com saldo acumulado sem repetir movimentos do mês e pendências deduplicadas entre a agenda e os atrasados.
 - Cartões integrados às despesas fixas, ao calendário e aos lançamentos: limite por fatura, contratação anual parcelada, estorno integral e arquivamento com pendências.
 - Validações e erros públicos em português; downloads com mês e data de geração. URLs locais de integração carregadas do `.env`.
 

@@ -1,4 +1,6 @@
 import { DashboardService } from './dashboard.service';
+import { CalendarService } from '../calendar/calendar.service';
+import { buildEncryptedTransactionData } from '../transactions/transaction-encryption.mapper';
 
 describe('DashboardService.getForecast', () => {
   it('reuses the calendar projection and separates card invoices from fixed expenses', async () => {
@@ -20,7 +22,7 @@ describe('DashboardService.getForecast', () => {
           event('card:new:2026-10', 80),
           event('paid', 200, 'SETTLED'),
         ],
-        projection: { baseBalance: 500, projectedBalance: 270 },
+        projection: { baseBalance: 500, projectedBalance: 270, days: [] },
       })),
     };
     const service = new DashboardService(
@@ -45,5 +47,133 @@ describe('DashboardService.getForecast', () => {
       'rent',
       'card:new:2026-10',
     ]);
+  });
+
+  it('conta o histórico, o realizado de hoje e as pendências uma única vez', async () => {
+    // O calendário real coloca vencimentos de outubro nas listas de eventos e
+    // atrasados. Datas fixas também protegem o saldo de receitas duplicadas.
+    jest.useFakeTimers().setSystemTime(new Date('2026-10-13T15:00:00Z'));
+    try {
+      const userId = '64f000000000000000000001';
+      const encryption = {
+        encrypt: (value: unknown) => JSON.stringify(value),
+        decrypt: <T>(value: string): T => JSON.parse(value) as T,
+      };
+      const entries = [
+        { date: '2026-09-30', value: 500, type: 'INCOME' as const },
+        { date: '2026-10-01', value: 100, type: 'INCOME' as const },
+        { date: '2026-10-05', value: 30, type: 'EXPENSE' as const },
+        { date: '2026-10-13', value: 20.12, type: 'INCOME' as const },
+        { date: '2026-10-13', value: 5.01, type: 'EXPENSE' as const },
+        // Realizado futuro afeta a projeção, mas não o saldo acumulado até hoje.
+        { date: '2026-10-20', value: 2, type: 'EXPENSE' as const },
+      ];
+      const records = entries.map((entry, index) => ({
+        id: `transaction-${index}`,
+        ...buildEncryptedTransactionData(
+          {
+            ...entry,
+            date: new Date(`${entry.date}T12:00:00Z`),
+            userId,
+            category: 'OTHER',
+          },
+          encryption as never,
+        ),
+      }));
+      const prisma = {
+        recurringIncome: { findMany: async () => [] },
+        fixedExpense: {
+          findMany: async () => [
+            {
+              id: 'fixed-expense',
+              name: 'Despesa vencida',
+              amount: 10,
+              category: 'OTHER',
+              recurrence: 'YEARLY',
+              dueDate: new Date('2026-10-02T12:00:00Z'),
+              isPaid: false,
+            },
+          ],
+        },
+        calendarReceipt: { findMany: async () => [] },
+        transaction: { findMany: async () => records },
+      };
+      const cards = {
+        listCards: async () => [
+          {
+            id: 'card',
+            name: 'Cartão de teste',
+            invoices: [
+              {
+                cycle: '2026-10',
+                dueDate: '2026-10-03',
+                total: 20,
+                paid: false,
+              },
+            ],
+          },
+        ],
+      };
+      const calendar = new CalendarService(
+        prisma as never,
+        encryption as never,
+        {} as never,
+        cards as never,
+      );
+      const service = new DashboardService(
+        {} as never,
+        {} as never,
+        encryption as never,
+        calendar,
+      );
+      const forecast = await service.getForecast(userId);
+      expect(forecast).toMatchObject({
+        currentBalance: 585.11,
+        pendingFixedExpenses: 10,
+        pendingCardInvoices: 20,
+        projectedBalance: 553.11,
+      });
+      expect(forecast.expenses.map((expense) => expense.id)).toEqual([
+        'fixed-expense:2026-10-02',
+        'card:card:2026-10',
+      ]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('inclui movimentos do primeiro dia do mês sem misturá-los às previsões', async () => {
+    // Na virada do mês, o saldo-base contém apenas os meses anteriores.
+    jest.useFakeTimers().setSystemTime(new Date('2026-11-01T15:00:00Z'));
+    try {
+      const service = new DashboardService(
+        {} as never,
+        {} as never,
+        {} as never,
+        {
+          calendar: async () => ({
+            overdue: [],
+            events: [],
+            projection: {
+              baseBalance: 100.01,
+              projectedBalance: 70.02,
+              days: [
+                {
+                  date: '2026-11-01',
+                  realized: -9.99,
+                  income: 0,
+                  expense: 20,
+                },
+              ],
+            },
+          }),
+        } as never,
+      );
+      expect(
+        await service.getForecast('64f000000000000000000001'),
+      ).toMatchObject({ currentBalance: 90.02, projectedBalance: 70.02 });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
