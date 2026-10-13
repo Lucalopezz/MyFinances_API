@@ -24,7 +24,7 @@ export class AuthTokenGuard implements CanActivate {
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {
-      throw new UnauthorizedException('Não logado!');
+      throw new UnauthorizedException('Entre na sua conta para continuar.');
     }
 
     try {
@@ -35,12 +35,12 @@ export class AuthTokenGuard implements CanActivate {
       });
 
       if (typeof payload?.sub !== 'string' || !payload.sub) {
-        throw new UnauthorizedException('Token inválido');
+        throw new UnauthorizedException('Sua sessão expirou. Entre novamente.');
       }
 
       request[REQUEST_TOKEN_PAYLOAD_KEY] = payload;
     } catch {
-      throw new UnauthorizedException('Falha ao logar');
+      throw new UnauthorizedException('Sua sessão expirou. Entre novamente.');
     }
 
     return true;
