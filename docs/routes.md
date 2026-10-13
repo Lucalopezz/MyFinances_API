@@ -858,3 +858,6 @@ Todas as rotas exigem Bearer JWT e isolam dados pelo usuário autenticado.
 
 `POST /cards/:id/purchases/:purchaseId/refund` estorna a compra integralmente e é idempotente. Cancela parcelas pendentes; valores de parcelas pagas geram uma receita de estorno na data atual, com vínculo protegido. O histórico da compra inclui `refundedAt`. Aceita cartões arquivados e isola os dados por usuário.
 
+### Despesas fixas no cartão
+
+Criação/edição aceitam `cardId` (ID do cartão ou `null` para pagamento direto) e `cardInstallments` (1–60). `amount` é o valor total da contratação; `recurrence` determina quando ela renova, independentemente das parcelas. `PATCH /fixed-expenses/:id/payment` com `isPaid: true` registra uma única compra parcelada, sem lançar saída de caixa. A saída ocorre no pagamento das faturas. Retorna `paidCardPurchaseId`; para desfazer, use o estorno da compra. Renovação exige nova confirmação e mantém as parcelas das contratações anteriores.

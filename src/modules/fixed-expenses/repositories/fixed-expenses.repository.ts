@@ -17,6 +17,8 @@ export class FixedExpensesRepository {
   create(dto: CreateFixedExpenseDto, userId: string) {
     return this.prisma.fixedExpense.create({
       data: {
+        cardId: dto.cardId,
+        cardInstallments: dto.cardInstallments ?? 1,
         name: dto.name,
         amount: dto.amount,
         dueDate: new Date(
@@ -57,6 +59,10 @@ export class FixedExpensesRepository {
     return this.prisma.fixedExpense.update({
       where: { id },
       data: {
+        ...(dto.cardId !== undefined ? { cardId: dto.cardId } : {}),
+        ...(dto.cardInstallments !== undefined
+          ? { cardInstallments: dto.cardInstallments }
+          : {}),
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
         ...(dto.category !== undefined ? { category: dto.category } : {}),
@@ -151,6 +157,7 @@ export class FixedExpensesRepository {
           isPaid: false,
           paidAt: null,
           paidTransactionId: null,
+          paidCardPurchaseId: null,
           lastNotificationDueDate: null,
         },
       });

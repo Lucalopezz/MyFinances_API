@@ -52,6 +52,8 @@ model CardPurchase {
   purchaseDate  String
   refundedAt    DateTime?
   refundTransactionId String? @db.ObjectId
+  fixedExpenseId String? @db.ObjectId
+  fixedExpenseDueDate DateTime?
   createdAt     DateTime @default(now())
   @@index([userId, cardId])
 }
@@ -251,6 +253,9 @@ model FixedExpense {
   isPaid                  Boolean        @default(false)
   paidAt                  DateTime?
   paidTransactionId       String?
+  cardId                  String?        @db.ObjectId
+  cardInstallments        Int?           @default(1)
+  paidCardPurchaseId      String?        @db.ObjectId
   recurrenceDay           Int?
   recurrence              RecurrenceType
   lastNotificationDueDate DateTime?

@@ -52,3 +52,5 @@ O limite é validado por ciclo: parcelas, compras à vista e anuidade no mesmo m
 Remover arquiva o cartão e bloqueia novas compras. Compras e faturas continuam acessíveis com `archived: true`, inclusive para pagamento e calendário. A anuidade deixa de gerar novos ciclos após o arquivamento; faturas já fechadas são preservadas.
 
 O estorno integral remove parcelas pendentes das faturas e registra receita apenas pelo valor já pago. Compras estornadas permanecem no histórico com a data do estorno.
+
+Despesas fixas podem ser contratadas no cartão. Para um plano anual de R$ 1.200 em 12 parcelas, cadastre valor total R$ 1.200, recorrência anual e 12 parcelas. Registre a contratação em cada renovação; o calendário prevê as parcelas e passa a usar as faturas reais após o registro. A confirmação é manual, sem efetuar cobrança no banco.

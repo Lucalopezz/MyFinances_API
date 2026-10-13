@@ -1,3 +1,4 @@
+import { FixedExpensesRepository } from '../fixed-expenses/repositories/fixed-expenses.repository';
 import { PrismaClient } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { execFile } from 'child_process';
@@ -64,6 +65,7 @@ const execFileAsync = promisify(execFile);
       }
     });
     beforeEach(async () => {
+      await db.fixedExpense.deleteMany();
       await db.cardPayment.deleteMany();
       await db.cardInstallment.deleteMany();
       await db.cardPurchase.deleteMany();
@@ -231,6 +233,99 @@ const execFileAsync = promisify(execFile);
       await expect(
         repo.deleteOwned(row.refundTransactionId!, owner),
       ).rejects.toThrow('estorno');
+    });
+    it('links an annual fixed expense to twelve installments without duplicating cash or renewal', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Academia',
+        limit: 100,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 0,
+      });
+      const expense = await db.fixedExpense.create({
+        data: {
+          userId: owner,
+          name: 'Plano anual',
+          amount: 1200,
+          category: 'OTHER',
+          dueDate: new Date(`${todayKey()}T12:00:00Z`),
+          recurrence: 'YEARLY',
+          cardId: card.id,
+          cardInstallments: 12,
+        },
+      });
+      await service.chargeFixedExpense(owner, expense.id);
+      await service.chargeFixedExpense(owner, expense.id);
+      expect(await db.cardPurchase.count()).toBe(1);
+      expect(await db.cardInstallment.count()).toBe(12);
+      expect(await db.transaction.count()).toBe(0);
+      const calendar = new CalendarService(
+        db as unknown as PrismaService,
+        encryption as FinancialDataEncryptionService,
+        {} as CategoriesService,
+        service,
+      );
+      const upcomingMonth = (await service.detail(owner, card.id)).invoices[0]
+        .cycle;
+      const before = await calendar.calendar(owner, upcomingMonth);
+      expect(
+        before.events.filter((event) => event.type === 'EXPENSE'),
+      ).toHaveLength(1);
+      expect(before.events[0].amount).toBe(100);
+      const paid = await db.fixedExpense.findUniqueOrThrow({
+        where: { id: expense.id },
+      });
+      await service.refundPurchase(owner, card.id, paid.paidCardPurchaseId!);
+      expect(
+        (await db.fixedExpense.findUniqueOrThrow({ where: { id: expense.id } }))
+          .isPaid,
+      ).toBe(false);
+      // Após estornar, a projeção volta às parcelas previstas, sem uma saída anual inteira.
+      const planned = await calendar.calendar(owner, upcomingMonth);
+      expect(planned.events[0].amount).toBe(100);
+      await service.chargeFixedExpense(owner, expense.id);
+      const nextYear = new Date(expense.dueDate);
+      nextYear.setUTCFullYear(nextYear.getUTCFullYear() + 1);
+      await new FixedExpensesRepository(
+        db as unknown as PrismaService,
+        encryption as FinancialDataEncryptionService,
+      ).refreshCycle(expense.id, nextYear, expense.dueDate);
+      const renewal = await db.fixedExpense.findUniqueOrThrow({
+        where: { id: expense.id },
+      });
+      expect(renewal.isPaid).toBe(false);
+      expect(renewal.dueDate).toEqual(nextYear);
+      expect(renewal.paidCardPurchaseId).toBeNull();
+      expect(await db.cardInstallment.count()).toBe(12);
+    });
+    it('rolls back a fixed expense registration when its installment exceeds the limit', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Sem limite',
+        limit: 50,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 0,
+      });
+      const expense = await db.fixedExpense.create({
+        data: {
+          userId: owner,
+          name: 'Plano',
+          amount: 1200,
+          category: 'OTHER',
+          dueDate: new Date(`${todayKey()}T12:00:00Z`),
+          recurrence: 'YEARLY',
+          cardId: card.id,
+          cardInstallments: 12,
+        },
+      });
+      await expect(
+        service.chargeFixedExpense(owner, expense.id),
+      ).rejects.toThrow('Limite');
+      expect(
+        (await db.fixedExpense.findUniqueOrThrow({ where: { id: expense.id } }))
+          .isPaid,
+      ).toBe(false);
+      expect(await db.cardPurchase.count()).toBe(0);
     });
     it('charges the annual fee once and never settles a statement twice under concurrent calls', async () => {
       const card = await service.createCard(owner, {

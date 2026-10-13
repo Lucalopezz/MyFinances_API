@@ -196,6 +196,7 @@ export class CardsService {
         id: row.id,
         date: row.purchaseDate,
         refundedAt: row.refundedAt,
+        fixedExpenseId: row.fixedExpenseId,
         ...this.publicPurchase(purchaseMap.get(row.id)!),
       })),
       invoices,
@@ -241,7 +242,12 @@ export class CardsService {
     });
   }
 
-  async createPurchase(userId: string, id: string, input: PurchaseInput) {
+  async createPurchase(
+    userId: string,
+    id: string,
+    input: PurchaseInput,
+    client?: Prisma.TransactionClient,
+  ) {
     this.checkId(id);
     if (input.date > todayKey())
       throw new BadRequestException('A compra não pode estar no futuro.');
@@ -250,7 +256,7 @@ export class CardsService {
         'O valor deve permitir parcelas de pelo menos um centavo.',
       );
     await this.categories.resolveReference(input.category, userId, 'EXPENSE');
-    return this.prisma.$transaction(async (tx) => {
+    const create = async (tx: Prisma.TransactionClient) => {
       const card = await tx.creditCard.findFirst({ where: { id, userId } });
       if (!card || card.archivedAt)
         throw new NotFoundException('Cartão não encontrado.');
@@ -334,6 +340,54 @@ export class CardsService {
         })),
       });
       return { id: purchase.id, date: input.date, ...input };
+    };
+    return client ? create(client) : this.prisma.$transaction(create);
+  }
+
+  /** Registra uma contratação recorrente e suas parcelas numa única transação. */
+  async chargeFixedExpense(userId: string, expenseId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const expense = await tx.fixedExpense.findFirst({
+        where: { id: expenseId, userId },
+      });
+      if (!expense?.cardId)
+        throw new BadRequestException('Selecione um cartão para esta despesa.');
+      if (expense.isPaid) return expense;
+      // A competência só pode originar uma compra, mesmo com dois cliques ou abas.
+      const claimed = await tx.fixedExpense.updateMany({
+        where: {
+          id: expenseId,
+          userId,
+          dueDate: expense.dueDate,
+          isPaid: false,
+        },
+        data: { isPaid: true },
+      });
+      if (!claimed.count)
+        throw new ConflictException('A despesa mudou. Atualize a página.');
+      const purchase = await this.createPurchase(
+        userId,
+        expense.cardId,
+        {
+          description: `Despesa fixa: ${expense.name}`,
+          amount: expense.amount,
+          date: todayKey(),
+          category: expense.category,
+          installments: expense.cardInstallments ?? 1,
+        },
+        tx,
+      );
+      await tx.cardPurchase.update({
+        where: { id: purchase.id },
+        data: {
+          fixedExpenseId: expense.id,
+          fixedExpenseDueDate: expense.dueDate,
+        },
+      });
+      return tx.fixedExpense.update({
+        where: { id: expenseId },
+        data: { paidAt: new Date(), paidCardPurchaseId: purchase.id },
+      });
     });
   }
 
@@ -396,6 +450,18 @@ export class CardsService {
           ) as Prisma.TransactionUncheckedCreateInput,
         });
         refundTransactionId = transaction.id;
+      }
+      if (purchase.fixedExpenseId) {
+        // Um estorno histórico não reabre a renovação atual de outra competência.
+        await tx.fixedExpense.updateMany({
+          where: {
+            id: purchase.fixedExpenseId,
+            userId,
+            paidCardPurchaseId: purchase.id,
+            dueDate: purchase.fixedExpenseDueDate ?? undefined,
+          },
+          data: { isPaid: false, paidAt: null, paidCardPurchaseId: null },
+        });
       }
       // Parcelas pagas permanecem no histórico; só pendências deixam as faturas.
       await tx.cardInstallment.deleteMany({

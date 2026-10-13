@@ -376,3 +376,5 @@ Nas suítes de importação, `db push` é executado apenas em banco local descar
 `CreditCard` guarda `userId`, dias de fechamento/vencimento, revisão para concorrência e payload criptografado com nome, limite e anuidade. `CardPurchase` guarda cartão, data civil e payload criptografado com descrição, valor, categoria e número de parcelas. `CardInstallment` vincula compra e cartão à parcela, competência e vencimento, com valor criptografado; o índice único por usuário/compra/número impede parcela repetida.
 
 `CardPayment` registra usuário, cartão, competência, IDs das transações realizadas e valor/data criptografados. O índice único `(userId, cardId, cycle)` protege a quitação idempotente. Compras não criam `Transaction`; a quitação da fatura cria as despesas vinculadas em operação atômica. Consulte [Cartões de crédito](credit-cards.md) para cálculo do ciclo, limite, calendário e implantação.
+
+Despesas fixas podem referenciar `cardId`, `cardInstallments` e `paidCardPurchaseId`. Compras de cartão guardam `fixedExpenseId` e `fixedExpenseDueDate`, preservando a competência contratada e a rastreabilidade do estorno.

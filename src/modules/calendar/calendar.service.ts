@@ -1,4 +1,8 @@
 import {
+  invoiceForPurchase,
+  splitInstallments,
+} from '../cards/card-calculation';
+import {
   BadRequestException,
   ConflictException,
   Injectable,
@@ -245,7 +249,39 @@ export class CalendarService {
           expense.recurrence,
           expense.recurrenceDay ?? Number(anchor.slice(8)),
         );
-        if (dueDate) {
+        if (dueDate && expense.cardId) {
+          const card = cards.find((item) => item.id === expense.cardId);
+          // A contratação registrada já está nas faturas reais. Somar sua
+          // despesa fixa novamente duplicaria o impacto na projeção de saldo.
+          if (card && !(dueDate === anchor && expense.isPaid)) {
+            const count = expense.cardInstallments ?? 1;
+            const amounts = splitInstallments(
+              Math.round(expense.amount * 100),
+              count,
+            );
+            amounts.forEach((amount, index) => {
+              const scheduled = invoiceForPurchase(
+                dueDate,
+                card.closingDay,
+                card.dueDay,
+                index,
+              );
+              if (scheduled.dueDate <= end) {
+                const id = `fixed-card:${expense.id}:${dueDate}:${index}`;
+                events.set(id, {
+                  id,
+                  sourceId: expense.id,
+                  dueDate: scheduled.dueDate,
+                  description: `${expense.name} (${index + 1}/${count}) · contratação prevista no cartão`,
+                  amount: amount / 100,
+                  category: expense.category,
+                  type: 'EXPENSE',
+                  status: scheduled.dueDate < today ? 'OVERDUE' : 'PENDING',
+                });
+              }
+            });
+          }
+        } else if (dueDate) {
           const settled = dueDate === anchor && expense.isPaid;
           const event: CalendarEvent = {
             id: `${expense.id}:${dueDate}`,

@@ -1,3 +1,4 @@
+import { CardsModule } from '../cards/cards.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { forwardRef, Module } from '@nestjs/common';
 import { FixedExpensesService } from './fixed-expenses.service';
@@ -38,6 +39,7 @@ import { FixedExpensePaymentsRepository } from './repositories/fixed-expense-pay
   ],
   imports: [
     CategoriesModule,
+    CardsModule,
     forwardRef(() => AppModule),
     NotificationModule,
     AuthModule,

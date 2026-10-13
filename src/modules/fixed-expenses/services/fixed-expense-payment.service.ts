@@ -1,6 +1,7 @@
 import { todayKey } from '../../calendar/calendar-calculation';
 import { CategoriesService } from '../../categories/categories.service';
-import { Injectable } from '@nestjs/common';
+import { CardsService } from '../../cards/cards.service';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { FixedExpense, TransactionType } from '@prisma/client';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { buildEncryptedTransactionData } from 'src/modules/transactions/transaction-encryption.mapper';
@@ -12,12 +13,17 @@ export class FixedExpensePaymentService {
     private readonly categories: CategoriesService,
     private readonly repository: FixedExpensePaymentsRepository,
     private readonly encryptionService: FinancialDataEncryptionService,
+    private readonly cards?: CardsService,
   ) {}
 
   async markAsPaid(expenseData: FixedExpense, userId: string) {
     if (expenseData.isPaid) {
       return expenseData;
     }
+
+    // Registrar no cartão cria compromisso; a despesa realizada nasce ao pagar a fatura.
+    if (expenseData.cardId && this.cards)
+      return this.cards.chargeFixedExpense(userId, expenseData.id);
 
     await this.categories.resolveReference(
       expenseData.category,
@@ -64,6 +70,11 @@ export class FixedExpensePaymentService {
     if (!expenseData.isPaid) {
       return expenseData;
     }
+
+    if (expenseData.paidCardPurchaseId)
+      throw new BadRequestException(
+        'Estorne a compra na tela de cartões para desfazer esta contratação.',
+      );
 
     const paidTransactionId = await this.repository.getPaidTransactionId(
       expenseData.id,

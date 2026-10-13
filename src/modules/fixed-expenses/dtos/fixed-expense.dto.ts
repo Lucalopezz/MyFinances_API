@@ -6,7 +6,12 @@ export const RecurrenceTypeEnum = z.enum(['MONTHLY', 'YEARLY']);
 
 export const CreateFixedExpenseDto = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
-  amount: z.number().positive('Valor deve ser positivo'),
+  amount: z
+    .number()
+    .finite()
+    .positive('Valor deve ser positivo')
+    .max(999999999)
+    .multipleOf(0.01),
   category: CategoryReferenceSchema,
   dueDate: z.coerce
     .date()
@@ -15,6 +20,12 @@ export const CreateFixedExpenseDto = z.object({
       'Data não pode ser no passado',
     ),
   recurrence: RecurrenceTypeEnum,
+  cardId: z
+    .string()
+    .regex(/^[a-f\d]{24}$/i, 'Selecione um cartão válido.')
+    .nullable()
+    .optional(),
+  cardInstallments: z.number().int().min(1).max(60).optional(),
 });
 
 export type CreateFixedExpenseDto = z.infer<typeof CreateFixedExpenseDto>;
