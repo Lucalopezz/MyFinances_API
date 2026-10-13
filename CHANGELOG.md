@@ -2,6 +2,10 @@
 
 Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.md) e o [índice da documentação](docs/README.md) descrevem a aplicação e seus contratos.
 
+## Não lançado
+
+- Atualização de `jwa` para 1.4.2 no lockfile, corrigindo a inicialização da autenticação no Node atual com comparação nativa de assinaturas.
+
 ## [v2.2.2](https://github.com/Lucalopezz/MyFinances_API/tree/v2.2.2) — 03/10/2026
 
 - Novo endpoint autenticado `GET /transactions/balance` para o saldo acumulado de todo o histórico do usuário, independente do mês, filtros e paginação.
