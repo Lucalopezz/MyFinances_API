@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { once } from 'events';
 import { WriteStream } from 'fs';
-import { DecryptedTransaction } from '../transactions/transaction-encryption.mapper';
+import { DecryptedTransaction } from '../../../transactions/transaction-encryption.mapper';
 
 @Injectable()
 export class TransactionCsvService {
@@ -19,7 +19,7 @@ export class TransactionCsvService {
   /**
    * Escreve um lançamento em formato de intercâmbio: datas ISO, tipos e IDs
    * originais e valor numérico com ponto decimal, sem símbolos de moeda.
-   * A localização dos nomes pertence ao PDF; o CSV preserva as referências.
+   * PDF e XLSX localizam os nomes; o CSV preserva as referências originais.
    */
   async addTransaction(output: WriteStream, transaction: DecryptedTransaction) {
     const cells = [

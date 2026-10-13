@@ -4,6 +4,8 @@ Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.
 
 ## Não lançado
 
+- Exportação nativa em XLSX pela mesma fila de PDF/CSV, com datas e valores tipados, categorias em português, filtros nas colunas e cabeçalho fixo.
+- Validação do novo formato, download com extensão e tipo correspondentes e geração em fluxo para históricos extensos.
 - Ambiente local com MongoDB em replica set, Redis, geração de `.env` e guia para usar a conta de teste com 200 transações.
 - Preparo assíncrono dos bancos das suítes de integração, mantendo MongoDB real e os guardas de isolamento local.
 - Atualização de `jwa` para 1.4.2 no lockfile, corrigindo a inicialização da autenticação no Node atual com comparação nativa de assinaturas.

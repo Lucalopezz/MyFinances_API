@@ -2,14 +2,18 @@ import { mkdtemp, readFile, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { TransactionExportProcessor } from './transaction-export.processor';
-import { TransactionCsvService } from './transaction-csv.service';
-import { TransactionPdfService } from './transaction-pdf.service';
-import { TRANSACTION_EXPORT_JOB } from './exports.constants';
-
+import { TransactionCsvService } from '../generators/csv/transaction-csv.service';
+import { TransactionPdfService } from '../transaction-pdf.service';
+import { TransactionXlsxService } from '../generators/xlsx/transaction-xlsx.service';
+import { Workbook } from 'exceljs';
+import { TRANSACTION_EXPORT_JOB } from '../constants/exports.constants';
+import { TransactionExportReaderService } from '../services/transaction-export-reader.service';
+import { TransactionExportWriterFactory } from '../services/transaction-export-writer.factory';
 describe('TransactionExportProcessor', () => {
   it.each([
     { format: 'CSV', category: 'FOOD', label: 'Alimentação' },
     { format: 'PDF', category: 'FOOD', label: 'Alimentação' },
+    { format: 'XLSX', category: 'FOOD', label: 'Alimentação' },
     {
       format: 'CSV',
       category: '64f000000000000000000070',
@@ -17,6 +21,11 @@ describe('TransactionExportProcessor', () => {
     },
     {
       format: 'PDF',
+      category: '64f000000000000000000070',
+      label: 'Café especial',
+    },
+    {
+      format: 'XLSX',
       category: '64f000000000000000000070',
       label: 'Café especial',
     },
@@ -81,20 +90,27 @@ describe('TransactionExportProcessor', () => {
         const addPdfTransaction = jest.spyOn(pdfService, 'addTransaction');
         const createPdfDocument = jest.spyOn(pdfService, 'createDocument');
         const finalizePdfDocument = jest.spyOn(pdfService, 'finalizeDocument');
+        const config = {
+          get: (key: string, fallback: string) =>
+            key === 'EXPORT_STORAGE_PATH' ? directory : fallback,
+        };
         const processor = new TransactionExportProcessor(
           {
             resolveReference: jest.fn(async () => ({})),
             list: jest.fn(async () => [{ id: category, name: label }]),
           } as never,
           repository as never,
-          transactionsRepository as never,
-          {
-            get: (key: string, fallback: string) =>
-              key === 'EXPORT_STORAGE_PATH' ? directory : fallback,
-          } as never,
-          { decrypt: (value: string) => JSON.parse(value) } as never,
-          pdfService,
-          new TransactionCsvService(),
+          config as never,
+          new TransactionExportReaderService(
+            transactionsRepository as never,
+            { decrypt: (value: string) => JSON.parse(value) } as never,
+            config as never,
+          ),
+          new TransactionExportWriterFactory(
+            pdfService,
+            new TransactionCsvService(),
+            new TransactionXlsxService(),
+          ),
         );
         const job = {
           name: TRANSACTION_EXPORT_JOB,
@@ -111,6 +127,20 @@ describe('TransactionExportProcessor', () => {
           expect(content.toString('utf8')).not.toContain(
             'Transação fora do filtro',
           );
+        } else if (format === 'XLSX') {
+          // Lemos o arquivo produzido pelo worker, não apenas uma assinatura
+          // ZIP: a categoria e as células precisam sobreviver à serialização.
+          const workbook = new Workbook();
+          await workbook.xlsx.readFile(join(directory, fileName));
+          const sheet = workbook.getWorksheet('Transações');
+          expect(sheet.rowCount).toBe(2);
+          expect(sheet.getCell('A2').value).toEqual(
+            new Date('2026-07-06T00:00:00.000Z'),
+          );
+          expect(sheet.getCell('B2').value).toBe('Café, mercado');
+          expect(sheet.getCell('C2').value).toBe(label);
+          expect(sheet.getCell('D2').value).toBe('Despesa');
+          expect(sheet.getCell('E2').value).toBe(12.5);
         } else {
           expect(content.subarray(0, 4).toString()).toBe('%PDF');
           expect(addPdfTransaction).toHaveBeenCalledWith(

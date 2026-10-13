@@ -7,7 +7,7 @@ export const CreateTransactionExportSchema = z
     endDate: z.coerce.date().optional(),
     categoryId: CategoryReferenceSchema.optional(),
     type: z.enum(['INCOME', 'EXPENSE']).optional(),
-    format: z.enum(['PDF', 'CSV']).default('PDF'),
+    format: z.enum(['PDF', 'CSV', 'XLSX']).default('PDF'),
   })
   .refine(
     ({ startDate, endDate }) => !startDate || !endDate || startDate <= endDate,

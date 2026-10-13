@@ -139,6 +139,7 @@ model TransactionExport {
 enum TransactionExportFormat {
   PDF
   CSV
+  XLSX
 }
 
 model MonthlyBudget {

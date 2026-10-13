@@ -17,7 +17,7 @@ import {
   CreateTransactionExportDto,
   CreateTransactionExportSchema,
 } from './dtos/create-transaction-export.dto';
-import { ExportsService } from './exports.service';
+import { ExportsService } from './services/exports.service';
 
 @Controller('exports')
 @UseGuards(AuthTokenGuard)

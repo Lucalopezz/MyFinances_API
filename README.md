@@ -9,7 +9,7 @@ Versão de referência: **v2.2.2**. Consulte o [histórico de versões](CHANGELO
 - **Autenticação e usuário:** cadastro, login com JWT, atualização de perfil e senha.
 - **Transações:** receitas e despesas, edição, remoção, busca com cursor, totais por filtros e saldo acumulado.
 - **Categorias e regras:** catálogo personalizado, arquivamento e sugestões de classificação por descrição.
-- **Importação e exportação:** CSV/OFX com prévia e revisão de duplicatas; exportação assíncrona em PDF/CSV.
+- **Importação e exportação:** CSV/OFX com prévia e revisão de duplicatas; exportação assíncrona em PDF/CSV/XLSX.
 - **Dashboard e comparativos:** resumo mensal, indicadores e análise de receitas, despesas e saldo.
 - **Orçamentos:** limites mensais e acompanhamento de gastos por categoria.
 - **Calendário financeiro:** receitas recorrentes, compromissos previstos e projeção diária de saldo.
@@ -40,7 +40,7 @@ Os guias de domínio, implantação e os registros históricos estão organizado
 - Zod para validação e JWT para autenticação.
 - AES-256-GCM para proteção dos dados financeiros sensíveis.
 - BullMQ e Redis para processamento de exportações.
-- PDFKit para relatórios PDF; Jest para testes.
+- PDFKit para relatórios PDF, ExcelJS para planilhas XLSX; Jest para testes.
 
 ## Instalação e execução
 

@@ -282,7 +282,7 @@ Orçamento independente por usuário, mês (`YYYY-MM`) e categoria de despesa. C
 
 ## TransactionExport
 
-Exportação assíncrona do usuário com `status` (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`), `progress`, filtros opcionais, `format` (`PDF` ou `CSV`, padrão `PDF`), `fileName`, erro e datas. O formato fica no registro para controlar a extensão e o content-type do download. Arquivos são locais e efêmeros.
+Exportação assíncrona do usuário com `status` (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`), `progress`, filtros opcionais, `format` (`PDF`, `CSV` ou `XLSX`, padrão `PDF`), `fileName`, erro e datas. O formato fica no registro para controlar a extensão e o content-type do download. Arquivos são locais e efêmeros.
 
 ---
 

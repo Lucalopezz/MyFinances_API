@@ -38,6 +38,7 @@
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.80.1",
     "date-fns": "^4.1.0",
+    "exceljs": "^4.4.0",
     "helmet": "^8.0.0",
     "pdfkit": "^0.19.1",
     "prisma": "^6.4.1",

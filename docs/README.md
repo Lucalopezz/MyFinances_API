@@ -18,7 +18,7 @@ Este índice organiza as referências atuais do MyFinances API. O [README do pro
 | [Ambiente local de teste](local-development.md) | Docker, `.env`, conta de teste e verificação antes do deploy |
 | [Criptografia financeira](transaction-encryption.md) | Campos protegidos, chave, leitura e manutenção |
 | [Importação CSV/OFX](transaction-imports.md) | Formatos, limites, prévia, duplicatas e confirmação |
-| [Exportação PDF/CSV](transaction-exports.md) | Fila, armazenamento e download |
+| [Exportação PDF/CSV/XLSX](transaction-exports.md) | Fila, armazenamento e download |
 | [Calendário financeiro](financial-calendar.md) | Recorrências, confirmações, projeção e implantação |
 | [Reservas da wishlist](wishlist-reservations.md) | Aportes, transição de metas antigas e recuperação |
 | [Cartões de crédito](credit-cards.md) | Ciclos, limite, parcelas, pagamentos e implantação |

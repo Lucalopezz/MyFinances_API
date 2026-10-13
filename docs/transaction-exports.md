@@ -1,6 +1,6 @@
 # Exportação assíncrona de transações
 
-As exportações em PDF ou CSV são processadas pelo BullMQ dentro do mesmo processo da API NestJS. O Redis local pode ser iniciado com:
+As exportações em PDF, CSV ou XLSX são processadas pelo BullMQ dentro do mesmo processo da API NestJS. O Redis local pode ser iniciado com:
 
 ```bash
 docker compose up -d redis
@@ -25,9 +25,9 @@ O armazenamento é local e efêmero. Na Render gratuita, os arquivos podem desap
 
 Todas as rotas exigem o mesmo Bearer token usado nas demais áreas da API.
 
-- `POST /exports/transactions`: cria uma exportação e retorna `202 Accepted`. Aceita `startDate`, `endDate`, `categoryId`, `type` e `format` (`PDF` ou `CSV`, padrão `PDF`) como campos opcionais.
+- `POST /exports/transactions`: cria uma exportação e retorna `202 Accepted`. Aceita `startDate`, `endDate`, `categoryId`, `type` e `format` (`PDF`, `CSV` ou `XLSX`, padrão `PDF`) como campos opcionais.
 - `GET /exports/status`: consulta status, progresso e eventual erro seguro da exportação mais recente do usuário autenticado.
-- `GET /exports/:id/download`: baixa PDF ou CSV quando o status for `COMPLETED`, com o content-type correspondente.
+- `GET /exports/:id/download`: baixa PDF, CSV ou XLSX quando o status for `COMPLETED`, com o content-type correspondente. XLSX usa `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` e extensão `.xlsx`.
 
 Como a categoria é criptografada com IV aleatório, esse filtro é aplicado durante a leitura em lotes, após a descriptografia. Período e tipo são filtrados diretamente no MongoDB por `dateIndex` e `type`.
 
@@ -43,4 +43,18 @@ O relatório continua sendo escrito em fluxo, sem manter todas as transações o
 
 ## Abrir no Excel
 
-Na tela de transações, selecione **Exportar transações → CSV para planilhas**. O arquivo pode ser aberto no Excel ou importado em **Dados → De Texto/CSV**, escolhendo UTF-8 e vírgula como delimitador. Não há exportação nativa em `.xlsx` no momento. O CSV mantém os identificadores de categoria e tipos originais para compatibilidade com importações.
+Na tela de transações, há três opções:
+
+- **PDF para leitura e impressão**: relatório com resumo financeiro.
+- **Abrir no Excel (.csv)**: arquivo de intercâmbio que também abre em outros programas de planilhas. No Excel, pode ser importado em **Dados → De Texto/CSV**, escolhendo UTF-8 e vírgula como delimitador. O CSV mantém os identificadores de categoria e tipos originais para compatibilidade com importações.
+- **Excel nativo (.xlsx)**: planilha pronta para abrir diretamente no Excel, com dados e formatação nativos.
+
+## Planilha Excel nativa
+
+Solicite `POST /exports/transactions` com `{ "format": "XLSX" }` e, opcionalmente, os mesmos filtros de PDF/CSV. O job, o progresso, o isolamento por usuário e o download autenticado seguem o fluxo existente.
+
+A aba **Transações** contém as colunas **Data, Descrição, Categoria, Tipo e Valor**. Datas são células de data em `dd/mm/yyyy`; valores são números com formato monetário em reais, permitindo ordenar e calcular no Excel. Categorias padrão são exibidas em português; personalizadas e arquivadas usam os nomes do catálogo do usuário. Nomes e descrições são texto literal, inclusive quando começam com `=`, sem gerar fórmulas.
+
+O arquivo tem cabeçalho fixo, filtros nas colunas, linhas alternadas e configuração de impressão em A4 horizontal. Exportações vazias mantêm uma aba válida com as colunas. O ExcelJS escreve e libera cada linha em fluxo, sem carregar o histórico inteiro na memória. Ao atingir o limite de 1.048.576 linhas por aba, incluindo o cabeçalho, o arquivo continua em **Transações 2**, **Transações 3** etc. Descrições que excedem 32.767 caracteres fazem a exportação falhar, sem truncar os dados ou oferecer um arquivo parcial.
+
+Na implantação, instale as dependências e regenere o Prisma Client com o schema atualizado, que inclui `XLSX` no enum `TransactionExportFormat`. Disponibilize o backend com suporte aos três formatos antes de publicar a nova opção no frontend.

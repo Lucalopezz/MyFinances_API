@@ -542,11 +542,13 @@ O gasto inclui apenas transações `EXPENSE` do mês, identificadas por `dateInd
 
 Todas as rotas de exportação são protegidas. O armazenamento é local e efêmero: arquivos podem desaparecer após reinicialização ou deploy.
 
-- `POST /exports/transactions`: aceita filtros opcionais `startDate`, `endDate`, `categoryId`, `type` e `format` (`PDF` ou `CSV`; padrão `PDF`). Retorna `202` com `id`, `status`, `progress` e `format`.
+- `POST /exports/transactions`: aceita filtros opcionais `startDate`, `endDate`, `categoryId`, `type` e `format` (`PDF`, `CSV` ou `XLSX`; padrão `PDF`). Retorna `202` com `id`, `status`, `progress` e `format`.
 - `GET /exports/status`: retorna o job mais recente do usuário, incluindo `format`, progresso, datas e eventual mensagem de erro.
-- `GET /exports/:id/download`: baixa o arquivo concluído do usuário com `application/pdf` ou `text/csv; charset=utf-8`, conforme o formato persistido. Retorna `404` se o arquivo não existir mais.
+- `GET /exports/:id/download`: baixa o arquivo concluído do usuário com `application/pdf`, `text/csv; charset=utf-8` ou `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, conforme o formato persistido. Retorna `404` se o arquivo não existir mais.
 
 CSV usa UTF-8 com BOM, cabeçalho `id,date,type,category,description,value`, datas ISO e números sem formatação localizada. Aspas, vírgulas e quebras de linha nos campos são escapadas. Os mesmos filtros e a leitura em lotes do PDF se aplicam ao CSV.
+
+XLSX gera uma planilha nativa com **Data, Descrição, Categoria, Tipo e Valor**. Datas e valores mantêm tipos nativos; categorias e tipos aparecem em português. Cabeçalho fixo, filtros e formatação monetária ficam no arquivo. A geração usa os mesmos filtros e lotes, e o download tem extensão `.xlsx`. Consulte os limites no [guia de exportação](transaction-exports.md).
 
 ---
 
@@ -775,7 +777,7 @@ Arquivamento impede novos lançamentos, novas associações de orçamento/despes
 
 Uma categoria explícita em `/categories/resolve` prevalece sobre todas as regras e também é validada. `POST /transactions` continua exigindo categoria explícita: o formulário oferece a sugestão com “Usar sugestão”. Nenhuma regra altera histórico ou edições automaticamente. O mesmo resolvedor é usado na prévia e na confirmação da importação de extratos.
 
-Transações, busca por código/nome, despesas fixas, orçamentos, dashboard e comparativos aceitam as referências personalizadas. Exportações filtram pelo mesmo identificador em `categoryId`; PDF mostra o nome atual, CSV preserva a coluna `category` com código/ID estável e o cabeçalho existente.
+Transações, busca por código/nome, despesas fixas, orçamentos, dashboard e comparativos aceitam as referências personalizadas. Exportações filtram pelo mesmo identificador em `categoryId`; PDF e XLSX mostram o nome atual, CSV preserva a coluna `category` com código/ID estável e o cabeçalho existente.
 
 Erros: `400` para categoria inexistente, de outro usuário, incompatível ou arquivada em novo uso; `404` para edição de categoria/regra não pertencente ao usuário; `401` sem autenticação. Respostas nunca incluem campos criptografados.
 

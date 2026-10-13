@@ -4,14 +4,17 @@ import { forwardRef, Module } from '@nestjs/common';
 import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { AuthModule } from '../auth/auth.module';
 import { AppModule } from '../app/app.module';
-import { TRANSACTION_EXPORT_QUEUE } from './exports.constants';
+import { TRANSACTION_EXPORT_QUEUE } from './constants/exports.constants';
 import { ExportsController } from './exports.controller';
-import { ExportsService } from './exports.service';
-import { TransactionExportProcessor } from './transaction-export.processor';
+import { ExportsService } from './services/exports.service';
+import { TransactionExportProcessor } from './processors/transaction-export.processor';
 import { TransactionPdfService } from './transaction-pdf.service';
-import { TransactionCsvService } from './transaction-csv.service';
+import { TransactionCsvService } from './generators/csv/transaction-csv.service';
+import { TransactionXlsxService } from './generators/xlsx/transaction-xlsx.service';
 import { TransactionExportsRepository } from './repositories/transaction-exports.repository';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { TransactionExportReaderService } from './services/transaction-export-reader.service';
+import { TransactionExportWriterFactory } from './services/transaction-export-writer.factory';
 
 @Module({
   imports: [
@@ -31,6 +34,9 @@ import { TransactionsModule } from '../transactions/transactions.module';
     TransactionExportProcessor,
     TransactionPdfService,
     TransactionCsvService,
+    TransactionXlsxService,
+    TransactionExportReaderService,
+    TransactionExportWriterFactory,
     FinancialDataEncryptionService,
   ],
 })

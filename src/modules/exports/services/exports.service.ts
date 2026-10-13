@@ -1,4 +1,4 @@
-import { CategoriesService } from '../categories/categories.service';
+import { CategoriesService } from '../../categories/categories.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   ConflictException,
@@ -17,10 +17,11 @@ import { join } from 'path';
 import {
   TRANSACTION_EXPORT_JOB,
   TRANSACTION_EXPORT_QUEUE,
-} from './exports.constants';
-import { CreateTransactionExportDto } from './dtos/create-transaction-export.dto';
-import { TransactionExportJob } from './transaction-export.types';
-import { TransactionExportsRepository } from './repositories/transaction-exports.repository';
+} from '../constants/exports.constants';
+import { CreateTransactionExportDto } from '../dtos/create-transaction-export.dto';
+import { TransactionExportJob } from '../types/transaction-export.types';
+import { TRANSACTION_EXPORT_FILE_TYPES } from '../constants/transaction-export.formats';
+import { TransactionExportsRepository } from '../repositories/transaction-exports.repository';
 
 @Injectable()
 export class ExportsService {
@@ -130,7 +131,7 @@ export class ExportsService {
     }
 
     const format = transactionExport.format ?? TransactionExportFormat.PDF;
-    const extension = format === TransactionExportFormat.CSV ? 'csv' : 'pdf';
+    const { extension, contentType } = TRANSACTION_EXPORT_FILE_TYPES[format];
     if (transactionExport.fileName !== `${id}.${extension}`) {
       throw new NotFoundException('Arquivo de exportação inválido.');
     }
@@ -150,10 +151,7 @@ export class ExportsService {
     return {
       filePath,
       fileName: transactionExport.fileName,
-      contentType:
-        format === TransactionExportFormat.CSV
-          ? 'text/csv; charset=utf-8'
-          : 'application/pdf',
+      contentType,
     };
   }
 

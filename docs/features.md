@@ -10,7 +10,7 @@ Atualizado em 03/10/2026. As funcionalidades previstas no escopo aprovado estão
 | Transações | Receitas e despesas, CRUD, busca global com cursor, filtros e totais; duplicação pelo formulário no frontend | [Rotas](routes.md#transactions) |
 | Categorias e regras | Categorias personalizadas, arquivamento/restauração, prioridades e sugestão por descrição | [Rotas](routes.md#categorias-personalizadas-e-regras) |
 | Importação | CSV/OFX com mapeamento, prévia, revisão de categorias/duplicatas e confirmação idempotente | [Guia](transaction-imports.md) |
-| Exportação | PDF/CSV assíncronos, acompanhamento e download autenticado | [Guia](transaction-exports.md) |
+| Exportação | PDF/CSV/XLSX assíncronos, acompanhamento e download autenticado | [Guia](transaction-exports.md) |
 | Dashboard e comparativos | Resumo mensal, indicadores, comparação de períodos e despesas por categoria | [Rotas](routes.md#dashboard) |
 | Orçamentos | Limites mensais por categoria, gasto realizado e valor restante | [Rotas](routes.md#budgets) |
 | Calendário | Agenda, receitas mensais/anuais, edição/pausa, confirmação de recebimento e projeção diária | [Guia](financial-calendar.md) |
