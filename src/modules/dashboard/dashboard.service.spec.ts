@@ -1,4 +1,10 @@
 import { DashboardMetrics } from './domain/dashboard-metrics';
+import { CalendarRepository } from '../calendar/repositories/calendar.repository';
+import { CalendarReceiptMapper } from '../calendar/mappers/calendar-receipt.mapper';
+import { RecurringIncomesService } from '../recurring-incomes/services/recurring-incomes.service';
+import { RecurringIncomesRepository } from '../recurring-incomes/repositories/recurring-incomes.repository';
+import { RecurringIncomeEncryptionMapper } from '../recurring-incomes/mappers/recurring-income-encryption.mapper';
+import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
 import { TransactionQueriesService } from '../transactions/services/transaction-queries.service';
 import { DashboardService } from './dashboard.service';
 import { CalendarService } from '../calendar/services/calendar.service';
@@ -199,5 +205,19 @@ function createCalendarService(
   categories: any,
   cards: any,
 ) {
-  return new CalendarService(prisma, encryption, categories, cards);
+  return new CalendarService(
+    new CalendarRepository(prisma),
+    new CalendarReceiptMapper(encryption),
+    new RecurringIncomesService(
+      new RecurringIncomesRepository(prisma),
+      new RecurringIncomeEncryptionMapper(encryption),
+      categories,
+    ),
+    cards,
+    new TransactionQueriesService(
+      categories,
+      new TransactionsRepository(prisma),
+      encryption,
+    ),
+  );
 }

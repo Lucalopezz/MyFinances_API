@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
-import { todayKey } from '../../calendar/domain/calendar-calculation';
+import { todayKey } from 'src/common/date/civil-date';
 import {
   expenseNotification,
   needsNotificationSync,

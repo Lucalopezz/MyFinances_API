@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CategoryReferenceSchema } from '../../categories/dto/category.dto';
-import { todayKey } from '../../calendar/domain/calendar-calculation';
+import { todayKey } from 'src/common/date/civil-date';
 
 export const RecurrenceTypeEnum = z.enum(['MONTHLY', 'YEARLY']);
 

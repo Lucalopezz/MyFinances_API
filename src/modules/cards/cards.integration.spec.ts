@@ -11,6 +11,12 @@ import { TransactionsRepository } from '../transactions/repositories/transaction
 import { todayKey } from 'src/common/date/civil-date';
 import { CardsService } from './cards.service';
 import { CalendarService } from '../calendar/services/calendar.service';
+import { CalendarRepository } from '../calendar/repositories/calendar.repository';
+import { CalendarReceiptMapper } from '../calendar/mappers/calendar-receipt.mapper';
+import { RecurringIncomesService } from '../recurring-incomes/services/recurring-incomes.service';
+import { RecurringIncomesRepository } from '../recurring-incomes/repositories/recurring-incomes.repository';
+import { RecurringIncomeEncryptionMapper } from '../recurring-incomes/mappers/recurring-income-encryption.mapper';
+import { TransactionQueriesService } from '../transactions/services/transaction-queries.service';
 import { CardsRepository } from './repositories/cards.repository';
 import { CardEncryptionMapper } from './mappers/card-encryption.mapper';
 import { CardsCatalogService } from './services/cards-catalog.service';
@@ -84,10 +90,21 @@ const execFileAsync = promisify(execFile);
         service,
       );
       calendar = new CalendarService(
-        prisma,
-        encryption as FinancialDataEncryptionService,
-        categories,
+        new CalendarRepository(prisma),
+        new CalendarReceiptMapper(encryption as FinancialDataEncryptionService),
+        new RecurringIncomesService(
+          new RecurringIncomesRepository(prisma),
+          new RecurringIncomeEncryptionMapper(
+            encryption as FinancialDataEncryptionService,
+          ),
+          categories,
+        ),
         service,
+        new TransactionQueriesService(
+          categories,
+          new TransactionsRepository(prisma),
+          encryption as FinancialDataEncryptionService,
+        ),
       );
     }, 60000);
     afterAll(async () => {

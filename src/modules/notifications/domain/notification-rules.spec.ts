@@ -3,7 +3,7 @@ import {
   expenseNotification,
   needsNotificationSync,
 } from './notification-rules';
-import { todayKey } from '../../calendar/domain/calendar-calculation';
+import { todayKey } from 'src/common/date/civil-date';
 
 describe('Regras de notificações por dia financeiro', () => {
   const expense = (due: string, isPaid = false) =>

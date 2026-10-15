@@ -14,8 +14,15 @@ import { CategoriesService } from '../categories/categories.service';
 import { CategoriesRepository } from '../categories/repositories/categories.repository';
 import { CalendarService } from './services/calendar.service';
 import { CardsService } from '../cards/cards.service';
+import { CalendarRepository } from './repositories/calendar.repository';
+import { CalendarReceiptMapper } from './mappers/calendar-receipt.mapper';
+import { RecurringIncomesService } from '../recurring-incomes/services/recurring-incomes.service';
+import { RecurringIncomesRepository } from '../recurring-incomes/repositories/recurring-incomes.repository';
+import { RecurringIncomeEncryptionMapper } from '../recurring-incomes/mappers/recurring-income-encryption.mapper';
+import { RecurringIncomesController } from '../recurring-incomes/recurring-incomes.controller';
+import { TransactionQueriesService } from '../transactions/services/transaction-queries.service';
 import { CalendarController } from './calendar.controller';
-import { todayKey } from './domain/calendar-calculation';
+import { todayKey } from 'src/common/date/civil-date';
 import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
 import { buildEncryptedTransactionData } from '../transactions/mappers/transaction-encryption.mapper';
 import { FixedExpensePaymentsRepository } from '../fixed-expenses/repositories/fixed-expense-payments.repository';
@@ -30,6 +37,7 @@ const execFileAsync = promisify(execFile);
   () => {
     let db: PrismaClient;
     let service: CalendarService;
+    let incomes: RecurringIncomesService;
     let app: INestApplication;
     let encryption: FinancialDataEncryptionService;
     let categories: CategoriesService;
@@ -74,9 +82,16 @@ const execFileAsync = promisify(execFile);
       await db.$connect();
       const jwt = new JwtService({ secret: 'calendar-test-only' });
       const module = await Test.createTestingModule({
-        controllers: [CalendarController],
+        controllers: [CalendarController, RecurringIncomesController],
         providers: [
           CalendarService,
+          CalendarRepository,
+          CalendarReceiptMapper,
+          RecurringIncomesService,
+          RecurringIncomesRepository,
+          RecurringIncomeEncryptionMapper,
+          TransactionQueriesService,
+          TransactionsRepository,
           { provide: CardsService, useValue: { listCards: async () => [] } },
           CategoriesService,
           CategoriesRepository,
@@ -90,6 +105,7 @@ const execFileAsync = promisify(execFile);
         ],
       }).compile();
       service = module.get(CalendarService);
+      incomes = module.get(RecurringIncomesService);
       encryption = module.get(FinancialDataEncryptionService);
       categories = module.get(CategoriesService);
       token = jwt.sign({ sub: owner });
@@ -111,7 +127,7 @@ const execFileAsync = promisify(execFile);
       await db.category.deleteMany();
     });
     it('encrypts schedules and creates no actual income merely by listing', async () => {
-      const row = await service.create(owner, income);
+      const row = await incomes.create(owner, income);
       expect(
         (await db.recurringIncome.findUnique({ where: { id: row.id } }))
           .encryptedData,
@@ -124,16 +140,16 @@ const execFileAsync = promisify(execFile);
       expect(await db.transaction.count()).toBe(0);
     });
     it('serializes concurrent confirmations and returns the same receipt on retry', async () => {
-      const row = await service.create(owner, income);
+      const row = await incomes.create(owner, income);
       const results = await Promise.all(
         Array.from({ length: 6 }, () =>
-          service.confirm(owner, row.id, start, { amount: 90, date: today }),
+          incomes.confirm(owner, row.id, start, { amount: 90, date: today }),
         ),
       );
       expect(new Set(results.map((r) => r.transactionId)).size).toBe(1);
       expect(await db.transaction.count()).toBe(1);
       expect(await db.calendarReceipt.count()).toBe(1);
-      const retry = await service.confirm(owner, row.id, start, {
+      const retry = await incomes.confirm(owner, row.id, start, {
         amount: 200,
         date: today,
       });
@@ -148,19 +164,19 @@ const execFileAsync = promisify(execFile);
       ).rejects.toThrow('vinculada');
     });
     it('isolates users, rejects invalid periods and protects archived or foreign categories', async () => {
-      const row = await service.create(owner, income);
+      const row = await incomes.create(owner, income);
       expect((await service.calendar(other, month)).events).toEqual([]);
       await expect(
-        service.confirm(other, row.id, start, { amount: 90, date: today }),
+        incomes.confirm(other, row.id, start, { amount: 90, date: today }),
       ).rejects.toThrow('não encontrada');
       await expect(
-        service.update(other, row.id, { revision: 0, paused: true }),
+        incomes.update(other, row.id, { revision: 0, paused: true }),
       ).rejects.toThrow('não encontrada');
       await expect(service.calendar(owner, '2200-01')).rejects.toThrow(
         '12 meses',
       );
       await expect(
-        service.confirm(owner, row.id, `${month}-02`, {
+        incomes.confirm(owner, row.id, `${month}-02`, {
           amount: 90,
           date: today,
         }),
@@ -170,20 +186,20 @@ const execFileAsync = promisify(execFile);
         other,
       );
       await expect(
-        service.create(owner, { ...income, category: category.id }),
+        incomes.create(owner, { ...income, category: category.id }),
       ).rejects.toThrow();
     });
     it('preserves confirmed history after edits and rejects stale revisions', async () => {
-      const row = await service.create(owner, income);
-      await service.confirm(owner, row.id, start, { amount: 95, date: today });
-      const current = (await service.list(owner))[0];
-      await service.update(owner, row.id, {
+      const row = await incomes.create(owner, income);
+      await incomes.confirm(owner, row.id, start, { amount: 95, date: today });
+      const current = (await incomes.list(owner))[0];
+      await incomes.update(owner, row.id, {
         revision: current.revision,
         amount: 200,
         paused: true,
       });
       await expect(
-        service.update(owner, row.id, {
+        incomes.update(owner, row.id, {
           revision: current.revision,
           amount: 300,
         }),
@@ -200,16 +216,16 @@ const execFileAsync = promisify(execFile);
       )
         .toISOString()
         .slice(0, 7);
-      const row = await service.create(owner, {
+      const row = await incomes.create(owner, {
         ...income,
         startDate: `${nextMonth}-05`,
       });
-      const receipt = await service.confirm(owner, row.id, `${nextMonth}-05`, {
+      const receipt = await incomes.confirm(owner, row.id, `${nextMonth}-05`, {
         amount: 105,
         date: today,
       });
-      const current = (await service.list(owner))[0];
-      await service.update(owner, row.id, {
+      const current = (await incomes.list(owner))[0];
+      await incomes.update(owner, row.id, {
         revision: current.revision,
         startDate: `${nextMonth}-15`,
         amount: 200,
@@ -221,7 +237,7 @@ const execFileAsync = promisify(execFile);
         dueDate: `${nextMonth}-05`,
         actualAmount: 105,
       });
-      const repeated = await service.confirm(owner, row.id, `${nextMonth}-15`, {
+      const repeated = await incomes.confirm(owner, row.id, `${nextMonth}-15`, {
         amount: 200,
         date: today,
       });
@@ -233,18 +249,18 @@ const execFileAsync = promisify(execFile);
         { name: 'Renda', type: 'INCOME', color: '#112233', icon: 'Tag' },
         owner,
       );
-      const row = await service.create(owner, {
+      const row = await incomes.create(owner, {
         ...income,
         category: category.id,
       });
       await categories.update(category.id, { archived: true }, owner);
       await expect(
-        service.confirm(owner, row.id, start, { amount: 100, date: today }),
+        incomes.confirm(owner, row.id, start, { amount: 100, date: today }),
       ).rejects.toThrow('arquivada');
       expect(await db.transaction.count()).toBe(0);
     });
     it('rolls back transactions if receipt persistence fails', async () => {
-      const row = await service.create(owner, income);
+      const row = await incomes.create(owner, income);
       const original = db.$transaction.bind(db);
       const spy = jest.spyOn(db, '$transaction').mockImplementationOnce((async (
         callback,
@@ -261,12 +277,12 @@ const execFileAsync = promisify(execFile);
           return callback(proxy);
         })) as never);
       await expect(
-        service.confirm(owner, row.id, start, { amount: 100, date: today }),
+        incomes.confirm(owner, row.id, start, { amount: 100, date: today }),
       ).rejects.toThrow('receipt unavailable');
       spy.mockRestore();
       expect(await db.transaction.count()).toBe(0);
       expect(await db.calendarReceipt.count()).toBe(0);
-      await service.confirm(owner, row.id, start, { amount: 100, date: today });
+      await incomes.confirm(owner, row.id, start, { amount: 100, date: today });
       expect(await db.transaction.count()).toBe(1);
     });
     it('replaces paid expenses with actuals, preserves paid cycles and unmarks atomically', async () => {

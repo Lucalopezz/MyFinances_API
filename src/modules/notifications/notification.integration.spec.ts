@@ -18,7 +18,7 @@ import { FixedExpenseRecurrenceService } from '../fixed-expenses/services/fixed-
 import { FixedExpensesRepository } from '../fixed-expenses/repositories/fixed-expenses.repository';
 import { FixedExpensePaymentsRepository } from '../fixed-expenses/repositories/fixed-expense-payments.repository';
 import { FixedExpenseRawFieldsService } from '../fixed-expenses/services/fixed-expense-raw-fields.service';
-import { todayKey } from '../calendar/domain/calendar-calculation';
+import { todayKey } from 'src/common/date/civil-date';
 
 const execFileAsync = promisify(execFile);
 
