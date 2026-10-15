@@ -5,6 +5,13 @@ import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
 import { TRANSACTION_EXPORT_QUEUE } from './modules/transactions/exports/constants/exports.constants';
 import { DashboardService } from './modules/dashboard/dashboard.service';
 import { FixedExpensePaymentService } from './modules/fixed-expenses/services/fixed-expense-payment.service';
+import { ModulesContainer } from '@nestjs/core';
+import { FinancialDataEncryptionService } from './infrastructure/encryption/financial-data-encryption.service';
+import { FixedExpensesRepository } from './modules/fixed-expenses/repositories/fixed-expenses.repository';
+import { FixedExpenseRecurrenceService } from './modules/fixed-expenses/services/fixed-expense-recurrence.service';
+import { NotificationSyncService } from './modules/notifications/services/notification-sync.service';
+import { TransactionQueriesService } from './modules/transactions/services/transaction-queries.service';
+import { RecurringIncomesService } from './modules/recurring-incomes/services/recurring-incomes.service';
 
 // Os novos vínculos entre módulos precisam funcionar no Nest real, além dos
 // testes de domínio que instanciam serviços diretamente. Banco e fila são
@@ -20,6 +27,29 @@ describe('Integração dos módulos financeiros', () => {
     try {
       expect(module.get(DashboardService)).toBeDefined();
       expect(module.get(FixedExpensePaymentService)).toBeDefined();
+      expect(module.get(TransactionQueriesService)).toBeDefined();
+      expect(module.get(RecurringIncomesService)).toBeDefined();
+
+      // Registrar providers compartilhados novamente criaria instâncias e
+      // ciclos próprios; a composição real deve ter um único módulo proprietário.
+      const modules = [...module.get(ModulesContainer).values()];
+      for (const provider of [
+        PrismaService,
+        FinancialDataEncryptionService,
+        FixedExpensesRepository,
+        FixedExpenseRecurrenceService,
+        NotificationSyncService,
+      ]) {
+        expect(
+          modules.filter((entry) => entry.providers.has(provider)),
+        ).toHaveLength(1);
+      }
+      const app = modules.find((entry) => entry.metatype === AppModule)!;
+      // O wrapper do teste importa AppModule; os módulos da aplicação não podem
+      // depender de volta da raiz para obter recursos compartilhados.
+      expect([...app.imports].some((entry) => entry.imports.has(app))).toBe(
+        false,
+      );
     } finally {
       await module.close();
     }

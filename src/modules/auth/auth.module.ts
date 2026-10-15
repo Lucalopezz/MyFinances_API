@@ -22,7 +22,6 @@ import { AuthUsersRepository } from './repositories/auth-users.repository';
   exports: [HashingService, JwtModule, ConfigModule],
   imports: [
     PrismaModule,
-
     ConfigModule.forFeature(jwtConfig),
     JwtModule.registerAsync(jwtConfig.asProvider()),
   ],
