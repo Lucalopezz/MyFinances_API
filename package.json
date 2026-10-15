@@ -20,6 +20,7 @@
     "test": "jest --config tests/jest-unit.config.cjs",
     "test:watch": "npm test -- --watch",
     "test:cov": "npm test -- --runInBand --coverage",
+    "test:cov:all": "jest --config tests/jest-coverage.config.cjs --runInBand",
     "test:debug": "node --inspect-brk node_modules/jest/bin/jest.js --config tests/jest-unit.config.cjs --runInBand",
     "test:e2e": "jest --config tests/jest-e2e.config.cjs --runInBand",
     "test:calendar:integration": "npm run test:integration -- --runTestsByPath tests/integration/modules/calendar/calendar.integration.spec.ts",

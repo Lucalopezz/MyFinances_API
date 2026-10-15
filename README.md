@@ -92,6 +92,7 @@ Para testar os dois projetos com banco Docker e uma conta populada, siga o [guia
 | `npm run test:integration` | Integrações com MongoDB local descartável |
 | `npm run test:e2e` | Fluxos HTTP da API |
 | `npm run test:cov` | Cobertura dos testes unitários |
+| `npm run test:cov:all` | Cobertura consolidada de unitários, integrações e E2E |
 | `npm run test:all` | Unitários, integrações e E2E em sequência |
 | `npm run test:calendar:integration` | Integração do calendário em banco descartável |
 | `npm run test:imports:integration` | Integração da importação em banco descartável |
