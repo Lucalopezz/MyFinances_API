@@ -1,5 +1,9 @@
 import { normalizeDescription } from 'src/common/text/normalize-description';
-import { DuplicateCandidate, ImportPayload, ImportRow } from './import.dto';
+import {
+  DuplicateCandidate,
+  ImportPayload,
+  ImportRow,
+} from '../types/import.types';
 
 export function fingerprint(
   row: Pick<ImportRow, 'date' | 'type' | 'value' | 'description'>,

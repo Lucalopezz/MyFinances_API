@@ -1,3 +1,4 @@
+import { TransactionQueriesService } from '../../services/transaction-queries.service';
 import { mkdtemp, readFile, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -102,8 +103,11 @@ describe('TransactionExportProcessor', () => {
           repository as never,
           config as never,
           new TransactionExportReaderService(
-            transactionsRepository as never,
-            { decrypt: (value: string) => JSON.parse(value) } as never,
+            new TransactionQueriesService(
+              {} as never,
+              transactionsRepository as never,
+              { decrypt: (value: string) => JSON.parse(value) } as never,
+            ),
             config as never,
           ),
           new TransactionExportWriterFactory(

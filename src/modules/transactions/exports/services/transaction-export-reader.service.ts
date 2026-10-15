@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
-import { TransactionsRepository } from '../../repositories/transactions.repository';
-import { decryptTransaction } from '../../mappers/transaction-encryption.mapper';
+import { TransactionQueriesService } from '../../services/transaction-queries.service';
 import { CreateTransactionExportDto } from '../dto/create-transaction-export.dto';
 import { TransactionExportWriter } from '../types/transaction-export-writer.types';
 
@@ -11,8 +9,7 @@ export class TransactionExportReaderService {
   private readonly batchSize: number;
 
   constructor(
-    private readonly transactions: TransactionsRepository,
-    private readonly encryption: FinancialDataEncryptionService,
+    private readonly transactions: TransactionQueriesService,
     config: ConfigService,
   ) {
     const size = Number(
@@ -54,7 +51,7 @@ export class TransactionExportReaderService {
       );
       if (batch.length === 0) break;
       for (const transaction of batch) {
-        const decrypted = decryptTransaction(transaction, this.encryption);
+        const decrypted = transaction;
         if (!filters?.categoryId || decrypted.category === filters.categoryId) {
           await writer.addTransaction(decrypted);
         }

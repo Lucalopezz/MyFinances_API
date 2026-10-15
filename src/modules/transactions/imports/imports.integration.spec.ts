@@ -1,4 +1,8 @@
 import { CategoryRulesService } from '../../categories/rules/category-rules.service';
+import { TransactionQueriesService } from '../services/transaction-queries.service';
+import { ImportHistoryService } from './services/import-history.service';
+import { ImportConfirmationService } from './services/import-confirmation.service';
+import { ImportCleanupService } from './services/import-cleanup.service';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
@@ -18,10 +22,14 @@ import {
   decryptTransaction,
   EncryptedTransactionRecord,
 } from '../mappers/transaction-encryption.mapper';
-import { ImportsRepository } from './imports.repository';
-import { ImportsService } from './imports.service';
+import { ImportsRepository } from './repositories/imports.repository';
+import { ImportsService } from './services/imports.service';
 import { ImportsController } from './imports.controller';
-import { ConfirmImport, IMPORT_MAX_BYTES, ImportOptions } from './import.dto';
+import {
+  ConfirmImport,
+  IMPORT_MAX_BYTES,
+  ImportOptions,
+} from './dto/import.dto';
 
 const execFileAsync = promisify(execFile);
 
@@ -99,6 +107,10 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
         controllers: [ImportsController],
         providers: [
           ImportsService,
+          ImportHistoryService,
+          ImportConfirmationService,
+          ImportCleanupService,
+          TransactionQueriesService,
           ImportsRepository,
           TransactionsRepository,
           CategoriesService,

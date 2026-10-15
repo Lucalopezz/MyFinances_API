@@ -42,7 +42,7 @@ exports/
     └── xlsx/                      # Documento, configuração de abas e tipos do writer
 ```
 
-O processador controla as transições de status e só anuncia `COMPLETED` depois de confirmar a gravação. `TransactionExportReaderService` concentra paginação, descriptografia e filtro de categoria. `TransactionExportWriterFactory` escolhe o gerador e oferece as operações de adicionar lançamento, finalizar e cancelar; o leitor não precisa conhecer o documento específico de cada formato.
+O processador controla as transições de status e só anuncia `COMPLETED` depois de confirmar a gravação. `TransactionExportReaderService` concentra paginação e filtro de categoria; `TransactionQueriesService` entrega os lotes descriptografados. `TransactionExportWriterFactory` escolhe o gerador e oferece as operações de adicionar lançamento, finalizar e cancelar; o leitor não precisa conhecer o documento específico de cada formato.
 
 No PDF, o serviço mantém os totais e o ciclo do documento; a tabela mede e divide as células; o layout desenha identificação, resumo e rodapé. No XLSX, a configuração de abas e os tipos ficam separados da escrita das linhas. Os testes permanecem junto à implementação que verificam; casos de falha do processador têm arquivo próprio.
 

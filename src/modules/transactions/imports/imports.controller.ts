@@ -19,8 +19,8 @@ import {
   ConfirmImportSchema,
   IMPORT_MAX_BYTES,
   ImportOptionsSchema,
-} from './import.dto';
-import { ImportsService } from './imports.service';
+} from './dto/import.dto';
+import { ImportsService } from './services/imports.service';
 
 @Controller('transaction-imports')
 @UseGuards(AuthTokenGuard)

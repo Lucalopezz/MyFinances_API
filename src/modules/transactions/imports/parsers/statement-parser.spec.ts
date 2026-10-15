@@ -1,9 +1,9 @@
+import { ImportOptions } from '../types/import.types';
 import {
   ConfirmImportSchema,
   IMPORT_MAX_BYTES,
-  ImportOptions,
   ImportOptionsSchema,
-} from './import.dto';
+} from '../dto/import.dto';
 import { parseMoney, parseStatement } from './statement-parser';
 
 export const csvOptions: ImportOptions = {

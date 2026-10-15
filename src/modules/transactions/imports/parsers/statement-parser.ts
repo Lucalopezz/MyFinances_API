@@ -1,15 +1,15 @@
-import { BadRequestException } from '@nestjs/common';
+/** Erro de formato convertido em HTTP somente na fronteira de aplicação. */
+export class StatementParseError extends Error {}
+
 import { TextDecoder } from 'util';
 import {
   IMPORT_MAX_BYTES,
   IMPORT_MAX_ROWS,
-  ImportOptions,
-  ImportPayload,
-  ImportRow,
-} from './import.dto';
+} from '../constants/import.constants';
+import { ImportOptions, ImportPayload, ImportRow } from '../types/import.types';
 
 function invalid(message: string): never {
-  throw new BadRequestException(message);
+  throw new StatementParseError(message);
 }
 
 export function parseStatement(

@@ -1,9 +1,17 @@
+import { IMPORT_MAX_ROWS } from '../constants/import.constants';
+export {
+  IMPORT_MAX_BYTES,
+  IMPORT_MAX_ROWS,
+  IMPORT_TTL_MS,
+} from '../constants/import.constants';
+export type {
+  ImportRow,
+  ImportPayload,
+  DuplicateCandidate,
+} from '../types/import.types';
 import { z } from 'zod';
-import { CategoryReferenceSchema } from '../../categories/dto/category.dto';
+import { CategoryReferenceSchema } from '../../../categories/dto/category.dto';
 
-export const IMPORT_MAX_BYTES = 2 * 1024 * 1024;
-export const IMPORT_MAX_ROWS = 1000;
-export const IMPORT_TTL_MS = 24 * 60 * 60 * 1000;
 const column = z.number().int().min(0).max(99);
 export const ImportOptionsSchema = z
   .object({
@@ -68,21 +76,3 @@ export const ConfirmImportSchema = z
   .strict();
 export type ImportOptions = z.infer<typeof ImportOptionsSchema>;
 export type ConfirmImport = z.infer<typeof ConfirmImportSchema>;
-
-export type ImportRow = {
-  rowId: number;
-  date?: string;
-  description?: string;
-  value?: number;
-  type?: 'INCOME' | 'EXPENSE';
-  category?: string;
-  externalId?: string;
-  errors: string[];
-};
-export type ImportPayload = { source: string; rows: ImportRow[] };
-export type DuplicateCandidate = {
-  kind: 'FILE' | 'HISTORY';
-  reason: 'EXTERNAL_ID' | 'FINGERPRINT';
-  rowId?: number;
-  transactionId?: string;
-};

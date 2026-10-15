@@ -1,3 +1,4 @@
+import { TransactionQueriesService } from '../../services/transaction-queries.service';
 import { access, mkdir, mkdtemp, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -62,8 +63,11 @@ describe('TransactionExportProcessor failure cleanup', () => {
           repository as never,
           config as never,
           new TransactionExportReaderService(
-            transactions as never,
-            { decrypt: (value: string) => JSON.parse(value) } as never,
+            new TransactionQueriesService(
+              {} as never,
+              transactions as never,
+              { decrypt: (value: string) => JSON.parse(value) } as never,
+            ),
             config as never,
           ),
           new TransactionExportWriterFactory(

@@ -1,5 +1,4 @@
 import { PrismaModule } from 'src/infrastructure/prisma/prisma.module';
-import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { CategoriesModule } from '../../categories/categories.module';
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
@@ -19,9 +18,7 @@ import { TransactionExportWriterFactory } from './services/transaction-export-wr
 @Module({
   imports: [
     PrismaModule,
-    EncryptionModule,
     CategoriesModule,
-
     AuthModule,
     TransactionsModule,
     // Registra a fila compartilhada pelo serviço que agenda os jobs e pelo worker que os executa.

@@ -1,8 +1,16 @@
 import { BadRequestException } from '@nestjs/common';
-import { CategoriesService } from '../../categories/categories.service';
-import { DuplicateCandidate, ImportPayload, ImportRow } from './import.dto';
-import { externalKey, fileDuplicates, fingerprint } from './import-duplicates';
-import { parseCalendarDate } from './statement-parser';
+import { CategoriesService } from '../../../categories/categories.service';
+import {
+  DuplicateCandidate,
+  ImportPayload,
+  ImportRow,
+} from '../dto/import.dto';
+import {
+  externalKey,
+  fileDuplicates,
+  fingerprint,
+} from '../domain/import-duplicates';
+import { parseCalendarDate } from '../parsers/statement-parser';
 
 type Resolver = Awaited<ReturnType<CategoriesService['createResolver']>>;
 export type ImportHistory = {

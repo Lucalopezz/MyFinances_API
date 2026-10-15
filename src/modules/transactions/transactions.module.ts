@@ -15,7 +15,7 @@ import { TransactionsRepository } from './repositories/transactions.repository';
     TransactionsRepository,
     TransactionQueriesService,
   ],
-  exports: [TransactionsRepository, TransactionQueriesService],
+  exports: [TransactionQueriesService],
   imports: [PrismaModule, EncryptionModule, CategoriesModule, AuthModule],
 })
 export class TransactionsModule {}
