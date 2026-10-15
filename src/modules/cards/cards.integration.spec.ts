@@ -8,9 +8,17 @@ import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
 import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 import { CategoriesService } from '../categories/categories.service';
 import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
-import { todayKey } from '../calendar/domain/calendar-calculation';
+import { todayKey } from 'src/common/date/civil-date';
 import { CardsService } from './cards.service';
 import { CalendarService } from '../calendar/services/calendar.service';
+import { CardsRepository } from './repositories/cards.repository';
+import { CardEncryptionMapper } from './mappers/card-encryption.mapper';
+import { CardsCatalogService } from './services/cards-catalog.service';
+import { CardPurchasesService } from './services/card-purchases.service';
+import { CardInvoicesService } from './services/card-invoices.service';
+import { FixedExpensePaymentService } from '../fixed-expenses/services/fixed-expense-payment.service';
+import { FixedExpensePaymentsRepository } from '../fixed-expenses/repositories/fixed-expense-payments.repository';
+import { FixedExpenseRawFieldsService } from '../fixed-expenses/services/fixed-expense-raw-fields.service';
 
 const execFileAsync = promisify(execFile);
 
@@ -19,6 +27,8 @@ const execFileAsync = promisify(execFile);
   () => {
     let db: PrismaClient;
     let service: CardsService;
+    let fixedExpensePayments: FixedExpensePaymentService;
+    let calendar: CalendarService;
     const owner = '64f000000000000000000001';
     const other = '64f000000000000000000002';
     const encryption = {
@@ -50,12 +60,34 @@ const execFileAsync = promisify(execFile);
       );
       db = new PrismaClient({ datasourceUrl: url.toString() });
       await db.$connect();
-      service = new CardsService(
-        db as unknown as PrismaService,
+      const prisma = db as unknown as PrismaService;
+      const categories = {
+        resolveReference: async () => undefined,
+      } as unknown as CategoriesService;
+      const repository = new CardsRepository(prisma);
+      const mapper = new CardEncryptionMapper(
         encryption as FinancialDataEncryptionService,
-        {
-          resolveReference: async () => undefined,
-        } as unknown as CategoriesService,
+      );
+      const catalog = new CardsCatalogService(repository, mapper);
+      service = new CardsService(
+        catalog,
+        new CardPurchasesService(repository, mapper, categories),
+        new CardInvoicesService(repository, mapper, catalog),
+      );
+      fixedExpensePayments = new FixedExpensePaymentService(
+        categories,
+        new FixedExpensePaymentsRepository(
+          prisma,
+          new FixedExpenseRawFieldsService(prisma),
+        ),
+        encryption as FinancialDataEncryptionService,
+        service,
+      );
+      calendar = new CalendarService(
+        prisma,
+        encryption as FinancialDataEncryptionService,
+        categories,
+        service,
       );
     }, 60000);
     afterAll(async () => {
@@ -174,12 +206,6 @@ const execFileAsync = promisify(execFile);
       await expect(
         repo.deleteOwned(payment.transactionIds[0], owner),
       ).rejects.toThrow('vinculada');
-      const calendar = new CalendarService(
-        db as unknown as PrismaService,
-        encryption as FinancialDataEncryptionService,
-        {} as CategoriesService,
-        service,
-      );
       const projection = await calendar.calendar(owner, todayKey().slice(0, 7));
       expect(
         projection.overdue.filter((event) => event.sourceId === card.id),
@@ -254,17 +280,11 @@ const execFileAsync = promisify(execFile);
           cardInstallments: 12,
         },
       });
-      await service.chargeFixedExpense(owner, expense.id);
-      await service.chargeFixedExpense(owner, expense.id);
+      await fixedExpensePayments.chargeCardExpense(owner, expense.id);
+      await fixedExpensePayments.chargeCardExpense(owner, expense.id);
       expect(await db.cardPurchase.count()).toBe(1);
       expect(await db.cardInstallment.count()).toBe(12);
       expect(await db.transaction.count()).toBe(0);
-      const calendar = new CalendarService(
-        db as unknown as PrismaService,
-        encryption as FinancialDataEncryptionService,
-        {} as CategoriesService,
-        service,
-      );
       const upcomingMonth = (await service.detail(owner, card.id)).invoices[0]
         .cycle;
       const before = await calendar.calendar(owner, upcomingMonth);
@@ -283,7 +303,7 @@ const execFileAsync = promisify(execFile);
       // Após estornar, a projeção volta às parcelas previstas, sem uma saída anual inteira.
       const planned = await calendar.calendar(owner, upcomingMonth);
       expect(planned.events[0].amount).toBe(100);
-      await service.chargeFixedExpense(owner, expense.id);
+      await fixedExpensePayments.chargeCardExpense(owner, expense.id);
       const nextYear = new Date(expense.dueDate);
       nextYear.setUTCFullYear(nextYear.getUTCFullYear() + 1);
       await new FixedExpensesRepository(
@@ -319,13 +339,100 @@ const execFileAsync = promisify(execFile);
         },
       });
       await expect(
-        service.chargeFixedExpense(owner, expense.id),
+        fixedExpensePayments.chargeCardExpense(owner, expense.id),
       ).rejects.toThrow('Limite');
       expect(
         (await db.fixedExpense.findUniqueOrThrow({ where: { id: expense.id } }))
           .isPaid,
       ).toBe(false);
       expect(await db.cardPurchase.count()).toBe(0);
+    });
+    it('does not reopen a renewed expense when an older purchase is refunded', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Renovações',
+        limit: 500,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 0,
+      });
+      const expense = await db.fixedExpense.create({
+        data: {
+          userId: owner,
+          name: 'Plano anual',
+          amount: 1200,
+          category: 'OTHER',
+          dueDate: new Date(`${todayKey()}T12:00:00Z`),
+          recurrence: 'YEARLY',
+          cardId: card.id,
+          cardInstallments: 12,
+        },
+      });
+      const first = await fixedExpensePayments.chargeCardExpense(
+        owner,
+        expense.id,
+      );
+      const nextDueDate = new Date(expense.dueDate);
+      nextDueDate.setUTCFullYear(nextDueDate.getUTCFullYear() + 1);
+      await new FixedExpensesRepository(
+        db as unknown as PrismaService,
+        encryption as FinancialDataEncryptionService,
+      ).refreshCycle(expense.id, nextDueDate, expense.dueDate);
+      const renewal = await fixedExpensePayments.chargeCardExpense(
+        owner,
+        expense.id,
+      );
+      // A compra original conserva sua competência; a renovação tem outro recibo.
+      await service.refundPurchase(owner, card.id, first.paidCardPurchaseId!);
+      expect(
+        await db.fixedExpense.findUniqueOrThrow({ where: { id: expense.id } }),
+      ).toMatchObject({
+        isPaid: true,
+        dueDate: nextDueDate,
+        paidCardPurchaseId: renewal.paidCardPurchaseId,
+      });
+      expect(
+        await db.cardInstallment.count({
+          where: { purchaseId: renewal.paidCardPurchaseId! },
+        }),
+      ).toBe(12);
+    });
+    it('contracts a fixed expense once when confirmations run concurrently', async () => {
+      const card = await service.createCard(owner, {
+        name: 'Concorrência da contratação',
+        limit: 500,
+        closingDay: 5,
+        dueDay: 12,
+        annualFee: 0,
+      });
+      const expense = await db.fixedExpense.create({
+        data: {
+          userId: owner,
+          name: 'Plano',
+          amount: 1200,
+          category: 'OTHER',
+          dueDate: new Date(`${todayKey()}T12:00:00Z`),
+          recurrence: 'YEARLY',
+          cardId: card.id,
+          cardInstallments: 12,
+        },
+      });
+      const attempts = await Promise.allSettled(
+        Array.from({ length: 3 }, () =>
+          fixedExpensePayments.chargeCardExpense(owner, expense.id),
+        ),
+      );
+      expect(attempts.some((attempt) => attempt.status === 'fulfilled')).toBe(
+        true,
+      );
+      expect(
+        await db.cardPurchase.count({ where: { fixedExpenseId: expense.id } }),
+      ).toBe(1);
+      expect(await db.cardInstallment.count()).toBe(12);
+      expect(await db.transaction.count()).toBe(0);
+      expect(
+        (await db.fixedExpense.findUniqueOrThrow({ where: { id: expense.id } }))
+          .paidCardPurchaseId,
+      ).toBeTruthy();
     });
     it('charges the annual fee once and never settles a statement twice under concurrent calls', async () => {
       const card = await service.createCard(owner, {

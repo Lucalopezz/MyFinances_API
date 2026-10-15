@@ -1,4 +1,4 @@
-import { todayKey } from '../../calendar/domain/calendar-calculation';
+import { todayKey } from 'src/common/date/civil-date';
 import { CategoriesService } from '../../categories/categories.service';
 import { CardsService } from '../../cards/cards.service';
 import { Injectable, BadRequestException } from '@nestjs/common';
@@ -23,7 +23,7 @@ export class FixedExpensePaymentService {
 
     // Registrar no cartão cria compromisso; a despesa realizada nasce ao pagar a fatura.
     if (expenseData.cardId && this.cards)
-      return this.cards.chargeFixedExpense(userId, expenseData.id);
+      return this.chargeCardExpense(userId, expenseData.id);
 
     await this.categories.resolveReference(
       expenseData.category,
@@ -64,6 +64,31 @@ export class FixedExpensePaymentService {
           transactionId,
         }),
     );
+  }
+
+  /** Coordena a contratação recorrente: compra, parcelas e competência confirmam juntas. */
+  async chargeCardExpense(userId: string, expenseId: string) {
+    return this.repository.transaction(async (tx) => {
+      const expense = await this.repository.findExpense(tx, userId, expenseId);
+      if (!expense?.cardId || !this.cards)
+        throw new BadRequestException('Selecione um cartão para esta despesa.');
+      if (expense.isPaid) return expense;
+      await this.repository.claimCardCharge(tx, userId, expense);
+      const purchase = await this.cards.createPurchase(
+        userId,
+        expense.cardId,
+        {
+          description: `Despesa fixa: ${expense.name}`,
+          amount: expense.amount,
+          date: todayKey(),
+          category: expense.category,
+          installments: expense.cardInstallments ?? 1,
+        },
+        tx,
+      );
+      // O contexto tx atravessa CardsService: falha de limite desfaz também o claim.
+      return this.repository.linkCardCharge(tx, userId, expense, purchase.id);
+    });
   }
 
   async unmarkAsPaid(expenseData: FixedExpense, userId: string) {

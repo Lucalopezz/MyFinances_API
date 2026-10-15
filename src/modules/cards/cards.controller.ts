@@ -12,6 +12,7 @@ import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
 import { CardsService } from './cards.service';
+import { NewCard, NewPurchase } from './types/cards.types';
 import {
   cardSchema,
   cycleSchema,
@@ -28,7 +29,7 @@ export class CardsController {
   }
   @Post() create(
     @User('sub') userId: string,
-    @Body(new ZodValidationPipe(cardSchema)) input: z.infer<typeof cardSchema>,
+    @Body(new ZodValidationPipe(cardSchema)) input: NewCard,
   ) {
     return this.service.createCard(userId, input);
   }
@@ -42,7 +43,7 @@ export class CardsController {
     @User('sub') userId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(purchaseSchema))
-    input: z.infer<typeof purchaseSchema>,
+    input: NewPurchase,
   ) {
     return this.service.createPurchase(userId, id, input);
   }

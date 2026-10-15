@@ -14,6 +14,54 @@ export class FixedExpensePaymentsRepository {
     return this.rawFieldsService.getPaidTransactionId(id);
   }
 
+  /** Permite compor a contratação no cartão sem abrir um segundo commit financeiro. */
+  transaction<T>(callback: (tx: Prisma.TransactionClient) => Promise<T>) {
+    return this.runPaymentTransaction(callback);
+  }
+
+  findExpense(tx: Prisma.TransactionClient, userId: string, id: string) {
+    return tx.fixedExpense.findFirst({ where: { id, userId } });
+  }
+
+  /** Só uma chamada pode contratar esta competência, inclusive em abas concorrentes. */
+  async claimCardCharge(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    expense: FixedExpense,
+  ) {
+    const claimed = await tx.fixedExpense.updateMany({
+      where: {
+        id: expense.id,
+        userId,
+        dueDate: expense.dueDate,
+        isPaid: false,
+      },
+      data: { isPaid: true },
+    });
+    if (!claimed.count)
+      throw new ConflictException('A despesa mudou. Atualize a página.');
+  }
+
+  /** Guarda os dois lados do vínculo na mesma transação que criou compra e parcelas. */
+  async linkCardCharge(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    expense: FixedExpense,
+    purchaseId: string,
+  ) {
+    await tx.cardPurchase.update({
+      where: { id: purchaseId, userId },
+      data: {
+        fixedExpenseId: expense.id,
+        fixedExpenseDueDate: expense.dueDate,
+      },
+    });
+    return tx.fixedExpense.update({
+      where: { id: expense.id, userId },
+      data: { paidAt: new Date(), paidCardPurchaseId: purchaseId },
+    });
+  }
+
   markPaid(
     expenseData: FixedExpense,
     userId: string,

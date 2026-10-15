@@ -1,3 +1,4 @@
+/** Distribui os centavos restantes nas primeiras parcelas, preservando exatamente o total. */
 export function splitInstallments(totalCents: number, count: number): number[] {
   if (
     !Number.isSafeInteger(totalCents) ||
@@ -14,6 +15,7 @@ export function splitInstallments(totalCents: number, count: number): number[] {
   );
 }
 
+/** Avança por mês mantendo a âncora original dos dias 29 a 31 em cada ciclo. */
 function monthOffset(month: string, offset: number) {
   const [year, number] = month.split('-').map(Number);
   return new Date(Date.UTC(year, number - 1 + offset, 1))
@@ -21,12 +23,14 @@ function monthOffset(month: string, offset: number) {
     .slice(0, 7);
 }
 
+/** Ajusta só o mês consultado; fevereiro não altera a âncora dos meses seguintes. */
 function dayInMonth(month: string, day: number) {
   const [year, number] = month.split('-').map(Number);
   const last = new Date(Date.UTC(year, number, 0)).getUTCDate();
   return `${month}-${String(Math.min(day, last)).padStart(2, '0')}`;
 }
 export const dueDateForCycle = dayInMonth;
+/** Quando vencimento antecede o fechamento, a competência fecha no mês anterior. */
 export function closingDateForCycle(
   cycle: string,
   closingDay: number,
@@ -38,6 +42,7 @@ export function closingDateForCycle(
   );
 }
 
+/** Compras no próprio dia do fechamento entram no ciclo seguinte. */
 export function invoiceForPurchase(
   purchaseDate: string,
   closingDay: number,
@@ -56,6 +61,7 @@ export function invoiceForPurchase(
   return { cycle: dueMonth, dueDate: dayInMonth(dueMonth, dueDay) };
 }
 
+/** A anuidade só se repete no mês de aniversário a partir da primeira competência. */
 export function annualFeeForCycle(
   cycle: string,
   firstCycle: string,

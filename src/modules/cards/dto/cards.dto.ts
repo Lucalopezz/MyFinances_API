@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { dateSchema } from '../../calendar/dto/calendar.dto';
+import { dateSchema } from 'src/common/date/civil-date.schema';
 import { CategoryReferenceSchema } from '../../categories/dto/category.dto';
 
 const money = z.number().finite().positive().max(999999999).multipleOf(0.01);
