@@ -88,12 +88,16 @@ Para testar os dois projetos com banco Docker e uma conta populada, siga o [guia
 | `npm run start:dev` | Desenvolvimento com recarga |
 | `npm run build` | Build de produção |
 | `npm run start:prod` | Execução da build |
-| `npm test -- --runInBand` | Suítes de testes; integrações dependem de configuração própria |
+| `npm run test:unit` | Testes unitários, sem serviços externos |
+| `npm run test:integration` | Integrações com MongoDB local descartável |
+| `npm run test:e2e` | Fluxos HTTP da API |
+| `npm run test:cov` | Cobertura dos testes unitários |
+| `npm run test:all` | Unitários, integrações e E2E em sequência |
 | `npm run test:calendar:integration` | Integração do calendário em banco descartável |
 | `npm run test:imports:integration` | Integração da importação em banco descartável |
 | `npm run test:wishlist:integration` | Integração de reservas, concorrência e conclusão de metas |
 
-As variáveis e os limites dos testes de integração estão nos respectivos guias de domínio.
+Consulte o [guia de testes](docs/testing.md) para preparar o ambiente, escolher as suítes e consultar a cobertura.
 
 ## Estrutura
 
@@ -107,6 +111,6 @@ As variáveis e os limites dos testes de integração estão nos respectivos gui
 ├── prisma/           # Schema do banco
 ├── docs/             # Referências técnicas, guias e histórico
 ├── scripts/          # Utilitários de desenvolvimento
-├── test/             # Configuração e testes E2E
+├── tests/            # Unitários, integração, E2E e auxiliares de teste
 └── package.json
 ```

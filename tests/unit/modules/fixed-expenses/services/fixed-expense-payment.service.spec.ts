@@ -1,0 +1,97 @@
+import { FixedExpensePaymentService } from 'src/modules/fixed-expenses/services/fixed-expense-payment.service';
+import { FixedExpensePaymentsRepository } from 'src/modules/fixed-expenses/repositories/fixed-expense-payments.repository';
+
+describe('FixedExpensePaymentService', () => {
+  it('creates and removes only the linked user transaction inside database transactions', async () => {
+    const userId = '64f000000000000000000001';
+    const expenseId = '64f000000000000000000030';
+    const transactionId = '64f000000000000000000010';
+    const expense = {
+      id: expenseId,
+      userId,
+      name: 'Aluguel',
+      dueDate: new Date('2026-09-01T12:00:00Z'),
+      recurrence: 'MONTHLY',
+      amount: 100,
+      category: 'HOUSING',
+      isPaid: false,
+    };
+    const tx = {
+      notification: {
+        updateMany: jest.fn(async () => ({ count: 1 })),
+      },
+      transaction: {
+        create: jest.fn(async () => ({ id: transactionId })),
+        findFirst: jest.fn(async () => ({ id: transactionId })),
+        delete: jest.fn(async () => ({ id: transactionId })),
+      },
+      calendarReceipt: {
+        create: jest.fn(async () => ({})),
+        deleteMany: jest.fn(async () => ({ count: 1 })),
+      },
+      fixedExpense: {
+        updateMany: jest.fn(async () => ({ count: 1 })),
+        update: jest.fn(async ({ data }) => ({ ...expense, ...data })),
+      },
+    };
+    const prisma = { $transaction: jest.fn(async (callback) => callback(tx)) };
+    const rawFields = {
+      getPaidTransactionId: jest.fn(async () => transactionId),
+      setPaymentFields: jest.fn(async () => undefined),
+      clearPaymentFields: jest.fn(async () => undefined),
+    };
+    const service = new FixedExpensePaymentService(
+      {
+        resolveReference: jest.fn(async () => ({})),
+        list: jest.fn(async () => []),
+      } as never,
+      new FixedExpensePaymentsRepository(prisma as never, rawFields as never),
+      { encrypt: (value: unknown) => JSON.stringify(value) } as never,
+    );
+
+    const paid = await service.markAsPaid(expense as never, userId);
+    expect(paid).toMatchObject({
+      isPaid: true,
+      paidTransactionId: transactionId,
+    });
+    expect(tx.transaction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId,
+        type: 'EXPENSE',
+        dateIndex: expect.any(Number),
+      }),
+    });
+    expect(tx.fixedExpense.update).toHaveBeenCalledWith({
+      where: { id: expenseId, userId },
+      data: { isPaid: true },
+    });
+    expect(rawFields.setPaymentFields).toHaveBeenCalledWith(
+      tx,
+      expenseId,
+      expect.any(Date),
+      transactionId,
+    );
+    // O aviso é resolvido no mesmo cliente transacional do pagamento e só neste ciclo/usuário.
+    expect(tx.notification.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        userId,
+        sourceExpenseId: expenseId,
+        dueDateKey: '2026-09-01',
+      }),
+      data: { resolvedAt: expect.any(Date), resolution: 'PAID', read: true },
+    });
+
+    const unpaid = await service.unmarkAsPaid(
+      { ...expense, isPaid: true } as never,
+      userId,
+    );
+    expect(unpaid).toMatchObject({ isPaid: false, paidTransactionId: null });
+    expect(tx.transaction.findFirst).toHaveBeenCalledWith({
+      where: { id: transactionId, userId },
+    });
+    expect(tx.transaction.delete).toHaveBeenCalledWith({
+      where: { id: transactionId, userId },
+    });
+    expect(rawFields.clearPaymentFields).toHaveBeenCalledWith(tx, expenseId);
+  });
+});

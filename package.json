@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.{ts,cjs}\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -16,17 +16,20 @@
     "db:local": "docker compose -f docker-compose.local.yml up -d --wait",
     "db:local:stop": "docker compose -f docker-compose.local.yml stop",
     "seed:test-transactions": "node --env-file=.env -r ts-node/register -r tsconfig-paths/register scripts/seed-test-transactions.ts",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "node --env-file-if-exists=.env node_modules/jest/bin/jest.js",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:calendar:integration": "npm test -- --runInBand --runTestsByPath src/modules/calendar/calendar.integration.spec.ts",
-    "test:imports:integration": "npm test -- --runInBand --runTestsByPath src/modules/transactions/imports/imports.integration.spec.ts",
-    "test:notifications:integration": "npm test -- --runInBand --runTestsByPath src/modules/notifications/notification.integration.spec.ts",
-    "test:cards:integration": "npm test -- --runInBand --runTestsByPath src/modules/cards/cards.integration.spec.ts",
-    "test:wishlist:integration": "npm test -- --runInBand --runTestsByPath src/modules/wishlist/wishlist.integration.spec.ts"
+    "lint": "eslint \"{src,apps,libs,tests}/**/*.ts\" --fix",
+    "test": "jest --config tests/jest-unit.config.cjs",
+    "test:watch": "npm test -- --watch",
+    "test:cov": "npm test -- --runInBand --coverage",
+    "test:debug": "node --inspect-brk node_modules/jest/bin/jest.js --config tests/jest-unit.config.cjs --runInBand",
+    "test:e2e": "jest --config tests/jest-e2e.config.cjs --runInBand",
+    "test:calendar:integration": "npm run test:integration -- --runTestsByPath tests/integration/modules/calendar/calendar.integration.spec.ts",
+    "test:imports:integration": "npm run test:integration -- --runTestsByPath tests/integration/modules/transactions/imports/imports.integration.spec.ts",
+    "test:notifications:integration": "npm run test:integration -- --runTestsByPath tests/integration/modules/notifications/notification.integration.spec.ts",
+    "test:cards:integration": "npm run test:integration -- --runTestsByPath tests/integration/modules/cards/cards.integration.spec.ts",
+    "test:wishlist:integration": "npm run test:integration -- --runTestsByPath tests/integration/modules/wishlist/wishlist.integration.spec.ts",
+    "test:unit": "npm test -- --runInBand",
+    "test:integration": "jest --config tests/jest-integration.config.cjs --runInBand",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
@@ -72,25 +75,5 @@
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.1.3"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node",
-    "moduleNameMapper": {
-      "^src/(.*)$": "<rootDir>/$1"
-    }
   }
 }
