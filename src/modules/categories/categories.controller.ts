@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
@@ -17,14 +16,8 @@ import {
   CreateCategorySchema,
   UpdateCategoryDto,
   UpdateCategorySchema,
-  CreateRuleDto,
-  CreateRuleSchema,
-  UpdateRuleDto,
-  UpdateRuleSchema,
   ResolveCategoryDto,
   ResolveCategorySchema,
-  TestRuleDto,
-  TestRuleSchema,
 } from './dto/category.dto';
 
 @Controller('categories')
@@ -56,41 +49,5 @@ export class CategoriesController {
     @User('sub') userId: string,
   ) {
     return this.service.update(id, dto, userId);
-  }
-}
-
-@Controller('category-rules')
-@UseGuards(AuthTokenGuard)
-export class CategoryRulesController {
-  constructor(private readonly service: CategoriesService) {}
-  @Get()
-  list(@User('sub') userId: string) {
-    return this.service.listRules(userId);
-  }
-  @Post()
-  create(
-    @Body(new ZodValidationPipe(CreateRuleSchema)) dto: CreateRuleDto,
-    @User('sub') userId: string,
-  ) {
-    return this.service.createRule(dto, userId);
-  }
-  @Post('test')
-  test(
-    @Body(new ZodValidationPipe(TestRuleSchema)) dto: TestRuleDto,
-    @User('sub') userId: string,
-  ) {
-    return this.service.testRule(dto, userId);
-  }
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body(new ZodValidationPipe(UpdateRuleSchema)) dto: UpdateRuleDto,
-    @User('sub') userId: string,
-  ) {
-    return this.service.updateRule(id, dto, userId);
-  }
-  @Delete(':id')
-  remove(@Param('id') id: string, @User('sub') userId: string) {
-    return this.service.removeRule(id, userId);
   }
 }

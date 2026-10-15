@@ -1,4 +1,4 @@
-import { normalizeDescription } from '../../categories/dto/category.dto';
+import { normalizeDescription } from 'src/common/text/normalize-description';
 import { DuplicateCandidate, ImportPayload, ImportRow } from './import.dto';
 
 export function fingerprint(

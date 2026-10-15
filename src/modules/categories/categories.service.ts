@@ -1,20 +1,18 @@
+import { normalizeDescription } from 'src/common/text/normalize-description';
+import { resolveCategory } from './rules/domain/category-resolution';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Category, CategoryRule, TransactionType } from '@prisma/client';
+import { Category, TransactionType } from '@prisma/client';
 import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 import { CategoriesRepository } from './repositories/categories.repository';
 import { CategoryView, DEFAULT_CATEGORIES } from './domain/default-categories';
 import {
   CreateCategoryDto,
   UpdateCategoryDto,
-  CreateRuleDto,
-  UpdateRuleDto,
   ResolveCategoryDto,
-  TestRuleDto,
-  normalizeDescription,
 } from './dto/category.dto';
 
 @Injectable()
@@ -79,60 +77,6 @@ export class CategoriesService {
       }),
     );
   }
-  async listRules(userId: string) {
-    return (await this.repository.rules(userId)).map((item) =>
-      this.ruleView(item),
-    );
-  }
-  async createRule(dto: CreateRuleDto, userId: string) {
-    await this.resolveReference(dto.category, userId, dto.type);
-    return this.ruleView(
-      await this.repository.createRule({
-        type: dto.type,
-        category: dto.category,
-        priority: dto.priority,
-        enabled: dto.enabled,
-        userId,
-        encryptedContains: this.encryption.encrypt(dto.contains),
-      }),
-    );
-  }
-  async updateRule(id: string, dto: UpdateRuleDto, userId: string) {
-    const current = await this.ownedRule(id, userId);
-    // Deve ser possível desativar uma regra mesmo depois de sua categoria ser arquivada.
-    const merged = { ...current, ...dto };
-    await this.resolveReference(
-      merged.category,
-      userId,
-      merged.type,
-      !merged.enabled && !dto.category && !dto.type,
-    );
-    const { contains, ...data } = dto;
-    return this.ruleView(
-      await this.repository.updateRule(id, userId, {
-        ...data,
-        ...(contains !== undefined
-          ? { encryptedContains: this.encryption.encrypt(contains) }
-          : {}),
-      }),
-    );
-  }
-  async removeRule(id: string, userId: string) {
-    await this.ownedRule(id, userId);
-    await this.repository.removeRule(id, userId);
-    return { message: 'Regra removida.' };
-  }
-  async testRule(dto: TestRuleDto, userId: string) {
-    const category = await this.resolveReference(
-      dto.category,
-      userId,
-      dto.type,
-    );
-    const matches = normalizeDescription(dto.description).includes(
-      normalizeDescription(dto.contains),
-    );
-    return { matches, category: matches ? category.id : null };
-  }
   // Compartilhado pelas sugestões manuais e pela prévia de importação, sem gravar no histórico.
   async resolve(dto: ResolveCategoryDto, userId: string) {
     if (dto.category) {
@@ -155,49 +99,23 @@ export class CategoriesService {
       ),
     }));
     return (dto: ResolveCategoryDto) => {
-      if (dto.category) {
-        if (
-          !catalog.some(
-            (item) =>
-              item.id === dto.category &&
-              item.type === dto.type &&
-              !item.archived,
-          )
-        ) {
-          throw new BadRequestException(
-            'Categoria inválida, arquivada ou incompatível.',
-          );
-        }
-        return {
+      const result = resolveCategory(
+        {
+          type: dto.type,
+          description: dto.description,
           category: dto.category,
-          ruleId: null,
-          source: 'manual' as const,
-        };
-      }
-      const description = normalizeDescription(dto.description);
-      for (const rule of rules) {
-        if (
-          !rule.enabled ||
-          rule.type !== dto.type ||
-          !catalog.some(
-            (item) =>
-              item.id === rule.category &&
-              item.type === dto.type &&
-              !item.archived,
-          )
-        )
-          continue;
-        if (description.includes(rule.contains)) {
-          return {
-            category: rule.category,
-            ruleId: rule.id,
-            source: 'rule' as const,
-          };
-        }
-      }
-      return { category: null, ruleId: null, source: null };
+        },
+        catalog,
+        rules,
+      );
+      if (!result)
+        throw new BadRequestException(
+          'Categoria inválida, arquivada ou incompatível.',
+        );
+      return result;
     };
   }
+
   private categoryView(item: Category): CategoryView {
     return {
       id: item.id,
@@ -209,24 +127,8 @@ export class CategoriesService {
       isDefault: false,
     };
   }
-  private ruleView(item: CategoryRule) {
-    return {
-      id: item.id,
-      type: item.type,
-      category: item.category,
-      contains: this.encryption.decrypt<string>(item.encryptedContains),
-      priority: item.priority,
-      enabled: item.enabled,
-    };
-  }
   private checkId(id: string) {
     if (!/^[a-f\d]{24}$/.test(id))
       throw new NotFoundException('Registro não encontrado.');
-  }
-  private async ownedRule(id: string, userId: string) {
-    this.checkId(id);
-    const rule = await this.repository.findRule(id, userId);
-    if (!rule) throw new NotFoundException('Regra não encontrada.');
-    return rule;
   }
 }

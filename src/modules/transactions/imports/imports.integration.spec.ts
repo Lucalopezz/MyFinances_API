@@ -1,3 +1,4 @@
+import { CategoryRulesService } from '../../categories/rules/category-rules.service';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
@@ -101,6 +102,7 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
           ImportsRepository,
           TransactionsRepository,
           CategoriesService,
+          CategoryRulesService,
           CategoriesRepository,
           FinancialDataEncryptionService,
           { provide: PrismaService, useValue: db },
@@ -165,7 +167,7 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
         { name: 'Cafeteria', type: 'EXPENSE', color: '#123456', icon: 'Tag' },
         owner,
       );
-      await categories.createRule(
+      await app.get(CategoryRulesService).createRule(
         {
           type: 'EXPENSE',
           contains: 'CAFÉ',
@@ -260,7 +262,7 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
     });
 
     it('re-evaluates changed rules at confirmation and keeps mapped categories explicit', async () => {
-      const rule = await categories.createRule(
+      const rule = await app.get(CategoryRulesService).createRule(
         {
           type: 'EXPENSE',
           contains: 'cafe',
@@ -272,7 +274,9 @@ const enabled = !!process.env.IMPORT_TEST_DATABASE_URL;
       );
       const batch = await preview();
       expect(batch.rows[0].category).toBe('FOOD');
-      await categories.updateRule(rule.id, { category: 'OTHER' }, owner);
+      await app
+        .get(CategoryRulesService)
+        .updateRule(rule.id, { category: 'OTHER' }, owner);
       const result = await service.confirm(batch.batchId, selection(), owner);
       const record = await db.transaction.findUnique({
         where: { id: result.results[0].transactionId },

@@ -1,3 +1,4 @@
+import { CategoryRulesService } from './rules/category-rules.service';
 import { Category, CategoryRule } from '@prisma/client';
 import { CategoriesRepository } from './repositories/categories.repository';
 import { CategoriesService } from './categories.service';
@@ -21,6 +22,7 @@ const now = new Date('2026-09-28T00:00:00Z');
 
 describe('custom categories and automatic rules', () => {
   let service: CategoriesService;
+  let rulesService: CategoryRulesService;
   let encryption: FinancialDataEncryptionService;
   let categories: Category[];
   let rules: CategoryRule[];
@@ -135,6 +137,7 @@ describe('custom categories and automatic rules', () => {
       },
     } as never);
     service = new CategoriesService(repository, encryption);
+    rulesService = new CategoryRulesService(repository, encryption, service);
   });
 
   it('returns all 22 legacy codes and only the owner custom catalog, without ciphertext', async () => {
@@ -193,12 +196,12 @@ describe('custom categories and automatic rules', () => {
       service.update(otherCategory, { archived: true }, owner),
     ).rejects.toThrow('não encontrada');
     await expect(
-      service.updateRule(ruleId, { enabled: false }, other),
+      rulesService.updateRule(ruleId, { enabled: false }, other),
     ).rejects.toThrow('não encontrada');
-    await expect(service.removeRule(ruleId, other)).rejects.toThrow(
+    await expect(rulesService.removeRule(ruleId, other)).rejects.toThrow(
       'não encontrada',
     );
-    expect(await service.listRules(other)).toEqual([]);
+    expect(await rulesService.listRules(other)).toEqual([]);
     expect(rules[0].enabled).toBe(true);
   });
 
@@ -250,10 +253,10 @@ describe('custom categories and automatic rules', () => {
       category: null,
     });
     await expect(
-      service.updateRule(ruleId, { enabled: false }, owner),
+      rulesService.updateRule(ruleId, { enabled: false }, owner),
     ).resolves.toMatchObject({ enabled: false });
     await expect(
-      service.updateRule(ruleId, { enabled: true }, owner),
+      rulesService.updateRule(ruleId, { enabled: true }, owner),
     ).rejects.toThrow('arquivada');
   });
 
@@ -266,17 +269,20 @@ describe('custom categories and automatic rules', () => {
       enabled: true,
     };
     expect(
-      await service.testRule({ ...dto, description: 'UBER viagem' }, owner),
+      await rulesService.testRule(
+        { ...dto, description: 'UBER viagem' },
+        owner,
+      ),
     ).toEqual({ matches: true, category: 'TRANSPORT' });
     expect(rules).toHaveLength(1);
-    const created = await service.createRule(dto, owner);
+    const created = await rulesService.createRule(dto, owner);
     expect(created).toMatchObject(dto);
     expect(created).not.toHaveProperty('encryptedContains');
     expect(rules[1].encryptedContains).not.toContain('uber');
     await expect(
-      service.createRule({ ...dto, category: otherCategory }, owner),
+      rulesService.createRule({ ...dto, category: otherCategory }, owner),
     ).rejects.toThrow('Categoria inválida');
-    await service.removeRule(created.id, owner);
+    await rulesService.removeRule(created.id, owner);
     expect(rules).toHaveLength(1);
   });
 

@@ -1,10 +1,9 @@
-import { TransactionType } from '@prisma/client';
 import { INCOME_CATEGORIES } from 'src/common/constants/categories.constants';
 
 export type CategoryView = {
   id: string;
   name: string;
-  type: TransactionType;
+  type: 'INCOME' | 'EXPENSE';
   color: string;
   icon: string;
   archived: boolean;

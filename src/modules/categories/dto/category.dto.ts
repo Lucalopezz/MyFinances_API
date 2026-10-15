@@ -1,3 +1,4 @@
+import { normalizeDescription } from 'src/common/text/normalize-description';
 import { z } from 'zod';
 
 export const CategoryReferenceSchema = z
@@ -68,11 +69,3 @@ export type CreateRuleDto = z.infer<typeof CreateRuleSchema>;
 export type UpdateRuleDto = z.infer<typeof UpdateRuleSchema>;
 export type ResolveCategoryDto = z.infer<typeof ResolveCategorySchema>;
 export type TestRuleDto = z.infer<typeof TestRuleSchema>;
-
-export function normalizeDescription(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLocaleLowerCase('pt-BR')
-    .trim();
-}
