@@ -26,3 +26,13 @@ Orientações para agentes de código trabalhando no backend MyFinances.
 - Para exportações, consulte `docs/transaction-exports.md` e preserve o processamento em lotes e o isolamento dos dados do usuário.
 - Use `npm`, pois o repositório mantém `package-lock.json`.
 - Valide alterações de comportamento com os testes do domínio afetado e verificações proporcionais à mudança. Alterações apenas em comentários ou documentação exigem revisão do diff e da formatação; não precisam de novos testes nem de um build completo.
+
+## Testes e TDD
+
+- Siga TDD em toda alteração de comportamento: escreva primeiro o teste, execute-o e confirme que falha pelo comportamento esperado (vermelho); implemente a menor mudança necessária para passar (verde); depois refatore mantendo os testes passando. Erros de compilação ou configuração não substituem a falha de comportamento.
+- Toda correção de bug deve incluir um teste de regressão que reproduza o problema antes da correção e passe depois dela. Escolha a camada adequada; para problemas entre módulos ou no contrato HTTP, acrescente integração ou E2E.
+- Ao ampliar a cobertura de comportamentos já existentes, escreva os testes antes de qualquer ajuste na implementação. Testes de caracterização podem passar de imediato; só altere o comportamento com uma expectativa apoiada nas regras do domínio.
+- Todos os testes e seus auxiliares, fixtures e configurações devem ficar em `tests/` ou em uma pasta `__tests__`. Não coloque arquivos de teste junto do código de produção em `src/` nem crie a pasta singular `test/`.
+- Organize as suítes por camada (`tests/unit`, `tests/integration`, `tests/e2e`) e preserve os caminhos dos módulos quando isso facilitar a localização. Unitários isolam dependências externas; integrações verificam componentes reais juntos; E2E exercitam os fluxos pela interface HTTP com autenticação e persistência reais.
+- Bancos de testes devem ser locais, descartáveis e separados do banco da aplicação. Nunca use `DATABASE_URL` para escolher o banco a limpar. Finalize conexões, filas e arquivos temporários nas rotinas de encerramento.
+- Execute as suítes afetadas antes de concluir e informe quais comandos passaram, eventuais impedimentos e testes não executados. Não apresente suítes ignoradas como validação realizada.
