@@ -146,6 +146,13 @@ export class TransactionsRepository {
     return items as unknown as EncryptedTransactionRecord[];
   }
 
+  /** Inclui todo o histórico até o horizonte da projeção, preservando o saldo-base. */
+  async findThroughDate(userId: string, endDateIndex: number) {
+    return this.prisma.transaction.findMany({
+      where: { userId, dateIndex: { lte: endDateIndex } },
+    }) as unknown as Promise<EncryptedTransactionRecord[]>;
+  }
+
   async findExpenseBatch(
     userId: string,
     startDateIndex: number,

@@ -1,4 +1,5 @@
 import { CategoryRulesService } from './rules/category-rules.service';
+import { TransactionQueriesService } from '../transactions/services/transaction-queries.service';
 import { Category, CategoryRule } from '@prisma/client';
 import { CategoriesRepository } from './repositories/categories.repository';
 import { CategoriesService } from './categories.service';
@@ -346,6 +347,7 @@ describe('custom categories and automatic rules', () => {
       service,
       transactionRepository,
       encryption,
+      new TransactionQueriesService(service, transactionRepository, encryption),
     );
     const dto = {
       category: categoryId,
@@ -370,8 +372,7 @@ describe('custom categories and automatic rules', () => {
       {
         findByMonth: async () => [{ category: categoryId, limitAmount: 100 }],
       } as never,
-      transactionRepository,
-      encryption,
+      new TransactionQueriesService(service, transactionRepository, encryption),
     );
     expect(await budgets.summary('2026-09', owner)).toMatchObject([
       { category: categoryId, spentAmount: 25, remainingAmount: 75 },

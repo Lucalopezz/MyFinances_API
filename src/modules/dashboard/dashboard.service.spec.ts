@@ -1,3 +1,5 @@
+import { DashboardMetrics } from './domain/dashboard-metrics';
+import { TransactionQueriesService } from '../transactions/services/transaction-queries.service';
 import { DashboardService } from './dashboard.service';
 import { CalendarService } from '../calendar/services/calendar.service';
 import { buildEncryptedTransactionData } from '../transactions/mappers/transaction-encryption.mapper';
@@ -25,7 +27,7 @@ describe('DashboardService.getForecast', () => {
         projection: { baseBalance: 500, projectedBalance: 270, days: [] },
       })),
     };
-    const service = new DashboardService(
+    const service = createDashboardService(
       {} as never,
       { findByPeriod: async () => [] } as never,
       {} as never,
@@ -114,13 +116,13 @@ describe('DashboardService.getForecast', () => {
           },
         ],
       };
-      const calendar = new CalendarService(
+      const calendar = createCalendarService(
         prisma as never,
         encryption as never,
         {} as never,
         cards as never,
       );
-      const service = new DashboardService(
+      const service = createDashboardService(
         {} as never,
         {} as never,
         encryption as never,
@@ -146,7 +148,7 @@ describe('DashboardService.getForecast', () => {
     // Na virada do mês, o saldo-base contém apenas os meses anteriores.
     jest.useFakeTimers().setSystemTime(new Date('2026-11-01T15:00:00Z'));
     try {
-      const service = new DashboardService(
+      const service = createDashboardService(
         {} as never,
         {} as never,
         {} as never,
@@ -177,3 +179,25 @@ describe('DashboardService.getForecast', () => {
     }
   });
 });
+
+function createDashboardService(
+  _repository: any,
+  transactions: any,
+  encryption: any,
+  calendar: any,
+) {
+  return new DashboardService(
+    new TransactionQueriesService({} as never, transactions, encryption),
+    calendar,
+    new DashboardMetrics(),
+  );
+}
+
+function createCalendarService(
+  prisma: any,
+  encryption: any,
+  categories: any,
+  cards: any,
+) {
+  return new CalendarService(prisma, encryption, categories, cards);
+}

@@ -1,3 +1,4 @@
+import { TransactionQueriesService } from './services/transaction-queries.service';
 import { PrismaModule } from 'src/infrastructure/prisma/prisma.module';
 import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { CategoriesModule } from '../categories/categories.module';
@@ -9,8 +10,12 @@ import { TransactionsRepository } from './repositories/transactions.repository';
 
 @Module({
   controllers: [TransactionsController],
-  providers: [TransactionsService, TransactionsRepository],
-  exports: [TransactionsRepository],
+  providers: [
+    TransactionsService,
+    TransactionsRepository,
+    TransactionQueriesService,
+  ],
+  exports: [TransactionsRepository, TransactionQueriesService],
   imports: [PrismaModule, EncryptionModule, CategoriesModule, AuthModule],
 })
 export class TransactionsModule {}

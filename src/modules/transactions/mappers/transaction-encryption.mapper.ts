@@ -1,44 +1,17 @@
-import { TransactionType } from '@prisma/client';
 import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 
-export type TransactionSensitiveData = {
-  value: number;
-  date: string;
-  category: string;
-  description?: string | null;
-};
-
-export type EncryptedTransactionRecord = {
-  id: string;
-  encryptedImportIdentity?: string | null;
-  encryptedData: Record<keyof TransactionSensitiveData, string>;
-  dateIndex: number;
-  type: TransactionType;
-  createdAt: Date;
-  updatedAt: Date;
-  userId: string;
-};
-
-export type DecryptedTransaction = {
-  id: string;
-  value: number;
-  date: Date;
-  category: string;
-  description?: string | null;
-  type: TransactionType;
-  createdAt: Date;
-  updatedAt: Date;
-  userId: string;
-};
-
-export type PlainTransactionInput = {
-  value: number;
-  date: Date;
-  category: string;
-  description?: string | null;
-  type: TransactionType;
-  userId: string;
-};
+import {
+  TransactionSensitiveData,
+  EncryptedTransactionRecord,
+  DecryptedTransaction,
+  PlainTransactionInput,
+} from '../types/transaction.types';
+export type {
+  TransactionSensitiveData,
+  EncryptedTransactionRecord,
+  DecryptedTransaction,
+  PlainTransactionInput,
+} from '../types/transaction.types';
 
 // Essa função é responsável por construir os dados de transação criptografados a partir dos dados de entrada fornecidos.
 // Ela utiliza o serviço de criptografia para criptografar os campos sensíveis da transação,

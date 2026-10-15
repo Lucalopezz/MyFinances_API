@@ -1,42 +1,19 @@
+import { DashboardMetrics } from './domain/dashboard-metrics';
 import { Injectable } from '@nestjs/common';
 import { DashboardQueryDto } from './dto/dashboard.dto';
 import { MonthlyComparisonDto } from './dto/monthly-comparison.dto';
-import { TransactionType } from '@prisma/client';
 import { CalendarService } from '../calendar/services/calendar.service';
-import { todayKey } from '../calendar/domain/calendar-calculation';
-import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
-import {
-  buildDateIndex,
-  DecryptedTransaction,
-  decryptTransactions,
-} from '../transactions/mappers/transaction-encryption.mapper';
-import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
-import { DashboardRepository } from './repositories/dashboard.repository';
+import { todayKey } from 'src/common/date/civil-date';
+import { DecryptedTransaction } from '../transactions/mappers/transaction-encryption.mapper';
+import { TransactionQueriesService } from '../transactions/services/transaction-queries.service';
 import { ForecastModel } from './models/forecast.model';
-
-type TransactionTotals = {
-  totalIncomes: number;
-  totalExpenses: number;
-};
-
-type MonthlyData = Record<string, TransactionTotals>;
-
-type MonthlyComparisonMonth = {
-  month: string;
-  totalExpenses: number;
-  totalIncomes: number;
-  balance: number;
-  economyRate: number;
-  percentageChange?: number;
-};
 
 @Injectable()
 export class DashboardService {
   constructor(
-    private readonly repository: DashboardRepository,
-    private readonly transactionsRepository: TransactionsRepository,
-    private readonly encryptionService: FinancialDataEncryptionService,
+    private readonly transactionsQuery: TransactionQueriesService,
     private readonly calendar: CalendarService,
+    private readonly metrics: DashboardMetrics,
   ) {}
 
   /** Reutiliza a agenda para que cartões e recorrências tenham a mesma previsão em todas as telas. */
@@ -88,12 +65,13 @@ export class DashboardService {
       new Date(startDate),
       new Date(endDate),
     );
-    const { totalIncomes, totalExpenses } = this.calculateTotals(transactions);
+    const { totalIncomes, totalExpenses } =
+      this.metrics.calculateTotals(transactions);
     const balance = totalIncomes - totalExpenses;
     const economyRate = totalIncomes > 0 ? (balance / totalIncomes) * 100 : 0;
 
     const expensesByCategory = transactions
-      .filter((transaction) => transaction.type === TransactionType.EXPENSE)
+      .filter((transaction) => transaction.type === 'EXPENSE')
       .reduce(
         (acc, transaction) => {
           acc[transaction.category] =
@@ -143,16 +121,16 @@ export class DashboardService {
       new Date(startDate),
       new Date(endDate),
     );
-    const monthlyData = this.groupTransactionsByMonth(transactions);
+    const monthlyData = this.metrics.groupTransactionsByMonth(transactions);
 
     const months = Object.keys(monthlyData)
       .sort()
-      .map((month, index, monthKeys): MonthlyComparisonMonth => {
+      .map((month, index, monthKeys) => {
         const currentMonth = monthlyData[month];
         const previousMonth = monthlyData[monthKeys[index - 1]];
         const balance = currentMonth.totalIncomes - currentMonth.totalExpenses;
         const percentageChange = previousMonth
-          ? this.calculatePercentageChange(currentMonth, previousMonth)
+          ? this.metrics.calculatePercentageChange(currentMonth, previousMonth)
           : 0;
         const economyRate =
           currentMonth.totalIncomes > 0
@@ -170,8 +148,8 @@ export class DashboardService {
         };
       });
 
-    const bestMonth = this.findMonthByEconomyRate(months, 'best');
-    const worstMonth = this.findMonthByEconomyRate(months, 'worst');
+    const bestMonth = this.metrics.findMonthByEconomyRate(months, 'best');
+    const worstMonth = this.metrics.findMonthByEconomyRate(months, 'worst');
 
     return {
       months,
@@ -185,92 +163,6 @@ export class DashboardService {
     startDate: Date,
     endDate: Date,
   ): Promise<DecryptedTransaction[]> {
-    return this.transactionsRepository
-      .findByPeriod(userId, buildDateIndex(startDate), buildDateIndex(endDate))
-      .then((transactions) =>
-        decryptTransactions(transactions, this.encryptionService),
-      );
-  }
-
-  private calculateTotals(
-    transactions: DecryptedTransaction[],
-  ): TransactionTotals {
-    return transactions.reduce(
-      (totals, transaction) => {
-        this.addTransactionToTotals(totals, transaction);
-        return totals;
-      },
-      { totalIncomes: 0, totalExpenses: 0 },
-    );
-  }
-
-  // Agrupa as transações por mês e calcula os totais de despesas e receitas para cada mês
-  // Jan 2024: { totalExpenses: 1000, totalIncomes: 2000 }
-  // Feb 2024: { totalExpenses: 1500, totalIncomes: 2500 }
-  private groupTransactionsByMonth(
-    transactions: DecryptedTransaction[],
-  ): MonthlyData {
-    return transactions.reduce((monthlyData, transaction) => {
-      const month = transaction.date.toISOString().slice(0, 7);
-
-      if (!monthlyData[month]) {
-        monthlyData[month] = { totalExpenses: 0, totalIncomes: 0 };
-      }
-
-      this.addTransactionToTotals(monthlyData[month], transaction);
-      return monthlyData;
-    }, {} as MonthlyData);
-  }
-
-  private addTransactionToTotals(
-    totals: TransactionTotals,
-    transaction: DecryptedTransaction,
-  ): void {
-    if (transaction.type === TransactionType.INCOME) {
-      totals.totalIncomes += transaction.value;
-    }
-
-    if (transaction.type === TransactionType.EXPENSE) {
-      totals.totalExpenses += transaction.value;
-    }
-  }
-
-  private calculatePercentageChange(
-    currentMonth: TransactionTotals,
-    previousMonth: TransactionTotals,
-  ): number {
-    const totalPrevious =
-      previousMonth.totalIncomes - previousMonth.totalExpenses;
-    const totalCurrent = currentMonth.totalIncomes - currentMonth.totalExpenses;
-
-    if (totalPrevious === 0) {
-      return 0;
-    }
-
-    return ((totalCurrent - totalPrevious) / totalPrevious) * 100;
-  }
-
-  private findMonthByEconomyRate(
-    months: MonthlyComparisonMonth[],
-    type: 'best' | 'worst',
-  ): Pick<MonthlyComparisonMonth, 'month' | 'balance' | 'economyRate'> | null {
-    if (!months.length) {
-      return null;
-    }
-
-    const selectedMonth = months.reduce((selected, month) => {
-      if (type === 'best') {
-        // Se o mês atual tiver uma taxa de economia maior que a selecionada, ele se torna o novo selecionado
-        return month.economyRate > selected.economyRate ? month : selected;
-      }
-
-      return month.economyRate < selected.economyRate ? month : selected;
-    });
-
-    return {
-      month: selectedMonth.month,
-      balance: selectedMonth.balance,
-      economyRate: selectedMonth.economyRate,
-    };
+    return this.transactionsQuery.findByPeriod(userId, startDate, endDate);
   }
 }

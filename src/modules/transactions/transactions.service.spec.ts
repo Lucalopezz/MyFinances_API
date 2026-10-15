@@ -1,3 +1,4 @@
+import { TransactionQueriesService } from './services/transaction-queries.service';
 import { TransactionsService } from './transactions.service';
 import { TransactionsRepository } from './repositories/transactions.repository';
 
@@ -27,7 +28,7 @@ describe('TransactionsService.searchTransactions', () => {
       const after = where.OR?.[1]?.id?.lt;
       return records.filter((item) => !after || item.id < after).slice(0, take);
     });
-    const service = new TransactionsService(
+    const service = createService(
       {
         resolveReference: jest.fn(async () => ({})),
         list: jest.fn(async () => []),
@@ -90,7 +91,7 @@ describe('TransactionsService monthly totals', () => {
         )
         .slice(0, take),
     );
-    const service = new TransactionsService(
+    const service = createService(
       {
         resolveReference: jest.fn(),
         list: jest.fn(async () => [{ id: 'FOOD', name: 'Alimentação' }]),
@@ -171,7 +172,7 @@ describe('TransactionsService total balance', () => {
         )
         .slice(0, take),
     );
-    const service = new TransactionsService(
+    const service = createService(
       {} as never,
       new TransactionsRepository({ transaction: { findMany } } as never),
       { decrypt: (value: string) => JSON.parse(value) } as never,
@@ -199,7 +200,7 @@ describe('TransactionsService total balance', () => {
     const findMany = jest.fn(async ({ where }) =>
       where.userId === userId ? [records[0]] : [],
     );
-    const service = new TransactionsService(
+    const service = createService(
       {} as never,
       new TransactionsRepository({ transaction: { findMany } } as never),
       { decrypt: (value: string) => JSON.parse(value) } as never,
@@ -223,7 +224,7 @@ describe('TransactionsService legacy contract', () => {
   it('preserves the page-number response and database ordering', async () => {
     const findMany = jest.fn(async () => [records[0]]);
     const count = jest.fn(async () => 105);
-    const service = new TransactionsService(
+    const service = createService(
       {
         resolveReference: jest.fn(async () => ({})),
         list: jest.fn(async () => []),
@@ -262,7 +263,7 @@ describe('TransactionsService legacy contract', () => {
       createdAt: new Date(date),
       updatedAt: new Date(date),
     }));
-    const service = new TransactionsService(
+    const service = createService(
       {
         resolveReference: jest.fn(async () => ({})),
         list: jest.fn(async () => []),
@@ -313,7 +314,7 @@ describe('TransactionsService legacy contract', () => {
     const update = jest.fn(async ({ data }) => ({ ...encrypted, ...data }));
     const remove = jest.fn(async () => encrypted);
     const findFirst = jest.fn(async () => encrypted);
-    const service = new TransactionsService(
+    const service = createService(
       {
         resolveReference: jest.fn(async () => ({})),
         list: jest.fn(async () => []),
@@ -350,3 +351,13 @@ describe('TransactionsService legacy contract', () => {
     });
   });
 });
+
+/** Exercita a API pública com seus serviços reais, substituindo somente as dependências externas. */
+function createService(categories: any, repository: any, encryption: any) {
+  return new TransactionsService(
+    categories,
+    repository,
+    encryption,
+    new TransactionQueriesService(categories, repository, encryption),
+  );
+}

@@ -5,9 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
-import { decryptTransaction } from '../transactions/mappers/transaction-encryption.mapper';
-import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
+import { TransactionQueriesService } from '../transactions/services/transaction-queries.service';
 import { CreateBudgetDto, UpdateBudgetDto } from './dto/budget.dto';
 import { MonthlyBudgetsRepository } from './repositories/monthly-budgets.repository';
 import { MonthlyBudgetSummaryModel } from './models/monthly-budget.model';
@@ -17,8 +15,7 @@ export class BudgetsService {
   constructor(
     private readonly categories: CategoriesService,
     private readonly repository: MonthlyBudgetsRepository,
-    private readonly transactionsRepository: TransactionsRepository,
-    private readonly encryptionService: FinancialDataEncryptionService,
+    private readonly transactionsQuery: TransactionQueriesService,
   ) {}
 
   list(month: string, userId: string) {
@@ -74,7 +71,7 @@ export class BudgetsService {
     let cursorId: string | undefined;
 
     while (true) {
-      const transactions = await this.transactionsRepository.findExpenseBatch(
+      const transactions = await this.transactionsQuery.findExpenseBatch(
         userId,
         firstDay,
         lastDay,
@@ -83,7 +80,7 @@ export class BudgetsService {
       );
       if (!transactions.length) break;
       for (const item of transactions) {
-        const transaction = decryptTransaction(item, this.encryptionService);
+        const transaction = item;
         spent.set(
           transaction.category,
           (spent.get(transaction.category) ?? 0) + transaction.value,

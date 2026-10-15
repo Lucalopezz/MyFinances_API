@@ -1,3 +1,4 @@
+import { TransactionQueriesService } from '../transactions/services/transaction-queries.service';
 import { BudgetsService } from './budgets.service';
 import { MonthlyBudgetsRepository } from './repositories/monthly-budgets.repository';
 import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
@@ -44,7 +45,7 @@ describe('BudgetsService.summary', () => {
       },
       transaction: { findMany },
     };
-    const service = new BudgetsService(
+    const service = createService(
       {
         resolveReference: jest.fn(async () => ({})),
         list: jest.fn(async () => []),
@@ -78,7 +79,7 @@ describe('BudgetsService writes', () => {
     const findFirst = jest.fn(async () => budget);
     const update = jest.fn(async () => ({ ...budget, limitAmount: 200 }));
     const remove = jest.fn(async () => budget);
-    const service = new BudgetsService(
+    const service = createService(
       {
         resolveReference: jest.fn(async () => ({})),
         list: jest.fn(async () => []),
@@ -115,3 +116,16 @@ describe('BudgetsService writes', () => {
     expect(remove).toHaveBeenCalledWith({ where: { id, userId } });
   });
 });
+
+function createService(
+  categories: any,
+  repository: any,
+  transactions: any,
+  encryption: any,
+) {
+  return new BudgetsService(
+    categories,
+    repository,
+    new TransactionQueriesService(categories, transactions, encryption),
+  );
+}
