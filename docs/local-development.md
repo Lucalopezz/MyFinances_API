@@ -62,11 +62,12 @@ npm run test:exports
 npm run test:connection
 ```
 
-Os comandos `npm test` e `npm run test:*:integration` carregam o `.env` automaticamente (Node.js com suporte a `--env-file-if-exists`). As variáveis `CALENDAR_TEST_DATABASE_URL`, `IMPORT_TEST_DATABASE_URL`, `CARDS_TEST_DATABASE_URL` e `NOTIFICATIONS_TEST_DATABASE_URL` apontam para `mongodb://127.0.0.1:27028/?replicaSet=rs0&directConnection=true`, o MongoDB local acima. Cada suíte cria e remove um banco aleatório próprio, separado de `myfinances_local`; nunca usa `DATABASE_URL`. Variáveis definidas no terminal têm prioridade sobre o arquivo.
+Os comandos `npm test` e `npm run test:*:integration` carregam o `.env` automaticamente (Node.js com suporte a `--env-file-if-exists`). As variáveis `CALENDAR_TEST_DATABASE_URL`, `IMPORT_TEST_DATABASE_URL`, `CARDS_TEST_DATABASE_URL`, `NOTIFICATIONS_TEST_DATABASE_URL` e `WISHLIST_TEST_DATABASE_URL` apontam para `mongodb://127.0.0.1:27028/?replicaSet=rs0&directConnection=true`, o MongoDB local acima. Cada suíte cria e remove um banco aleatório próprio, separado de `myfinances_local`; nunca usa `DATABASE_URL`. Variáveis definidas no terminal têm prioridade sobre o arquivo.
 
 ```bash
 npm test -- --runInBand
 npm run test:cards:integration
+WISHLIST_TEST_DATABASE_URL='mongodb://127.0.0.1:27028/?replicaSet=rs0&directConnection=true' npm run test:wishlist:integration
 ```
 
 ## Parar e retomar

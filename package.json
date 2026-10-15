@@ -25,7 +25,8 @@
     "test:calendar:integration": "npm test -- --runInBand --runTestsByPath src/modules/calendar/calendar.integration.spec.ts",
     "test:imports:integration": "npm test -- --runInBand --runTestsByPath src/modules/transactions/imports/imports.integration.spec.ts",
     "test:notifications:integration": "npm test -- --runInBand --runTestsByPath src/modules/notifications/notification.integration.spec.ts",
-    "test:cards:integration": "npm test -- --runInBand --runTestsByPath src/modules/cards/cards.integration.spec.ts"
+    "test:cards:integration": "npm test -- --runInBand --runTestsByPath src/modules/cards/cards.integration.spec.ts",
+    "test:wishlist:integration": "npm test -- --runInBand --runTestsByPath src/modules/wishlist/wishlist.integration.spec.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",

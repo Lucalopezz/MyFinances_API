@@ -9,3 +9,23 @@ Não é necessário executar uma migração que atribua valores às metas. Docum
 O saldo registrado soma transações realizadas no aplicativo. Ele não é saldo bancário. Reservas não diminuem esse saldo; apenas diminuem o saldo livre. Despesas posteriores podem tornar o saldo livre negativo, e o aviso `insufficient` preserva os aportes existentes. O cálculo lê todo o histórico do usuário; monitore custo de leitura em contas volumosas antes de ampliar escala.
 
 Em caso de falha durante a publicação, interrompa a ativação do frontend. Reverta a aplicação para a versão anterior e restaure o backup apenas se o schema ou dados forem alterados de forma incompatível. Movimentos criados após o backup precisam ser conciliados manualmente antes de uma restauração, pois restaurar sem conciliação apagaria reservas legítimas. A conclusão de compra permanece irreversível pelo fluxo genérico; correções futuras exigem operação específica que preserve o vínculo da transação.
+
+## Organização e validação
+
+`WishlistService` oferece a API pública do módulo e delega cadastro, consultas,
+movimentos de reserva e conclusão a serviços especializados em `services/`.
+`domain/` calcula reservas, progresso, prazos e consumo da compra sobre dados
+descriptografados. O mapper converte os envelopes de criptografia;
+`WishlistRepository` mantém a trava por usuário e o contexto transacional.
+
+A integração usa somente uma URL explícita de MongoDB local, cria um banco
+aleatório e remove apenas esse banco ao terminar:
+
+```bash
+WISHLIST_TEST_DATABASE_URL='mongodb://127.0.0.1:27028/?replicaSet=rs0&directConnection=true' npm run test:wishlist:integration
+```
+
+Os cenários verificam aportes concorrentes, conclusão idempotente, rollback de
+compra e movimentos, isolamento do usuário e retirada limitada à reserva.
+`setup:local` configura essa variável em novos arquivos `.env`; arquivos já
+existentes continuam preservados.

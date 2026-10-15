@@ -32,6 +32,7 @@ createEnv(
     'CALENDAR_TEST_DATABASE_URL=mongodb://127.0.0.1:27028/?replicaSet=rs0&directConnection=true',
     'IMPORT_TEST_DATABASE_URL=mongodb://127.0.0.1:27028/?replicaSet=rs0&directConnection=true',
     'NOTIFICATIONS_TEST_DATABASE_URL=mongodb://127.0.0.1:27028/?replicaSet=rs0&directConnection=true',
+    'WISHLIST_TEST_DATABASE_URL=mongodb://127.0.0.1:27028/?replicaSet=rs0&directConnection=true',
     '',
     `JWT_SECRET=${randomBytes(48).toString('hex')}`,
     'JWT_TOKEN_AUDIENCE=myfinances',

@@ -1,7 +1,19 @@
 import { WishlistService } from './wishlist.service';
+import { WishlistRepository } from './repositories/wishlist.repository';
+import { WishlistMapper } from './mappers/wishlist.mapper';
+import { WishlistQueriesService } from './services/wishlist-queries.service';
+
+function serviceFor(prisma: never, encryption: never) {
+  const repository = new WishlistRepository(prisma);
+  const queries = new WishlistQueriesService(
+    repository,
+    new WishlistMapper(encryption),
+  );
+  return new WishlistService(queries, {} as never, {} as never, {} as never);
+}
 
 describe('WishlistService.getSummary', () => {
-  it('calculates the available balance from transactions and active reservations for one user', async () => {
+  it('calcula saldo livre das transações e reservas ativas de um usuário', async () => {
     const userId = '64f000000000000000000001';
     const transaction = (type: 'INCOME' | 'EXPENSE', value: number) => ({
       id: value.toString(16).padStart(24, '0'),
@@ -45,14 +57,13 @@ describe('WishlistService.getSummary', () => {
         },
       },
     ]);
-    const service = new WishlistService(
+    const service = serviceFor(
       {
         transaction: { findMany: findTransactions },
         wishlistItem: { findMany: findItems },
         wishlistMovement: { findMany: findMovements },
       } as never,
       { decrypt: (value: string) => JSON.parse(value) } as never,
-      {} as never,
     );
 
     expect(await service.getSummary(userId)).toEqual({
@@ -70,7 +81,7 @@ describe('WishlistService.getSummary', () => {
 describe('WishlistService.getWishlistItems', () => {
   afterEach(() => jest.useRealTimers());
 
-  it('returns progress and a monthly saving suggestion from reservation movements', async () => {
+  it('compõe progresso e sugestão mensal pelos movimentos da reserva', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-10-01T12:00:00.000Z'));
     const userId = '64f000000000000000000001';
     const item = {
@@ -94,7 +105,7 @@ describe('WishlistService.getWishlistItems', () => {
         note: JSON.stringify(null),
       },
     });
-    const service = new WishlistService(
+    const service = serviceFor(
       {
         wishlistItem: { findMany: jest.fn(async () => [item]) },
         wishlistMovement: {
@@ -105,7 +116,6 @@ describe('WishlistService.getWishlistItems', () => {
         },
       } as never,
       { decrypt: (value: string) => JSON.parse(value) } as never,
-      {} as never,
     );
 
     expect(await service.getWishlistItems(userId)).toEqual([

@@ -91,6 +91,7 @@ Para testar os dois projetos com banco Docker e uma conta populada, siga o [guia
 | `npm test -- --runInBand` | Suítes de testes; integrações dependem de configuração própria |
 | `npm run test:calendar:integration` | Integração do calendário em banco descartável |
 | `npm run test:imports:integration` | Integração da importação em banco descartável |
+| `npm run test:wishlist:integration` | Integração de reservas, concorrência e conclusão de metas |
 
 As variáveis e os limites dos testes de integração estão nos respectivos guias de domínio.
 
