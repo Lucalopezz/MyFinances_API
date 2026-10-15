@@ -1,5 +1,5 @@
+import { nextExpenseDueDate } from '../domain/expense-recurrence';
 import { Injectable } from '@nestjs/common';
-import { RecurrenceType } from '@prisma/client';
 import { todayKey } from 'src/common/date/civil-date';
 import { FixedExpensesRepository } from '../repositories/fixed-expenses.repository';
 import { RecurringExpenseToRefresh } from '../types/fixed-expenses.types';
@@ -27,7 +27,7 @@ export class FixedExpenseRecurrenceService {
   }
 
   private async refreshRecurringExpense(expense: RecurringExpenseToRefresh) {
-    const nextDueDate = this.calculateNextDueDate(
+    const nextDueDate = nextExpenseDueDate(
       expense.dueDate,
       expense.recurrence,
       expense.recurrenceDay ?? expense.dueDate.getUTCDate(),
@@ -37,28 +37,6 @@ export class FixedExpenseRecurrenceService {
       expense.id,
       nextDueDate,
       expense.dueDate,
-    );
-  }
-
-  private calculateNextDueDate(
-    dueDate: Date,
-    recurrence: RecurrenceType,
-    anchorDay: number,
-  ) {
-    // Avança apenas um ciclo, preservando meses não pagos e o dia original 29/30/31.
-    const month =
-      dueDate.getUTCMonth() + (recurrence === RecurrenceType.MONTHLY ? 1 : 12);
-    const first = new Date(Date.UTC(dueDate.getUTCFullYear(), month, 1));
-    const last = new Date(
-      Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0),
-    ).getUTCDate();
-    return new Date(
-      Date.UTC(
-        first.getUTCFullYear(),
-        first.getUTCMonth(),
-        Math.min(anchorDay, last),
-        12,
-      ),
     );
   }
 }

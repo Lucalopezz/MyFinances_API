@@ -20,14 +20,14 @@ import {
 } from './dto/notification.dto';
 import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';
-import { FixedExpenseNotificationService } from '../fixed-expenses/services/fixed-expense-notification.service';
+import { NotificationSyncService } from './services/notification-sync.service';
 
 @Controller('notifications')
 @UseGuards(AuthTokenGuard)
 export class NotificationsController {
   constructor(
     private readonly notificationService: NotificationsService,
-    private readonly syncService: FixedExpenseNotificationService,
+    private readonly syncService: NotificationSyncService,
   ) {}
 
   /** Processa vencimentos durante a requisição, sem cron ou worker persistente. */

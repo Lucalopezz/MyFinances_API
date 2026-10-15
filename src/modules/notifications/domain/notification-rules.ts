@@ -1,12 +1,24 @@
-import { FixedExpense, NotificationEvent } from '@prisma/client';
+import { dayKey } from 'src/common/date/civil-date';
+
+interface NotificationExpense {
+  name: string;
+  amount: number;
+  isPaid: boolean;
+  dueDate: Date;
+}
+
+type NotificationEvent = 'UPCOMING' | 'OVERDUE';
 
 export const NOTIFICATION_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 const DAY_MS = 86400000;
 
 /** Usa dias civis: vencimentos são datas UTC e hoje é o dia financeiro de São Paulo. */
-export function expenseNotification(expense: FixedExpense, today: string) {
+export function expenseNotification(
+  expense: NotificationExpense,
+  today: string,
+) {
   if (expense.isPaid) return null;
-  const dueDateKey = expense.dueDate.toISOString().slice(0, 10);
+  const dueDateKey = dayKey(expense.dueDate);
   const days = Math.round(
     (Date.parse(`${dueDateKey}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) /
       DAY_MS,
@@ -43,4 +55,27 @@ export function needsNotificationSync(
     now.getTime() - state.lastCheckedAt.getTime() >=
       NOTIFICATION_SYNC_INTERVAL_MS
   );
+}
+
+/** Resolve o evento anterior sem apagar o histórico nem inferir identidade pelo texto. */
+export function notificationResolution(
+  expense: { isPaid: boolean; dueDate: Date } | undefined,
+  notification: { dueDateKey: string | null; event: string | null },
+  today: string,
+) {
+  if (!expense) return 'EXPENSE_DELETED';
+  if (expense.isPaid) return 'PAID';
+  const due = dayKey(expense.dueDate);
+  if (due !== notification.dueDateKey) return 'DUE_DATE_CHANGED';
+  if (notification.event === 'UPCOMING' && due < today) return 'SUPERSEDED';
+  return null;
+}
+
+/** Um lembrete antigo gera recibo sem novo aviso, preservando a deduplicação legada. */
+export function legacyNotificationDelivered(
+  event: NotificationEvent,
+  due: string,
+  lastDue: Date | null,
+) {
+  return event === 'UPCOMING' && !!lastDue && dayKey(lastDue) === due;
 }

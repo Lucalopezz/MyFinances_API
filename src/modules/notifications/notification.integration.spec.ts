@@ -13,7 +13,7 @@ import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { NotificationsRepository } from './repositories/notifications.repository';
 import { NotificationSyncRepository } from './repositories/notification-sync.repository';
-import { FixedExpenseNotificationService } from '../fixed-expenses/services/fixed-expense-notification.service';
+import { NotificationSyncService } from './services/notification-sync.service';
 import { FixedExpenseRecurrenceService } from '../fixed-expenses/services/fixed-expense-recurrence.service';
 import { FixedExpensesRepository } from '../fixed-expenses/repositories/fixed-expenses.repository';
 import { FixedExpensePaymentsRepository } from '../fixed-expenses/repositories/fixed-expense-payments.repository';
@@ -27,7 +27,7 @@ const execFileAsync = promisify(execFile);
   'Notificações com MongoDB real',
   () => {
     let db: PrismaClient;
-    let repository: NotificationSyncRepository;
+    let synchronizer: NotificationSyncService;
     let app: INestApplication;
     let token: string;
     const owner = '64f000000000000000000001';
@@ -67,12 +67,13 @@ const execFileAsync = promisify(execFile);
       );
       db = new PrismaClient({ datasourceUrl: url.toString() });
       await db.$connect();
-      repository = new NotificationSyncRepository(db as never);
+      const repository = new NotificationSyncRepository(db as never);
       // A criptografia de recibos antigos não é exercitada neste teste de rota;
       // o avanço de ciclo abaixo usa uma despesa sem transação legada vinculada.
       const recurrence = new FixedExpenseRecurrenceService(
         new FixedExpensesRepository(db as never, {} as never),
       );
+      synchronizer = new NotificationSyncService(repository, recurrence);
       const jwt = new JwtService({ secret: 'notifications-test-only' });
       const module = await Test.createTestingModule({
         controllers: [NotificationsController],
@@ -80,11 +81,8 @@ const execFileAsync = promisify(execFile);
           NotificationsService,
           NotificationsRepository,
           {
-            provide: FixedExpenseNotificationService,
-            useValue: new FixedExpenseNotificationService(
-              repository,
-              recurrence,
-            ),
+            provide: NotificationSyncService,
+            useValue: synchronizer,
           },
           { provide: PrismaService, useValue: db },
           { provide: JwtService, useValue: jwt },
@@ -135,25 +133,26 @@ const execFileAsync = promisify(execFile);
     it('três chamadas simultâneas criam um único aviso e só uma processa', async () => {
       await createExpense();
       const results = await Promise.all([
-        repository.synchronize(owner),
-        repository.synchronize(owner),
-        repository.synchronize(owner),
+        synchronizer.evaluate(owner),
+        synchronizer.evaluate(owner),
+        synchronizer.evaluate(owner),
       ]);
       expect(results.filter((r) => r.processed)).toHaveLength(1);
       expect(await db.notification.count()).toBe(1);
       expect(await db.notificationDelivery.count()).toBe(1);
       // Confirma o índice real, além da coordenação pelo timestamp.
       const receipt = await db.notificationDelivery.findFirstOrThrow();
-      const { id: _id, ...data } = receipt;
+      const data = { ...receipt };
+      delete data.id;
       await expect(
         db.notificationDelivery.create({ data }),
       ).rejects.toMatchObject({ code: 'P2002' });
     });
     it('permite avaliação forçada após uma mutação dentro dos cinco minutos', async () => {
-      await repository.synchronize(owner);
+      await synchronizer.evaluate(owner);
       await createExpense();
-      expect((await repository.synchronize(owner)).processed).toBe(false);
-      expect((await repository.synchronize(owner, true)).created).toBe(1);
+      expect((await synchronizer.evaluate(owner)).processed).toBe(false);
+      expect((await synchronizer.evaluate(owner, true)).created).toBe(1);
     });
     it('recupera atrasados e inclui o terceiro dia até 23:59', async () => {
       await createExpense(-12);
@@ -165,7 +164,7 @@ const execFileAsync = promisify(execFile);
         },
       });
       await createExpense(4);
-      const result = await repository.synchronize(owner);
+      const result = await synchronizer.evaluate(owner);
       expect(result.created).toBe(2);
       expect(
         await db.notification.findFirst({ where: { event: 'OVERDUE' } }),
@@ -176,7 +175,7 @@ const execFileAsync = promisify(execFile);
     });
     it('pagar resolve atomicamente o aviso; desmarcar reabre a mesma notificação', async () => {
       const expense = await createExpense();
-      await repository.synchronize(owner);
+      await synchronizer.evaluate(owner);
       const original = await db.notification.findFirstOrThrow();
       const payments = new FixedExpensePaymentsRepository(
         db as never,
@@ -205,7 +204,7 @@ const execFileAsync = promisify(execFile);
         resolvedAt: expect.any(Date),
       });
       await payments.unmarkPaid(paid, owner, transactionId);
-      await repository.synchronize(owner, true);
+      await synchronizer.evaluate(owner, true);
       expect(await db.notification.count()).toBe(1);
       expect(
         await db.notification.findUnique({ where: { id: original.id } }),
@@ -213,13 +212,13 @@ const execFileAsync = promisify(execFile);
     });
     it('pagamento e sincronização concorrentes preservam uma única transação e aviso resolvido', async () => {
       const expense = await createExpense();
-      await repository.synchronize(owner);
+      await synchronizer.evaluate(owner);
       const payments = new FixedExpensePaymentsRepository(
         db as never,
         new FixedExpenseRawFieldsService(db as never),
       );
       await Promise.all([
-        repository.synchronize(owner, true),
+        synchronizer.evaluate(owner, true),
         payments.markPaid(
           expense,
           owner,
@@ -241,19 +240,19 @@ const execFileAsync = promisify(execFile);
     });
     it('alterar vencimento encerra o aviso antigo e excluir encerra o novo', async () => {
       const expense = await createExpense();
-      await repository.synchronize(owner);
+      await synchronizer.evaluate(owner);
       const original = await db.notification.findFirstOrThrow();
       await db.fixedExpense.update({
         where: { id: expense.id },
         data: { dueDate: date(2) },
       });
-      await repository.synchronize(owner, true);
+      await synchronizer.evaluate(owner, true);
       expect(
         await db.notification.findUnique({ where: { id: original.id } }),
       ).toMatchObject({ resolution: 'DUE_DATE_CHANGED', read: true });
       expect(await db.notification.count()).toBe(2);
       await db.fixedExpense.delete({ where: { id: expense.id } });
-      await repository.synchronize(owner, true);
+      await synchronizer.evaluate(owner, true);
       expect(await db.notification.count({ where: { resolvedAt: null } })).toBe(
         0,
       );
@@ -265,7 +264,7 @@ const execFileAsync = promisify(execFile);
     });
     it('atualiza nome/valor sem duplicar ou tornar um aviso lido não lido', async () => {
       const expense = await createExpense();
-      await repository.synchronize(owner);
+      await synchronizer.evaluate(owner);
       const original = await db.notification.findFirstOrThrow();
       await db.notification.update({
         where: { id: original.id },
@@ -275,7 +274,7 @@ const execFileAsync = promisify(execFile);
         where: { id: expense.id },
         data: { name: 'Internet nova', amount: 120 },
       });
-      await repository.synchronize(owner, true);
+      await synchronizer.evaluate(owner, true);
       expect(await db.notification.count()).toBe(1);
       expect(await db.notification.findFirstOrThrow()).toMatchObject({
         read: true,
@@ -305,8 +304,8 @@ const execFileAsync = promisify(execFile);
           notificationId: old.id,
         },
       });
-      await repository.synchronize(owner);
-      await repository.synchronize(owner, true);
+      await synchronizer.evaluate(owner);
+      await synchronizer.evaluate(owner, true);
       expect(
         await db.notification.findUnique({ where: { id: old.id } }),
       ).toMatchObject({ read: true, resolution: 'SUPERSEDED' });
@@ -316,13 +315,13 @@ const execFileAsync = promisify(execFile);
     });
     it('excluir um aviso preserva seu recibo e não o recria', async () => {
       await createExpense();
-      await repository.synchronize(owner);
+      await synchronizer.evaluate(owner);
       const notification = await db.notification.findFirstOrThrow();
       await request(app.getHttpServer())
         .delete(`/notifications/${notification.id}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
-      await repository.synchronize(owner, true);
+      await synchronizer.evaluate(owner, true);
       expect(await db.notification.count()).toBe(0);
       expect(await db.notificationDelivery.count()).toBe(1);
     });
@@ -332,13 +331,13 @@ const execFileAsync = promisify(execFile);
         where: { id: expense.id },
         data: { lastNotificationDueDate: expense.dueDate },
       });
-      expect((await repository.synchronize(owner)).created).toBe(0);
+      expect((await synchronizer.evaluate(owner)).created).toBe(0);
       const late = await createExpense(-1);
       await db.fixedExpense.update({
         where: { id: late.id },
         data: { lastNotificationDueDate: late.dueDate },
       });
-      expect((await repository.synchronize(owner, true)).created).toBe(1);
+      expect((await synchronizer.evaluate(owner, true)).created).toBe(1);
     });
     it('falha faz rollback de aviso, recibo e timestamp; a próxima chamada recupera', async () => {
       await createExpense();
@@ -355,14 +354,14 @@ const execFileAsync = promisify(execFile);
           };
           return callback(tx);
         })) as never);
-      await expect(repository.synchronize(owner)).rejects.toThrow(
+      await expect(synchronizer.evaluate(owner)).rejects.toThrow(
         'falha simulada',
       );
       injected.mockRestore();
       expect(await db.notification.count()).toBe(0);
       expect(await db.notificationSyncState.count()).toBe(0);
       expect(await db.notificationDelivery.count()).toBe(0);
-      expect((await repository.synchronize(owner)).created).toBe(1);
+      expect((await synchronizer.evaluate(owner)).created).toBe(1);
     });
     it('a rota atualiza o ciclo pago antes de avaliar as notificações', async () => {
       const expense = await createExpense(-1);
@@ -383,13 +382,13 @@ const execFileAsync = promisify(execFile);
       );
     });
     it('uma mudança de dia ignora o intervalo ainda recente', async () => {
-      await repository.synchronize(owner);
+      await synchronizer.evaluate(owner);
       await createExpense();
       await db.notificationSyncState.update({
         where: { id: owner },
         data: { dayKey: date(-1).toISOString().slice(0, 10) },
       });
-      expect((await repository.synchronize(owner)).created).toBe(1);
+      expect((await synchronizer.evaluate(owner)).created).toBe(1);
     });
     it('sincronizações simultâneas avançam um ciclo pago uma única vez', async () => {
       const expense = await createExpense(-1);

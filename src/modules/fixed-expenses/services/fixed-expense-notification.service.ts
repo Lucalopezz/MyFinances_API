@@ -1,31 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NotificationSyncRepository } from '../../notifications/repositories/notification-sync.repository';
-import { FixedExpenseRecurrenceService } from './fixed-expense-recurrence.service';
+import { NotificationSyncService } from '../../notifications/services/notification-sync.service';
 
+/** Integra mutações financeiras aos avisos sem propagar falhas auxiliares ao pagamento. */
 @Injectable()
 export class FixedExpenseNotificationService {
   private readonly logger = new Logger(FixedExpenseNotificationService.name);
 
-  constructor(
-    private readonly repository: NotificationSyncRepository,
-    private readonly recurrence: FixedExpenseRecurrenceService,
-  ) {}
+  constructor(private readonly sync: NotificationSyncService) {}
 
-  /** A entrada no app atualiza ciclos antes de avaliar avisos; erros permitem nova tentativa. */
-  async synchronize(userId: string) {
-    await this.recurrence.refreshRecurringExpenses(userId);
-    return this.repository.synchronize(userId);
-  }
-
-  /**
-   * Mutações forçam a avaliação mesmo dentro do intervalo de cinco minutos.
-   * Uma falha auxiliar não transforma um pagamento já confirmado em falha financeira.
-   */
+  /** Mutações forçam a rodada; o timestamp só é confirmado quando toda avaliação termina. */
   async processDueNotifications(userId: string, force = true) {
     try {
-      return await this.repository.synchronize(userId, force);
+      return await this.sync.evaluate(userId, force);
     } catch {
-      // Sem payload financeiro nos logs; o timestamp não foi confirmado no banco.
+      // Sem payload financeiro nos logs; a próxima rodada pode recuperar a falha.
       this.logger.error(
         'Não foi possível atualizar os avisos de despesas fixas.',
       );
