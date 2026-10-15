@@ -18,12 +18,17 @@ export class WishlistReservationsService {
     private readonly mapper: WishlistMapper,
   ) {}
 
+  /** Registra aporte/retirada no histórico da meta, sem criar receita ou despesa financeira. */
   addMovement(id: string, dto: WishlistMovementDto, userId: string) {
+    // atomic serializa movimentos pelo usuário, inclusive entre metas diferentes.
+    // Todas as leituras abaixo usam o mesmo tx para dois aportes não gastarem o mesmo saldo livre.
     return this.repository.atomic(userId, async (tx) => {
       const item = await this.queries.findOwned(id, userId, tx);
       if ((item.status ?? 'ACTIVE') !== 'ACTIVE')
         throw new ConflictException('Meta já concluída.');
       const current = await this.queries.view(item, tx);
+      // Aporte depende do saldo financeiro menos todas as reservas ativas.
+      // Retirada depende só da reserva desta meta e pode liberar dinheiro mesmo com saldo livre negativo.
       const free =
         dto.kind === 'DEPOSIT'
           ? (await this.queries.summary(userId, tx)).freeBalance
@@ -53,6 +58,7 @@ export class WishlistReservationsService {
         },
         tx,
       );
+      // Recalcula dentro da mesma transação para devolver a reserva já com o movimento salvo.
       return this.queries.view(item, tx);
     });
   }

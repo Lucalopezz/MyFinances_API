@@ -62,6 +62,7 @@ export class FixedExpensePaymentsRepository {
     });
   }
 
+  /** Grava estado pago, lançamento, resolução dos avisos e recibo como uma única operação. */
   markPaid(
     expenseData: FixedExpense,
     userId: string,
@@ -70,6 +71,8 @@ export class FixedExpensePaymentsRepository {
     encryptedReceipt: (transactionId: string) => string,
   ) {
     return this.runPaymentTransaction(async (tx) => {
+      // O teste e a mudança de estado são uma única escrita: só uma chamada pode
+      // pagar este vencimento. Verificar apenas isPaid no service permitiria uma corrida.
       const claimed = await tx.fixedExpense.updateMany({
         where: {
           id: expenseData.id,
@@ -107,6 +110,8 @@ export class FixedExpensePaymentsRepository {
         },
         data: { resolvedAt: new Date(), resolution: 'PAID', read: true },
       });
+      // A competência identifica o mês/ano realizado no calendário, mesmo após o
+      // avanço da recorrência; sem esse recibo a previsão poderia ser contada de novo.
       await tx.calendarReceipt.create({
         data: {
           userId,
@@ -122,6 +127,7 @@ export class FixedExpensePaymentsRepository {
     });
   }
 
+  /** Remove lançamento e recibo junto com a marcação; falhas desfazem a operação inteira. */
   unmarkPaid(
     expenseData: FixedExpense,
     userId: string,

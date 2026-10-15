@@ -28,6 +28,7 @@ export class ImportConfirmationService {
     private readonly encryption: FinancialDataEncryptionService,
     private readonly history: ImportHistoryService,
   ) {}
+  /** Processa decisões da revisão; falhas em uma linha preservam as já confirmadas no lote. */
   async confirm(
     batch: Awaited<ReturnType<ImportsRepository['find']>>,
     dto: ConfirmImport,
@@ -36,6 +37,8 @@ export class ImportConfirmationService {
     const id = batch.id;
     if (!batch.encryptedData || batch.expiresAt <= new Date())
       throw new GoneException('Prévia expirada ou cancelada.');
+    // Datas, valores e descrições vêm da prévia armazenada. O cliente escolhe as
+    // linhas, a categoria e a aprovação de duplicatas, sem reescrever o extrato original.
     const payload = this.encryption.decrypt<ImportPayload>(batch.encryptedData);
     if (
       dto.rows.some(
@@ -59,6 +62,8 @@ export class ImportConfirmationService {
     for (const row of payload.rows) {
       const existing = previous.get(row.rowId);
       if (existing?.status === 'IMPORTED') {
+        // O recibo definitivo prevalece até se a transação já tiver sido excluída.
+        // Repetir a confirmação não deve recriar um lançamento que o usuário removeu.
         results.push(publicImportResult(existing));
         continue;
       }
@@ -134,6 +139,8 @@ export class ImportConfirmationService {
             result = { ...result, status: 'IMPORTED', reason: null };
           }
         }
+        // saveResult confirma lançamento e recibo juntos por usuário/lote/linha.
+        // A atomicidade é por linha: o lote pode terminar com importadas e pendentes.
         const saved = await this.repository.saveResult(
           id,
           userId,
@@ -141,6 +148,8 @@ export class ImportConfirmationService {
           transaction,
         );
         results.push(publicImportResult(saved));
+        // As próximas linhas também precisam enxergar o que acabou de ser importado,
+        // pois o histórico inicial foi carregado antes do processamento deste lote.
         if (saved.status === 'IMPORTED')
           addImportHistory(history, row, payload.source, saved.transactionId);
       } catch (error) {

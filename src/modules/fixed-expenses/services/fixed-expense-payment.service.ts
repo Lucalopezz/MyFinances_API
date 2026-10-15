@@ -16,6 +16,10 @@ export class FixedExpensePaymentService {
     private readonly cards?: CardsService,
   ) {}
 
+  /**
+   * Confirma o ciclo atual: pagamento direto gera despesa e recibo; no cartão gera compra.
+   * O repository mantém a alteração da despesa e seus vínculos na mesma transação de banco.
+   */
   async markAsPaid(expenseData: FixedExpense, userId: string) {
     if (expenseData.isPaid) {
       return expenseData;
@@ -30,6 +34,8 @@ export class FixedExpensePaymentService {
       userId,
       'EXPENSE',
     );
+    // Meio-dia UTC preserva o dia civil de São Paulo ao converter a data para exibição;
+    // meia-noite UTC apareceria como o dia anterior nesse fuso.
     const paidAt = new Date(`${todayKey()}T12:00:00Z`);
 
     const encryptedTransactionData = buildEncryptedTransactionData(
@@ -43,6 +49,8 @@ export class FixedExpensePaymentService {
       },
       this.encryptionService,
     );
+    // O recibo guarda os dados deste ciclo mesmo que nome, valor ou vencimento mudem.
+    // A função recebe o ID da transação recém-criada para registrar o vínculo correto.
     return this.repository.markPaid(
       expenseData,
       userId,
@@ -91,6 +99,7 @@ export class FixedExpensePaymentService {
     });
   }
 
+  /** Desfaz o pagamento direto; compras no cartão exigem o estorno específico desse domínio. */
   async unmarkAsPaid(expenseData: FixedExpense, userId: string) {
     if (!expenseData.isPaid) {
       return expenseData;

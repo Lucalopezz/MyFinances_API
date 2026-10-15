@@ -1,4 +1,7 @@
-/** Distribui os centavos restantes nas primeiras parcelas, preservando exatamente o total. */
+/**
+ * Divide um total em centavos inteiros, com pelo menos um centavo por parcela.
+ * Ex.: 100 centavos em 3 parcelas resulta em [34, 33, 33], sem perder valor no rateio.
+ */
 export function splitInstallments(totalCents: number, count: number): number[] {
   if (
     !Number.isSafeInteger(totalCents) ||
@@ -8,6 +11,8 @@ export function splitInstallments(totalCents: number, count: number): number[] {
     count > 60
   )
     throw new Error('Valor ou número de parcelas inválido.');
+  // A divisão inteira deixa um resto; cada uma das primeiras parcelas recebe
+  // um centavo adicional até distribuir esse resto e recompor o total original.
   const base = Math.floor(totalCents / count);
   return Array.from(
     { length: count },
@@ -15,7 +20,7 @@ export function splitInstallments(totalCents: number, count: number): number[] {
   );
 }
 
-/** Avança por mês mantendo a âncora original dos dias 29 a 31 em cada ciclo. */
+/** Avança competências YYYY-MM usando o dia 1, sem saltos por meses mais curtos. */
 function monthOffset(month: string, offset: number) {
   const [year, number] = month.split('-').map(Number);
   return new Date(Date.UTC(year, number - 1 + offset, 1))
@@ -42,7 +47,10 @@ export function closingDateForCycle(
   );
 }
 
-/** Compras no próprio dia do fechamento entram no ciclo seguinte. */
+/**
+ * Define a competência (mês do vencimento) de cada parcela a partir da data civil da compra.
+ * installmentOffset começa em zero; compras no dia do fechamento entram no ciclo seguinte.
+ */
 export function invoiceForPurchase(
   purchaseDate: string,
   closingDay: number,
@@ -54,6 +62,8 @@ export function invoiceForPurchase(
     purchaseDate < dayInMonth(purchaseMonth, closingDay)
       ? purchaseMonth
       : monthOffset(purchaseMonth, 1);
+  // Se o vencimento for no dia 5 e o fechamento no dia 20, a fatura fechada
+  // em outubro vence em novembro. Depois desse ajuste, cada parcela avança um mês.
   const dueMonth = monthOffset(
     closingMonth,
     (dueDay <= closingDay ? 1 : 0) + installmentOffset,

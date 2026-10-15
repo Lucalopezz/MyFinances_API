@@ -95,11 +95,17 @@ export class TransactionQueriesService {
         : null,
     }));
   }
+  /**
+   * Busca por índices em lotes e filtra os campos sensíveis após descriptografá-los.
+   * O cursor marca o último resultado devolvido, com data e ID para desempatar a ordenação.
+   */
   async searchTransactions(query: TransactionSearchDto, userId: string) {
     const { limit, category, search, type, startDate, endDate } = query;
     if (category)
       await this.categories.resolveReference(category, userId, type, true);
     const catalog = search ? await this.categories.list(userId) : [];
+    // Vincula o cursor ao dono e aos filtros. Ele é um marcador de continuação,
+    // não uma autorização: as consultas ao repository continuam filtrando por userId.
     const fingerprint = createHash('sha256')
       .update(
         JSON.stringify({ userId, category, search, type, startDate, endDate }),
@@ -121,6 +127,8 @@ export class TransactionQueriesService {
       : undefined;
     let lastReturnedPosition: { dateIndex: number; id: string } | undefined;
 
+    // Categoria e descrição estão criptografadas. Um lote de 100 candidatos pode
+    // render poucos resultados, então seguimos lendo até completar a página ou o histórico.
     while (true) {
       const batch = await this.repository.findSearchBatch(
         {
@@ -141,6 +149,8 @@ export class TransactionQueriesService {
         );
         if (!matchesTransaction(item, category, searchText, catalog)) continue;
 
+        // Só anunciamos outra página depois de encontrar mais um item compatível.
+        // O cursor fica no último devolvido para esse item extra reaparecer na próxima leitura.
         if (data.length === limit) {
           const nextCursor = Buffer.from(
             JSON.stringify({
@@ -174,6 +184,7 @@ export class TransactionQueriesService {
     return this.calculateSummary({}, userId);
   }
 
+  /** Totaliza todas as páginas dos filtros, independentemente da página aberta no front. */
   private async calculateSummary(
     query: Omit<TransactionSearchDto, 'limit' | 'cursor'>,
     userId: string,
@@ -189,6 +200,8 @@ export class TransactionQueriesService {
         userId,
       );
       for (const item of page.data) {
+        // Soma centavos inteiros para que resíduos de ponto flutuante não se acumulem
+        // ao percorrer um histórico grande; converte para reais apenas na resposta.
         if (item.type === 'INCOME') incomeCents += Math.round(item.value * 100);
         else expenseCents += Math.round(item.value * 100);
         count++;

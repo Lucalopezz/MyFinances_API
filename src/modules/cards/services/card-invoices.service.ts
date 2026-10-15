@@ -21,6 +21,10 @@ export class CardInvoicesService {
     private readonly catalog: CardsCatalogService,
   ) {}
 
+  /**
+   * Converte a fatura fechada em despesas realizadas na data do pagamento.
+   * cycle identifica o mês de vencimento; uma fatura já paga é devolvida sem novos lançamentos.
+   */
   async payInvoice(userId: string, id: string, cycle: string, date: string) {
     checkCardId(id);
     if (date > todayKey())
@@ -53,6 +57,8 @@ export class CardInvoicesService {
           toCents(invoice.annualFee),
         );
         const transactionIds: string[] = [];
+        // Cada parcela vira uma despesa com a categoria original da compra.
+        // Somar tudo em uma despesa única perderia o detalhamento dos indicadores.
         for (const item of items) {
           const transaction = await this.repository.createTransaction(
             tx,
@@ -63,6 +69,8 @@ export class CardInvoicesService {
           );
           transactionIds.push(transaction.id);
         }
+        // O recibo vincula todas as despesas ao mesmo pagamento. Como ele é gravado
+        // no mesmo tx, uma falha também desfaz os lançamentos criados acima.
         await this.repository.createPayment(
           tx,
           userId,
