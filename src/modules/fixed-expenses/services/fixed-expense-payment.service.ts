@@ -1,10 +1,10 @@
-import { todayKey } from '../../calendar/calendar-calculation';
+import { todayKey } from '../../calendar/domain/calendar-calculation';
 import { CategoriesService } from '../../categories/categories.service';
 import { CardsService } from '../../cards/cards.service';
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { FixedExpense, TransactionType } from '@prisma/client';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
-import { buildEncryptedTransactionData } from 'src/modules/transactions/transaction-encryption.mapper';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
+import { buildEncryptedTransactionData } from 'src/modules/transactions/mappers/transaction-encryption.mapper';
 import { FixedExpensePaymentsRepository } from '../repositories/fixed-expense-payments.repository';
 
 @Injectable()

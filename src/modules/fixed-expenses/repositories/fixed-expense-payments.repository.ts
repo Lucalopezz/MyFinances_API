@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { FixedExpense, Prisma } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
 import { FixedExpenseRawFieldsService } from '../services/fixed-expense-raw-fields.service';
 
 @Injectable()

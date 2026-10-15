@@ -1,20 +1,22 @@
-import { forwardRef, Module } from '@nestjs/common';
-import { AppModule } from '../app/app.module';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { PrismaModule } from 'src/infrastructure/prisma/prisma.module';
+import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
+import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { CalendarController } from './calendar.controller';
-import { CalendarService } from './calendar.service';
+import { CalendarService } from './services/calendar.service';
 import { CardsModule } from '../cards/cards.module';
 @Module({
   imports: [
-    forwardRef(() => AppModule),
+    PrismaModule,
+    EncryptionModule,
+
     AuthModule,
     CategoriesModule,
     CardsModule,
   ],
   controllers: [CalendarController],
-  providers: [FinancialDataEncryptionService, CalendarService],
+  providers: [CalendarService],
   exports: [CalendarService],
 })
 export class CalendarModule {}

@@ -41,7 +41,7 @@ Pagamento parcial, edição de cartão/compra, juros, conciliação de extrato e
 
 ## Validação
 
-`npm test -- --runInBand --runTestsByPath src/modules/cards/card-calculation.spec.ts` verifica datas e centavos. A suíte `cards.integration.spec.ts` usa `CARDS_TEST_DATABASE_URL` apontando para MongoDB local com replica set; cria e remove somente um banco de teste aleatório.
+`npm test -- --runInBand --runTestsByPath src/modules/cards/domain/card-calculation.spec.ts` verifica datas e centavos. A suíte `cards.integration.spec.ts` usa `CARDS_TEST_DATABASE_URL` apontando para MongoDB local com replica set; cria e remove somente um banco de teste aleatório.
 
 ## Limite por fatura
 

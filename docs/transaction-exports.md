@@ -23,14 +23,14 @@ O armazenamento é local e efêmero. Na Render gratuita, os arquivos podem desap
 
 ## Organização do módulo
 
-`src/modules/exports` separa as responsabilidades do fluxo:
+`src/modules/transactions/exports` separa as responsabilidades do fluxo:
 
 ```text
 exports/
 ├── exports.controller.ts          # Contrato HTTP e autenticação
 ├── exports.module.ts              # Composição das dependências do Nest
 ├── constants/                     # Fila, nomes de jobs e metadados dos formatos
-├── dtos/                          # Validação dos filtros e do formato
+├── dto/                          # Validação dos filtros e do formato
 ├── types/                         # Payload do job e contrato do escritor
 ├── repositories/                  # Persistência de status, progresso e arquivos
 ├── processors/                    # Coordenação do job, gravação e limpeza de falhas

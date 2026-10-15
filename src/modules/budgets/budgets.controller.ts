@@ -20,7 +20,7 @@ import {
   CreateBudgetSchema,
   UpdateBudgetDto,
   UpdateBudgetSchema,
-} from './dtos/budget.dto';
+} from './dto/budget.dto';
 
 @Controller('budgets')
 @UseGuards(AuthTokenGuard)

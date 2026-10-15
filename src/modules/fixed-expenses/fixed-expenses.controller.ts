@@ -13,7 +13,7 @@ import {
   CreateFixedExpenseDto,
   UpdateFixedExpensePaymentDto,
   UpdateFixedExpenseDto,
-} from './dtos/fixed-expense.dto';
+} from './dto/fixed-expense.dto';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
 import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';

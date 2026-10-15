@@ -1,0 +1,22 @@
+import { CategoryReferenceSchema } from '../../../categories/dto/category.dto';
+import { z } from 'zod';
+
+export const CreateTransactionExportSchema = z
+  .object({
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional(),
+    categoryId: CategoryReferenceSchema.optional(),
+    type: z.enum(['INCOME', 'EXPENSE']).optional(),
+    format: z.enum(['PDF', 'CSV', 'XLSX']).default('PDF'),
+  })
+  .refine(
+    ({ startDate, endDate }) => !startDate || !endDate || startDate <= endDate,
+    {
+      message: 'A data inicial deve ser anterior ou igual à data final.',
+      path: ['endDate'],
+    },
+  );
+
+export type CreateTransactionExportDto = z.infer<
+  typeof CreateTransactionExportSchema
+>;

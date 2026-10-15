@@ -2,8 +2,8 @@ import {
   dailyProjection,
   dueInMonth,
   incomeEvents,
-} from './calendar-calculation';
-import { dateSchema, incomeSchema } from './calendar.dto';
+} from './domain/calendar-calculation';
+import { dateSchema, incomeSchema } from './dto/calendar.dto';
 const revision = {
   description: 'Salário',
   amount: 1000,

@@ -1,11 +1,11 @@
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, RecurrenceType } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
 import {
   CreateFixedExpenseDto,
   UpdateFixedExpenseDto,
-} from '../dtos/fixed-expense.dto';
+} from '../dto/fixed-expense.dto';
 
 @Injectable()
 export class FixedExpensesRepository {

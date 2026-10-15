@@ -1,6 +1,6 @@
 import { DashboardService } from './dashboard.service';
-import { CalendarService } from '../calendar/calendar.service';
-import { buildEncryptedTransactionData } from '../transactions/transaction-encryption.mapper';
+import { CalendarService } from '../calendar/services/calendar.service';
+import { buildEncryptedTransactionData } from '../transactions/mappers/transaction-encryption.mapper';
 
 describe('DashboardService.getForecast', () => {
   it('reuses the calendar projection and separates card invoices from fixed expenses', async () => {

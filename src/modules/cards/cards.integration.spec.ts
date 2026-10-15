@@ -4,13 +4,13 @@ import { randomBytes } from 'crypto';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { resolve } from 'path';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 import { CategoriesService } from '../categories/categories.service';
 import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
-import { todayKey } from '../calendar/calendar-calculation';
+import { todayKey } from '../calendar/domain/calendar-calculation';
 import { CardsService } from './cards.service';
-import { CalendarService } from '../calendar/calendar.service';
+import { CalendarService } from '../calendar/services/calendar.service';
 
 const execFileAsync = promisify(execFile);
 

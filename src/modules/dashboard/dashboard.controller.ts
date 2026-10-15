@@ -1,6 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
-import { DashboardQueryDto, DashboardQuerySchema } from './dtos/dashboard.dto';
+import { DashboardQueryDto, DashboardQuerySchema } from './dto/dashboard.dto';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
 import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';

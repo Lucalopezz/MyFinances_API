@@ -12,14 +12,14 @@ import { z } from 'zod';
 import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
-import { CalendarService } from './calendar.service';
+import { CalendarService } from './services/calendar.service';
 import {
   calendarQuerySchema,
   confirmationSchema,
   dateSchema,
   incomeSchema,
   updateIncomeSchema,
-} from './calendar.dto';
+} from './dto/calendar.dto';
 @Controller('calendar')
 @UseGuards(AuthTokenGuard)
 export class CalendarController {

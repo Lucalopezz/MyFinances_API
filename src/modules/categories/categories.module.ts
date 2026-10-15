@@ -1,22 +1,18 @@
-import { forwardRef, Module } from '@nestjs/common';
-import { AppModule } from '../app/app.module';
+import { PrismaModule } from 'src/infrastructure/prisma/prisma.module';
+import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
+import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { CategoriesService } from './categories.service';
-import { CategoriesRepository } from './categories.repository';
+import { CategoriesRepository } from './repositories/categories.repository';
 import {
   CategoriesController,
   CategoryRulesController,
 } from './categories.controller';
 
 @Module({
-  imports: [forwardRef(() => AppModule), AuthModule],
+  imports: [PrismaModule, EncryptionModule, AuthModule],
   controllers: [CategoriesController, CategoryRulesController],
-  providers: [
-    CategoriesService,
-    CategoriesRepository,
-    FinancialDataEncryptionService,
-  ],
+  providers: [CategoriesService, CategoriesRepository],
   exports: [CategoriesService],
 })
 export class CategoriesModule {}

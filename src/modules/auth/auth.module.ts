@@ -1,7 +1,7 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { PrismaModule } from 'src/infrastructure/prisma/prisma.module';
+import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { AppModule } from '../app/app.module';
 import { HashingService } from './hashing/hashing.service';
 import { BcryptService } from './hashing/bycript.service';
 import { JwtModule } from '@nestjs/jwt';
@@ -21,7 +21,8 @@ import { AuthUsersRepository } from './repositories/auth-users.repository';
   ],
   exports: [HashingService, JwtModule, ConfigModule],
   imports: [
-    forwardRef(() => AppModule),
+    PrismaModule,
+
     ConfigModule.forFeature(jwtConfig),
     JwtModule.registerAsync(jwtConfig.asProvider()),
   ],

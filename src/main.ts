@@ -1,6 +1,6 @@
 import { PublicExceptionFilter } from './common/filters/public-exception.filter';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './modules/app/app.module';
+import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
 

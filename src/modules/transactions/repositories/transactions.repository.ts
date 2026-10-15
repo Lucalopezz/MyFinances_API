@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
 import {
   buildDateIndex,
   EncryptedTransactionRecord,
-} from '../transaction-encryption.mapper';
+} from '../mappers/transaction-encryption.mapper';
 
 export type TransactionPosition = { dateIndex: number; id: string };
 export type TransactionSearchCandidates = {

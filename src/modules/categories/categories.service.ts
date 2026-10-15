@@ -4,9 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Category, CategoryRule, TransactionType } from '@prisma/client';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
-import { CategoriesRepository } from './categories.repository';
-import { CategoryView, DEFAULT_CATEGORIES } from './default-categories';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
+import { CategoriesRepository } from './repositories/categories.repository';
+import { CategoryView, DEFAULT_CATEGORIES } from './domain/default-categories';
 import {
   CreateCategoryDto,
   UpdateCategoryDto,
@@ -15,7 +15,7 @@ import {
   ResolveCategoryDto,
   TestRuleDto,
   normalizeDescription,
-} from './category.dto';
+} from './dto/category.dto';
 
 @Injectable()
 export class CategoriesService {

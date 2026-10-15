@@ -1,18 +1,15 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { PrismaModule } from 'src/infrastructure/prisma/prisma.module';
+import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
+import { Module } from '@nestjs/common';
 import { WishlistService } from './wishlist.service';
 import { WishlistController } from './wishlist.controller';
-import { AppModule } from '../app/app.module';
 import { AuthModule } from '../auth/auth.module';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { CategoriesModule } from '../categories/categories.module';
 
 @Module({
   controllers: [WishlistController],
-  providers: [
-    WishlistService,
-    FinancialDataEncryptionService,
-  ],
-  imports: [forwardRef(() => AppModule), AuthModule, CategoriesModule],
+  providers: [WishlistService],
+  imports: [PrismaModule, EncryptionModule, AuthModule, CategoriesModule],
   exports: [WishlistService],
 })
 export class WishlistModule {}

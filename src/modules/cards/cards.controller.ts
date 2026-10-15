@@ -17,7 +17,7 @@ import {
   cycleSchema,
   paymentSchema,
   purchaseSchema,
-} from './cards.dto';
+} from './dto/cards.dto';
 
 @Controller('cards')
 @UseGuards(AuthTokenGuard)

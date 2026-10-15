@@ -22,7 +22,7 @@ import {
   TransactionSummarySchema,
   UpdateTransactionDto,
   UpdateTransactionSchema,
-} from './dtos/transaction.dto';
+} from './dto/transaction.dto';
 import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';
 

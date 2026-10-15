@@ -11,8 +11,8 @@ import {
   TransactionSearchDto,
   TransactionSummaryDto,
   UpdateTransactionDto,
-} from './dtos/transaction.dto';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+} from './dto/transaction.dto';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 import {
   buildEncryptedTransactionData,
   buildEncryptedTransactionUpdateData,
@@ -20,7 +20,7 @@ import {
   decryptTransactions,
   EncryptedTransactionRecord,
   DecryptedTransaction,
-} from './transaction-encryption.mapper';
+} from './mappers/transaction-encryption.mapper';
 import { TransactionsRepository } from './repositories/transactions.repository';
 
 type SearchCursor = {

@@ -1,5 +1,5 @@
 import { WishlistItem, WishlistMovement } from '@prisma/client';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 
 type MovementKind = 'DEPOSIT' | 'WITHDRAWAL' | 'CONSUMPTION' | 'RELEASE';
 

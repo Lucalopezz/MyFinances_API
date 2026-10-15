@@ -14,7 +14,7 @@ import {
   CreateWishlistItemDto,
   UpdateWishlistItemDto,
   WishlistMovementDto,
-} from './dtos/wishlist.dto';
+} from './dto/wishlist.dto';
 import { ZodValidationPipe } from 'src/common/pipes/zod-validation.pipe';
 import { AuthTokenGuard } from 'src/common/guards/auth-token.guard';
 import { User } from 'src/common/decorators/get-userId-from-token.decorator';

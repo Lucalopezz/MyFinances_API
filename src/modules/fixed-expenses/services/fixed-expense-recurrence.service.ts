@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { RecurrenceType } from '@prisma/client';
-import { todayKey } from '../../calendar/calendar-calculation';
+import { todayKey } from '../../calendar/domain/calendar-calculation';
 import { FixedExpensesRepository } from '../repositories/fixed-expenses.repository';
 import { RecurringExpenseToRefresh } from '../types/fixed-expenses.types';
 

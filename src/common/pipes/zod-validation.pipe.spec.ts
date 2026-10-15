@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { purchaseSchema } from 'src/modules/cards/cards.dto';
+import { purchaseSchema } from 'src/modules/cards/dto/cards.dto';
 import { ZodValidationPipe } from './zod-validation.pipe';
 
 describe('Validação pública em português', () => {

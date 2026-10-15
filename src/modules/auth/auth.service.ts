@@ -4,7 +4,7 @@ import { HashingService } from './hashing/hashing.service';
 import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AuthUsersRepository } from './repositories/auth-users.repository';
-import { LoginType } from './dtos/login.dto';
+import { LoginType } from './dto/login.dto';
 import { User } from '@prisma/client';
 
 @Injectable()

@@ -5,19 +5,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 import { CategoriesService } from '../categories/categories.service';
-import { buildEncryptedTransactionData } from '../transactions/transaction-encryption.mapper';
-import { todayKey } from '../calendar/calendar-calculation';
+import { buildEncryptedTransactionData } from '../transactions/mappers/transaction-encryption.mapper';
+import { todayKey } from '../calendar/domain/calendar-calculation';
 import {
   annualFeeForCycle,
   closingDateForCycle,
   dueDateForCycle,
   invoiceForPurchase,
   splitInstallments,
-} from './card-calculation';
-import { CardInput, PurchaseInput } from './cards.dto';
+} from './domain/card-calculation';
+import { CardInput, PurchaseInput } from './dto/cards.dto';
 
 type CardSecret = {
   name: string;

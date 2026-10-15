@@ -1,9 +1,9 @@
 import * as bcrypt from 'bcryptjs';
 import { TransactionType } from '@prisma/client';
 import { subMonths } from 'date-fns';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
-import { buildEncryptedTransactionData } from 'src/modules/transactions/transaction-encryption.mapper';
+import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
+import { buildEncryptedTransactionData } from 'src/modules/transactions/mappers/transaction-encryption.mapper';
 import {
   EXPENSE_CATEGORIES,
   INCOME_CATEGORIES,

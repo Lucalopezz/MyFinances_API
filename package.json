@@ -23,8 +23,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:calendar:integration": "npm test -- --runInBand --runTestsByPath src/modules/calendar/calendar.integration.spec.ts",
-    "test:imports:integration": "npm test -- --runInBand --runTestsByPath src/modules/imports/imports.integration.spec.ts",
-    "test:notifications:integration": "npm test -- --runInBand --runTestsByPath src/modules/notification/notification.integration.spec.ts",
+    "test:imports:integration": "npm test -- --runInBand --runTestsByPath src/modules/transactions/imports/imports.integration.spec.ts",
+    "test:notifications:integration": "npm test -- --runInBand --runTestsByPath src/modules/notifications/notification.integration.spec.ts",
     "test:cards:integration": "npm test -- --runInBand --runTestsByPath src/modules/cards/cards.integration.spec.ts"
   },
   "dependencies": {

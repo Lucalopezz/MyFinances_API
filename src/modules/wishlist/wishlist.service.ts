@@ -5,21 +5,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, WishlistItem } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { PrismaService } from 'src/infrastructure/prisma/prisma.service';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 import { CategoriesService } from '../categories/categories.service';
 import {
   buildEncryptedTransactionData,
   decryptTransaction,
   decryptTransactions,
   EncryptedTransactionRecord,
-} from '../transactions/transaction-encryption.mapper';
+} from '../transactions/mappers/transaction-encryption.mapper';
 import {
   CompleteWishlistItemDto,
   CreateWishlistItemDto,
   UpdateWishlistItemDto,
   WishlistMovementDto,
-} from './dtos/wishlist.dto';
+} from './dto/wishlist.dto';
 import { amount, cents, itemView, movementView } from './wishlist-view.mapper';
 
 @Injectable()

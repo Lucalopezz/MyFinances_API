@@ -5,10 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
-import { decryptTransaction } from '../transactions/transaction-encryption.mapper';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
+import { decryptTransaction } from '../transactions/mappers/transaction-encryption.mapper';
 import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
-import { CreateBudgetDto, UpdateBudgetDto } from './dtos/budget.dto';
+import { CreateBudgetDto, UpdateBudgetDto } from './dto/budget.dto';
 import { MonthlyBudgetsRepository } from './repositories/monthly-budgets.repository';
 import { MonthlyBudgetSummaryModel } from './models/monthly-budget.model';
 

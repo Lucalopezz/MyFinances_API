@@ -25,7 +25,7 @@ import {
   ResolveCategorySchema,
   TestRuleDto,
   TestRuleSchema,
-} from './category.dto';
+} from './dto/category.dto';
 
 @Controller('categories')
 @UseGuards(AuthTokenGuard)

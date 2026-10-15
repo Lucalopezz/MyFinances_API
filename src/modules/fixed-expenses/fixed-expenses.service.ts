@@ -6,7 +6,7 @@ import {
   CreateFixedExpenseDto,
   UpdateFixedExpenseDto,
   UpdateFixedExpensePaymentDto,
-} from './dtos/fixed-expense.dto';
+} from './dto/fixed-expense.dto';
 import { FixedExpenseErrorHandler } from './errors/fixed-expense-error.handler';
 import { FixedExpensesRepository } from './repositories/fixed-expenses.repository';
 import { FixedExpenseNotificationService } from './services/fixed-expense-notification.service';

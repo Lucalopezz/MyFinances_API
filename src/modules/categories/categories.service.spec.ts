@@ -1,12 +1,12 @@
 import { Category, CategoryRule } from '@prisma/client';
-import { CategoriesRepository } from './categories.repository';
+import { CategoriesRepository } from './repositories/categories.repository';
 import { CategoriesService } from './categories.service';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 import {
   CreateCategorySchema,
   CreateRuleSchema,
   UpdateCategorySchema,
-} from './category.dto';
+} from './dto/category.dto';
 import { TransactionsService } from '../transactions/transactions.service';
 import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
 import { BudgetsService } from '../budgets/budgets.service';

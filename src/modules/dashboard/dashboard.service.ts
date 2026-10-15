@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { DashboardQueryDto } from './dtos/dashboard.dto';
-import { MonthlyComparisonDto } from './dtos/monthly-comparison.dto';
+import { DashboardQueryDto } from './dto/dashboard.dto';
+import { MonthlyComparisonDto } from './dto/monthly-comparison.dto';
 import { TransactionType } from '@prisma/client';
-import { CalendarService } from '../calendar/calendar.service';
-import { todayKey } from '../calendar/calendar-calculation';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
+import { CalendarService } from '../calendar/services/calendar.service';
+import { todayKey } from '../calendar/domain/calendar-calculation';
+import { FinancialDataEncryptionService } from 'src/infrastructure/encryption/financial-data-encryption.service';
 import {
   buildDateIndex,
   DecryptedTransaction,
   decryptTransactions,
-} from '../transactions/transaction-encryption.mapper';
+} from '../transactions/mappers/transaction-encryption.mapper';
 import { TransactionsRepository } from '../transactions/repositories/transactions.repository';
 import { DashboardRepository } from './repositories/dashboard.repository';
 import { ForecastModel } from './models/forecast.model';

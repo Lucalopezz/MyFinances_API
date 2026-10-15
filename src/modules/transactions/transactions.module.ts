@@ -1,20 +1,16 @@
+import { PrismaModule } from 'src/infrastructure/prisma/prisma.module';
+import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { CategoriesModule } from '../categories/categories.module';
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { TransactionsController } from './transactions.controller';
-import { AppModule } from '../app/app.module';
 import { AuthModule } from '../auth/auth.module';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { TransactionsRepository } from './repositories/transactions.repository';
 
 @Module({
   controllers: [TransactionsController],
-  providers: [
-    TransactionsService,
-    TransactionsRepository,
-    FinancialDataEncryptionService,
-  ],
+  providers: [TransactionsService, TransactionsRepository],
   exports: [TransactionsRepository],
-  imports: [CategoriesModule, forwardRef(() => AppModule), AuthModule],
+  imports: [PrismaModule, EncryptionModule, CategoriesModule, AuthModule],
 })
 export class TransactionsModule {}

@@ -98,10 +98,11 @@ As variáveis e os limites dos testes de integração estão nos respectivos gui
 
 ```text
 ├── src/
-│   ├── common/       # Autorização, validação e infraestrutura compartilhada
-│   ├── modules/      # Módulos de domínio e composição da aplicação
-│   ├── prisma/       # Acesso ao MongoDB via Prisma
-│   └── main.ts       # Entrada da API NestJS
+│   ├── common/         # Autorização, validação, datas e valores compartilhados
+│   ├── modules/        # Funcionalidades e suas regras de aplicação
+│   ├── infrastructure/ # Módulos compartilhados de Prisma e criptografia
+│   ├── app.module.ts   # Composição da aplicação
+│   └── main.ts         # Entrada da API NestJS
 ├── prisma/           # Schema do banco
 ├── docs/             # Referências técnicas, guias e histórico
 ├── scripts/          # Utilitários de desenvolvimento

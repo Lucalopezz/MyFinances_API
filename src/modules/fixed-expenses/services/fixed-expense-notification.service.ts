@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { NotificationSyncRepository } from '../../notification/repositories/notification-sync.repository';
+import { NotificationSyncRepository } from '../../notifications/repositories/notification-sync.repository';
 import { FixedExpenseRecurrenceService } from './fixed-expense-recurrence.service';
 
 @Injectable()

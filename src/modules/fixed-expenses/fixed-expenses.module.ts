@@ -1,10 +1,11 @@
+import { PrismaModule } from 'src/infrastructure/prisma/prisma.module';
+import { EncryptionModule } from 'src/infrastructure/encryption/encryption.module';
 import { CardsModule } from '../cards/cards.module';
 import { CategoriesModule } from '../categories/categories.module';
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { FixedExpensesService } from './fixed-expenses.service';
 import { FixedExpensesController } from './fixed-expenses.controller';
-import { AppModule } from 'src/modules/app/app.module';
-import { NotificationModule } from '../notification/notification.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthModule } from '../auth/auth.module';
 import { FixedExpenseErrorHandler } from './errors/fixed-expense-error.handler';
 import { FixedExpensesRepository } from './repositories/fixed-expenses.repository';
@@ -12,7 +13,6 @@ import { FixedExpenseNotificationService } from './services/fixed-expense-notifi
 import { FixedExpensePaymentService } from './services/fixed-expense-payment.service';
 import { FixedExpenseRawFieldsService } from './services/fixed-expense-raw-fields.service';
 import { FixedExpenseRecurrenceService } from './services/fixed-expense-recurrence.service';
-import { FinancialDataEncryptionService } from 'src/common/encryption/financial-data-encryption.service';
 import { FixedExpensePaymentsRepository } from './repositories/fixed-expense-payments.repository';
 
 @Module({
@@ -26,7 +26,6 @@ import { FixedExpensePaymentsRepository } from './repositories/fixed-expense-pay
     FixedExpenseNotificationService,
     FixedExpenseRawFieldsService,
     FixedExpenseErrorHandler,
-    FinancialDataEncryptionService,
   ],
   exports: [
     FixedExpensesService,
@@ -38,10 +37,12 @@ import { FixedExpensePaymentsRepository } from './repositories/fixed-expense-pay
     FixedExpenseErrorHandler,
   ],
   imports: [
+    PrismaModule,
+    EncryptionModule,
     CategoriesModule,
     CardsModule,
-    forwardRef(() => AppModule),
-    NotificationModule,
+
+    NotificationsModule,
     AuthModule,
   ],
 })
