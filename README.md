@@ -1,6 +1,8 @@
 # MyFinances API
 
-API de gerenciamento financeiro pessoal do MyFinances, construída com NestJS, Prisma e MongoDB. Centraliza os dados, as regras financeiras e a autenticação consumidos pelo [frontend](https://github.com/Lucalopezz/MyFinances_Front).
+> **Repositório histórico.** O desenvolvimento e o deploy da API e do frontend passaram para o [monorepositório MyFinances](https://github.com/Lucalopezz/MyFinances). A API ativa está em [`apps/api`](https://github.com/Lucalopezz/MyFinances/tree/main/apps/api); novas mudanças e correções devem ser feitas lá. Este repositório separado permanece como referência das versões anteriores.
+
+API de gerenciamento financeiro pessoal do MyFinances, construída com NestJS, Prisma e MongoDB. Centraliza os dados, as regras financeiras e a autenticação consumidos pelo [frontend atual](https://github.com/Lucalopezz/MyFinances/tree/main/apps/web).
 
 Versão de referência: **v2.2.2**. Consulte o [histórico de versões](CHANGELOG.md) para conhecer as mudanças de cada release.
 
